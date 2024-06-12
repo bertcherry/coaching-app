@@ -7,8 +7,7 @@ export default function Index() {
     <View
       style={{
         flex: 1,
-        justifyContent: "flex-start",
-        alignItems: "center",
+        backgroundColor: '#fffccc',
       }}
     >
       <CoachingHeader />
