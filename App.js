@@ -6,12 +6,18 @@ import CoachingFooter from './components/CoachingFooter';
 
 export default function App() {
   return (
-    <View style={styles.container}>
-      <CoachingHeader />
-      <Text>Open up App.js to start working on your app!</Text>
-      <StatusBar style="auto" />
-      <CoachingFooter />
-    </View>
+    <>
+      <View style={styles.container}>
+        <CoachingHeader />
+      </View>
+      <View style={styles.container}>
+        <StatusBar style="auto" />
+      </View>
+      <View style={styles.container}>
+        <CoachingFooter /> 
+      </View>
+    </>
+    
   );
 }
 
