@@ -1,4 +1,3 @@
-import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View } from 'react-native';
 
 import CoachingHeader from './components/CoachingHeader';
@@ -6,17 +5,14 @@ import CoachingFooter from './components/CoachingFooter';
 
 export default function App() {
   return (
-    <>
-      <View style={styles.container}>
+    <View style={styles.container}>
+      <View>
         <CoachingHeader />
       </View>
-      <View style={styles.container}>
-        <StatusBar style="auto" />
-      </View>
-      <View style={styles.container}>
+      <View>
         <CoachingFooter /> 
       </View>
-    </>
+    </View>
     
   );
 }
