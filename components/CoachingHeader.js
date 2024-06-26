@@ -1,12 +1,25 @@
 import * as React from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 
 export default function CoachingHeader() {
     return (
-        <View style={{ backgroundColor: '#fba8a0' }}>
-            <Text style={{ padding: 30, fontSize: 26, fontWeight: 600, color: 'black', textAlign: 'center' }}>
+        <View style={styles.container}>
+            <Text style={styles.text}>
                 Cherry Coaching
             </Text>
         </View>
     );
 }
+
+const styles = StyleSheet.create({
+    container: {
+        backgroundColor: '#fba8a0',
+    },
+    text: {
+        padding: 30, 
+        fontSize: 26, 
+        fontWeight: 'bold', 
+        color: 'black', 
+        textAlign: 'center',
+    }
+})

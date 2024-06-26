@@ -1,12 +1,25 @@
 import * as React from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 
 export default function CoachingFooter() {
     return (
-        <View style={{ width: '100%', backgroundColor: '#fba8a0' }}>
-            <Text style={{ padding: 10, fontSize: 10, color: 'black', textAlign: 'center' }}>
+        <View style={styles.container}>
+            <Text style={styles.text}>
                 All rights reserved by Cherry Coaching, 2024
             </Text>
         </View>
     );
 }
+
+const styles = StyleSheet.create({
+    container: {
+        width: '100%',
+        backgroundColor: '#fba8a0',
+    },
+    text: {
+        padding: 10, 
+        fontSize: 10, 
+        color: 'black', 
+        textAlign: 'center',
+    }
+})

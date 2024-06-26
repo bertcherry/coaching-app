@@ -7,7 +7,7 @@ import WelcomeScreen from './WelcomeScreen';
 export default function App() {
   return (
     <View style={styles.container}>
-      <View style={{ flex: 1 }}>
+      <View style={styles.innerContainer}>
         <CoachingHeader />
         <WelcomeScreen />
       </View>
@@ -25,4 +25,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'black',
     justifyContent: 'space-between',
   },
+  innerContainer: {
+    flex: 1,
+  }
 });
