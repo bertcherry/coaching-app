@@ -20,14 +20,14 @@ const styles = StyleSheet.create({
     },
     headingText: {
         padding: 40, 
-        fontSize: 80, 
+        fontSize: 30, 
         fontWeight: 'bold', 
         color: '#fae9e9', 
         textAlign: 'center',
     },
     bodyText: {
         padding: 20, 
-        fontSize: 50, 
+        fontSize: 20, 
         color: '#fae9e9', 
         textAlign: 'center', 
         flexWrap: 'wrap'
