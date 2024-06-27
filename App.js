@@ -2,14 +2,14 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import CoachingHeader from './components/CoachingHeader';
 import CoachingFooter from './components/CoachingFooter';
-import WelcomeScreen from './WelcomeScreen';
+import SampleWorkout from './components/SampleWorkout';
 
 export default function App() {
   return (
     <View style={styles.container}>
       <View style={styles.innerContainer}>
         <CoachingHeader />
-        <WelcomeScreen />
+        <SampleWorkout />
       </View>
       <View>
         <CoachingFooter /> 
