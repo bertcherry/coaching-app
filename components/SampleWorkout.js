@@ -102,7 +102,7 @@ const styles = StyleSheet.create({
     },
     bodyText: {
         padding: 20, 
-        fontSize: 12, 
+        fontSize: 16, 
         color: '#fae9e9', 
         flexWrap: 'wrap'
     }
