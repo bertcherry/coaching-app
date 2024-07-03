@@ -41,7 +41,7 @@ const Item = ({ id, reps }) => {
     
     React.useEffect(() => {
         const getVideo = async () => {
-            const resp = await fetch(`/api/video/${id}`);
+            const resp = await fetch(new URL(`https://videos.bert-m-cherry.workers.dev/${id}`));
             const videoResp = await resp.json();
             setVideo(videoResp);
         };
