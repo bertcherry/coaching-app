@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { View, Text, SectionList, TextInput, StyleSheet } from 'react-native';
+import { View, Text, SectionList, TextInput, KeyboardAvoidingView, StyleSheet, Platform } from 'react-native';
 
 const sampleWorkoutData = [
     {
@@ -68,28 +68,31 @@ const Item = ({ id, reps }) => {
                 <Text style={styles.bodyText}>{video.name}</Text>
                 <Text style={styles.bodyText}>Reps or Time: {reps}</Text>
             </View>
-            <View style={styles.itemContainer}>
-                <TextInput 
-                    value={weight}
-                    onChangeText={onChangeWeight}
-                    placeholder={'Weight'}
-                    style={styles.input}
-                />
-                <TextInput 
-                    value={rpe}
-                    onChangeText={onChangeRpe}
-                    placeholder={'RPE'}
-                    style={styles.input}
-                />
-            </View>
-            <View style={styles.container}>
+            <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+                <View style={styles.itemContainer}>
+                    <TextInput 
+                        value={weight}
+                        onChangeText={onChangeWeight}
+                        placeholder={'Weight'}
+                        style={styles.input}
+                        keyboardType={'numeric'}
+                    />
+                    <TextInput 
+                        value={rpe}
+                        onChangeText={onChangeRpe}
+                        placeholder={'RPE'}
+                        style={styles.input}
+                        keyboardType={'numeric'}
+                    />
+                </View>
                 <TextInput 
                     value={notes}
                     onChangeText={onChangeNotes}
                     placeholder={'Notes'}
                     style={styles.notesInput}
+                    multiline={true}
                 />
-            </View>
+            </KeyboardAvoidingView>
         </> 
     );
 }
@@ -110,6 +113,7 @@ export default function SampleWorkout() {
                 keyExtractor={(item) => item.id}
                 renderItem={renderItem}
                 renderSectionHeader={renderSectionHeader}
+                keyboardDismissMode='on-drag'
             />
         </View>
     );
