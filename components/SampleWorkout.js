@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { View, Text, SectionList, TextInput, KeyboardAvoidingView, StyleSheet, Platform } from 'react-native';
+import { View, Text, SectionList, TextInput, KeyboardAvoidingView, StyleSheet, Platform, Pressable } from 'react-native';
 
 const sampleWorkoutData = [
     {
@@ -41,6 +41,7 @@ const Item = ({ id, reps }) => {
     const [weight, onChangeWeight] = React.useState('');
     const [rpe, onChangeRpe] = React.useState('');
     const [notes, onChangeNotes] = React.useState('');
+    const [showNotes, setShowNotes] = React.useState(false);
     
     React.useEffect(() => {
         const getVideo = async () => {
@@ -65,9 +66,13 @@ const Item = ({ id, reps }) => {
     return (
         <>
             <View style={styles.itemContainer}>
-                <Text style={styles.bodyText}>{video.name}</Text>
-                <Text style={styles.bodyText}>Reps or Time: {reps}</Text>
+                <Text style={styles.exerciseText}>{video.name}</Text>
+                <Text style={styles.bodyText}>Reps/Time: {reps}</Text>
+                <Pressable style={styles.button} onPress={() => {setShowNotes(!showNotes)}}>
+                    <Text style={styles.buttonText}>{showNotes ? 'v' : '>'}</Text>
+                </Pressable>
             </View>
+            {showNotes && (
             <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
                 <View style={styles.itemContainer}>
                     <TextInput 
@@ -98,6 +103,7 @@ const Item = ({ id, reps }) => {
                     //use onBlur to store the data to the user
                 />
             </KeyboardAvoidingView>
+            )}
         </> 
     );
 }
@@ -144,6 +150,24 @@ const styles = StyleSheet.create({
         fontSize: 16, 
         color: '#fae9e9', 
         flexWrap: 'wrap'
+    },
+    exerciseText: {
+        padding: 20, 
+        fontSize: 16, 
+        color: '#fae9e9', 
+        flexWrap: 'wrap',
+        flex: 1
+    },
+    button: {
+        padding: 10,
+        height: 40,
+        alignSelf: 'center',
+        borderColor: '#fae9e9',
+        borderWidth: 1,
+        borderRadius: 8,
+    },
+    buttonText: {
+        color: '#fae9e9',
     },
     input: {
         flex: 1,
