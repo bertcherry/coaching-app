@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { View, Text, SectionList, StyleSheet } from 'react-native';
+import { View, Text, SectionList, TextInput, StyleSheet } from 'react-native';
 
 const sampleWorkoutData = [
     {
@@ -38,6 +38,9 @@ const sampleWorkoutData = [
 
 const Item = ({ id, reps }) => {
     const [video, setVideo] = React.useState({});
+    const [weight, onChangeWeight] = React.useState('');
+    const [rpe, onChangeRpe] = React.useState('');
+    const [notes, onChangeNotes] = React.useState('');
     
     React.useEffect(() => {
         const getVideo = async () => {
@@ -50,17 +53,44 @@ const Item = ({ id, reps }) => {
     }, [id]);
 
     if (!Object.keys(video).length) return (
-        <View style={styles.itemContainer}>
-            <Text style={styles.bodyText}>Oops</Text>
-            <Text style={styles.bodyText}>Reps or Time: {reps}</Text>
-        </View>
+        <>
+            <View style={styles.itemContainer}>
+                <Text style={styles.bodyText}>Oops</Text>
+                <Text style={styles.bodyText}>Reps or Time: {reps}</Text>
+            </View>
+        </>
+        
     );
 
     return (
-        <View style={styles.itemContainer}>
-            <Text style={styles.bodyText}>{video.name}</Text>
-            <Text style={styles.bodyText}>Reps or Time: {reps}</Text>
-        </View>
+        <>
+            <View style={styles.itemContainer}>
+                <Text style={styles.bodyText}>{video.name}</Text>
+                <Text style={styles.bodyText}>Reps or Time: {reps}</Text>
+            </View>
+            <View style={styles.itemContainer}>
+                <TextInput 
+                    value={weight}
+                    onChangeText={onChangeWeight}
+                    placeholder={'Weight'}
+                    style={styles.input}
+                />
+                <TextInput 
+                    value={rpe}
+                    onChangeText={onChangeRpe}
+                    placeholder={'RPE'}
+                    style={styles.input}
+                />
+            </View>
+            <View style={styles.container}>
+                <TextInput 
+                    value={notes}
+                    onChangeText={onChangeNotes}
+                    placeholder={'Notes'}
+                    style={styles.notesInput}
+                />
+            </View>
+        </> 
     );
 }
 
@@ -105,5 +135,24 @@ const styles = StyleSheet.create({
         fontSize: 16, 
         color: '#fae9e9', 
         flexWrap: 'wrap'
+    },
+    input: {
+        flex: 1,
+        height: 40,
+        margin: 12,
+        borderWidth: 1,
+        padding: 10,
+        fontSize: 16,
+        borderColor: '#fba8a0',
+        backgroundColor: '#fae9e9'
+    },
+    notesInput: {
+        height: 100,
+        margin: 12,
+        borderWidth: 1, 
+        padding: 10, 
+        fontSize: 16, 
+        borderColor: '#fba8a0',
+        backgroundColor: '#fae9e9'
     }
 })
