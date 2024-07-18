@@ -77,6 +77,7 @@ const Item = ({ id, reps }) => {
                         style={styles.input}
                         keyboardType={'numeric'}
                         clearButtonMode='while-editing'
+                        //use onBlur to store the data to the user
                     />
                     <TextInput 
                         value={rpe}
@@ -85,6 +86,7 @@ const Item = ({ id, reps }) => {
                         style={styles.input}
                         keyboardType={'numeric'}
                         clearButtonMode='while-editing'
+                        //use onBlur to store the data to the user
                     />
                 </View>
                 <TextInput 
@@ -93,6 +95,7 @@ const Item = ({ id, reps }) => {
                     placeholder={'Notes'}
                     style={styles.notesInput}
                     multiline={true}
+                    //use onBlur to store the data to the user
                 />
             </KeyboardAvoidingView>
         </> 
