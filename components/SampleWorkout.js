@@ -76,6 +76,7 @@ const Item = ({ id, reps }) => {
                         placeholder={'Weight'}
                         style={styles.input}
                         keyboardType={'numeric'}
+                        clearButtonMode='while-editing'
                     />
                     <TextInput 
                         value={rpe}
@@ -83,6 +84,7 @@ const Item = ({ id, reps }) => {
                         placeholder={'RPE'}
                         style={styles.input}
                         keyboardType={'numeric'}
+                        clearButtonMode='while-editing'
                     />
                 </View>
                 <TextInput 
