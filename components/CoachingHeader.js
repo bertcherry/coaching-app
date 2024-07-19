@@ -1,25 +1,28 @@
 import * as React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Image, StyleSheet } from 'react-native';
 
 export default function CoachingHeader() {
     return (
         <View style={styles.container}>
-            <Text style={styles.text}>
-                Cherry Coaching
-            </Text>
+            <Image 
+                style={styles.logo}
+                source={require('../img/CherryCoachingLogo.png')}
+                accessible={true}
+                accessibilityLabel='Cherry Coaching Logo'
+            />
         </View>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
-        backgroundColor: '#fba8a0',
+        backgroundColor: '#fae9e9',
+        flex: .15,
+        alignItems: 'center', 
+        padding: 10
     },
-    text: {
-        padding: 30, 
-        fontSize: 26, 
-        fontWeight: 'bold', 
-        color: 'black', 
-        textAlign: 'center',
+    logo: {
+        height: '100%',
+        resizeMode: 'contain',
     }
 })
