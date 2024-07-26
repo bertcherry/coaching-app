@@ -1,31 +1,19 @@
-import { StyleSheet, Text, View } from 'react-native';
-
-import CoachingHeader from './components/CoachingHeader';
-import CoachingFooter from './components/CoachingFooter';
-import LoginScreen from './components/LoginScreen';
+import SampleWorkout from './screens/SampleWorkout';
+import { NavigationContainer } from '@react-navigation/native';
+import { createDrawerNavigator } from '@react-navigation/drawer';
+import LoginScreen from './screens/LoginScreen';
+import WelcomeScreen from './screens/WelcomeScreen';
 
 export default function App() {
+  const Drawer = createDrawerNavigator();
+
   return (
-    <View style={styles.container}>
-      <View style={styles.innerContainer}>
-        <CoachingHeader />
-        <LoginScreen />
-      </View>
-      <View>
-        <CoachingFooter /> 
-      </View>
-    </View>
-    
+    <NavigationContainer>
+        <Drawer.Navigator>
+            <Drawer.Screen name='Welcome' component={WelcomeScreen} />
+            <Drawer.Screen name='Sample Workout' component={SampleWorkout} />
+            <Drawer.Screen name='Login' component={LoginScreen} />
+        </Drawer.Navigator>
+    </NavigationContainer>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: 'black',
-    justifyContent: 'space-between',
-  },
-  innerContainer: {
-    flex: 1,
-  }
-});
