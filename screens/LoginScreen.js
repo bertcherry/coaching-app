@@ -1,7 +1,5 @@
 import * as React from 'react';
-import { ScrollView, Text, StyleSheet, KeyboardAvoidingView, TextInput, Platform, Pressable, View} from 'react-native';
-import CoachingHeader from '../components/CoachingHeader';
-import CoachingFooter from '../components/CoachingFooter';
+import { ScrollView, Text, StyleSheet, KeyboardAvoidingView, TextInput, Platform, Pressable, } from 'react-native';
 
 export default function LoginScreen() {
     const [email, onChangeEmail] = React.useState('');
@@ -9,36 +7,31 @@ export default function LoginScreen() {
     const [isLoggedIn, onLogin] = React.useState(false);
 
   return (
-      <View style={styles.container}> 
-        <CoachingHeader />
-        <ScrollView style={styles.innerContainer}>
-          <Text style={styles.headerText}>Welcome to Cherry Coaching</Text>
-          <Text style={styles.regularText}>{isLoggedIn ? 'You are logged in' : 'Login to continue'}</Text>
-          {!isLoggedIn && (
-            <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-                <TextInput 
-                    value={email}
-                    onChangeText={onChangeEmail}
-                    placeholder='email'
-                    keyboardType='email-address'
-                    style={styles.input}
-                />
-                <TextInput 
-                    value={password}
-                    onChangeText={onChangePassword}
-                    placeholder='password'
-                    secureTextEntry={true}
-                    style={styles.input}
-                />
-                <Pressable style={styles.button} onPress={() => {onLogin(!isLoggedIn)}}>
-                    <Text style={styles.buttonText}>Login</Text>
-                </Pressable>
-            </KeyboardAvoidingView>
-          )}
-        </ScrollView>
-        <CoachingFooter />
-      </View>
-      
+    <ScrollView style={styles.container}>
+      <Text style={styles.headerText}>Welcome to Cherry Coaching</Text>
+      <Text style={styles.regularText}>{isLoggedIn ? 'You are logged in' : 'Login to continue'}</Text>
+      {!isLoggedIn && (
+        <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+            <TextInput 
+                value={email}
+                onChangeText={onChangeEmail}
+                placeholder='email'
+                keyboardType='email-address'
+                style={styles.input}
+            />
+            <TextInput 
+                value={password}
+                onChangeText={onChangePassword}
+                placeholder='password'
+                secureTextEntry={true}
+                style={styles.input}
+            />
+            <Pressable style={styles.button} onPress={() => {onLogin(!isLoggedIn)}}>
+                <Text style={styles.buttonText}>Login</Text>
+            </Pressable>
+        </KeyboardAvoidingView>
+      )}
+    </ScrollView>
   );
 }
 
@@ -46,10 +39,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: 'black',
-    justifyContent: 'space-between',
-  },
-  innerContainer: {
-    flex: 1,
   },
   headerText: {
     padding: 40,

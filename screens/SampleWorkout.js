@@ -1,6 +1,5 @@
 import * as React from 'react';
 import { View, Text, SectionList, TextInput, KeyboardAvoidingView, StyleSheet, Platform, Pressable } from 'react-native';
-import CoachingFooter from '../components/CoachingFooter';
 
 const sampleWorkoutData = [
     {
@@ -127,7 +126,6 @@ export default function SampleWorkout() {
                 renderSectionHeader={renderSectionHeader}
                 keyboardDismissMode='on-drag'
             />
-            <CoachingFooter />
         </View>
     );
 }
