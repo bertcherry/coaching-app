@@ -6,6 +6,7 @@ import WelcomeScreen from './screens/WelcomeScreen';
 import SampleWorkout from './screens/SampleWorkout';
 import CoachingHeader from './components/CoachingHeader';
 import CoachingFooter from './components/CoachingFooter';
+import CreateWorkout from './screens/CreateWorkout';
 
 export default function App() {
   const Drawer = createDrawerNavigator();
@@ -17,6 +18,7 @@ export default function App() {
         <Drawer.Navigator>
             <Drawer.Screen name='Welcome' component={WelcomeScreen} />
             <Drawer.Screen name='Sample Workout' component={SampleWorkout} />
+            <Drawer.Screen name='Create Workout' component={CreateWorkout} />
             <Drawer.Screen name='Login' component={LoginScreen} />
         </Drawer.Navigator>
         <CoachingFooter />
