@@ -2,6 +2,8 @@ import * as React from 'react';
 import { FieldArray, Formik } from 'formik';
 import uuid from 'react-native-uuid';
 import { View, Switch, Text, TextInput, Pressable, StyleSheet, ScrollView } from 'react-native';
+import RNPickerSelect from 'react-native-picker-select';
+import AntDesign from '@expo/vector-icons/AntDesign';
 
 const initialValues = {
     id: uuid.v4(),
@@ -13,40 +15,13 @@ const initialValues = {
                 {
                     id: null,
                     sets: null,
+                    countType: null,
+                    count: '',
                 },
             ],
         },
     ],
 };  
-
-const Section = (timed, circuit, exercises) => {
-    const [isTimed, onSelectTimed] = React.useState(timed);
-    const [isCircuit, onSelectCircuit] = React.useState(circuit);
-
-    return (
-        <>
-            <View style={styles.switch}>
-                <Switch 
-                    trackColor={{false: '#767577', true: '#7bb533'}}
-                    onValueChange={() => {onSelectTimed(!isTimed)}}
-                    value={isTimed}
-                />
-                <Text style={styles.regularText}>Section is timed</Text>
-            </View>
-            <View style={styles.switch}>
-                <Switch 
-                    trackColor={{false: '#767577', true: '#7bb533'}}
-                    onValueChange={() => {onSelectCircuit(!isCircuit)}}
-                    value={isCircuit}
-                />
-                <Text style={styles.regularText}>Section is a circuit</Text>
-            </View>
-            <Pressable style={styles.button} onPress={() => {exercises.push(blankExercise)}}>
-                <Text style={styles.buttonText}>Add Exercise</Text>
-            </Pressable>
-        </>
-    )
-}
 
 export default function CreateWorkout() {
     return (
@@ -67,7 +42,8 @@ export default function CreateWorkout() {
                                         <View key={index}>
                                             <View style={styles.switch}>
                                                 <Switch 
-                                                    trackColor={{false: '#767577', true: '#7bb533'}}
+                                                    trackColor={{false: '#767577', true: '#e7f6d0'}}
+                                                    thumbColor={section.timed ? '#7bb533': '#f4f3f4'}
                                                     onValueChange={(value) => setFieldValue(`data.${index}.timed`, value)}
                                                     value={section.timed}
                                                 />
@@ -75,7 +51,8 @@ export default function CreateWorkout() {
                                             </View>
                                             <View style={styles.switch}>
                                                 <Switch 
-                                                    trackColor={{false: '#767577', true: '#7bb533'}}
+                                                    trackColor={{false: '#767577', true: '#e7f6d0'}}
+                                                    thumbColor={section.circuit ? '#7bb533': '#f4f3f4'}
                                                     onValueChange={(value) => setFieldValue(`data.${index}.circuit`, value)}
                                                     value={section.circuit}
                                                 />
@@ -85,14 +62,35 @@ export default function CreateWorkout() {
                                                 <FieldArray name={`data.${index}.exercises`}>
                                                     {({insert, remove, push}) => (
                                                         <View>
-                                                            {section.exercises.length > 0 && section.exercises.map((exercise, index) => (
-                                                                <View key={index}>
+                                                            {section.exercises.length > 0 && section.exercises.map((exercise, i) => (
+                                                                <View key={i}>
                                                                     <View>
                                                                         <Text style={styles.regularText}>Sets</Text>
-                                                                        <TextInput keyboardType='numeric' onChangeText={handleChange(`exercises.${index}.sets`)} onBlur={handleBlur(`exercises.${index}.sets`)} value={exercise.sets} />
+                                                                        <TextInput style={styles.input} keyboardType='numeric' onChangeText={handleChange(`data.${index}.exercises.${i}.sets`)} onBlur={handleBlur(`data.${index}.exercises.${i}.sets`)} value={exercise.sets} />
                                                                     </View>
                                                                     <View>
-                                                                        <Pressable style={styles.button} onPress={() => remove(index)}>
+                                                                        <Text style={styles.regularText}>Reps or Time</Text>
+                                                                        {exercise.countType != 'AMRAP' &&
+                                                                            <TextInput style={styles.input} keyboardType='numeric' onChangeText={handleChange(`data.${index}.exercises.${i}.count`)} onBlur={handleBlur(`data.${index}.exercises.${i}.count`)} value={exercise.count} editable={exercise.countType!='AMRAP'} />
+                                                                        }
+                                                                        <RNPickerSelect 
+                                                                            items={[
+                                                                                { label: 'Reps', value: 'Reps', key: 'reps' },
+                                                                                { label: 'Timed', value: 'Timed', key: 'timed' },
+                                                                                { label: 'AMRAP', value: 'AMRAP', key: 'amrap' },
+                                                                            ]}
+                                                                            onValueChange={(value) => setFieldValue(`data.${index}.exercises.${i}.countType`, value)}
+                                                                            onBlur={handleBlur(`data.${index}.exercises.${i}.countType`)}
+                                                                            value={exercise.countType}
+                                                                            style={pickerSelectStyles}
+                                                                            Icon={() => {
+                                                                                return <AntDesign name="down" size={20} color="#fae9e9" />;
+                                                                            }}
+                                                                            // Add a placeholder object to render() {const placeholder = {label, value, color}}
+                                                                        />
+                                                                    </View>
+                                                                    <View>
+                                                                        <Pressable style={styles.button} onPress={() => remove(i)}>
                                                                             <Text style={styles.buttonText}>Remove Exercise</Text>
                                                                         </Pressable>
                                                                     </View>
@@ -104,6 +102,8 @@ export default function CreateWorkout() {
                                                                         {
                                                                             id: null,
                                                                             sets: null,
+                                                                            countType: null,
+                                                                            count: '',
                                                                         },
                                                                 )}
                                                             >
@@ -129,6 +129,8 @@ export default function CreateWorkout() {
                                                 {
                                                     id: null,
                                                     sets: null,
+                                                    countType: null,
+                                                    count: '',
                                                 },
                                         ],})}
                                     >
@@ -193,3 +195,26 @@ const styles = StyleSheet.create({
       textAlign: 'center',
     },
   });
+
+const pickerSelectStyles = StyleSheet.create({
+    inputIOS: {
+        fontSize: 16,
+        paddingVertical: 12,
+        paddingHorizontal: 10,
+        borderWidth: 1,
+        borderColor: 'gray',
+        borderRadius: 4,
+        color: '#fae9e9',
+        paddingRight: 30, // to ensure the text is never behind the icon
+      },
+      inputAndroid: {
+        fontSize: 16,
+        paddingHorizontal: 10,
+        paddingVertical: 8,
+        borderWidth: 0.5,
+        borderColor: 'purple',
+        borderRadius: 8,
+        color: '#fae9e9',
+        paddingRight: 30, // to ensure the text is never behind the icon
+      },
+});
