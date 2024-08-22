@@ -1,62 +1,27 @@
 import * as React from 'react';
-import { View, Switch, Text, TextInput, KeyboardAvoidingView, Platform, Pressable, FlatList, StyleSheet, ScrollView } from 'react-native';
+import { FieldArray, Formik } from 'formik';
+import uuid from 'react-native-uuid';
+import { View, Switch, Text, TextInput, Pressable, StyleSheet, ScrollView } from 'react-native';
 
-
-//breaking change: pushing blank exercise and section data does not cause a re-render of the screen
-//push is not recognized on all, could be flatlist rendering issue
-const blankExercise = {
-    id: null,
-    sets: null, 
-}
-
-const blankSection = {
-    timed: false,
-    circuit: true,
-    exercises: [{blankExercise}],
-}
-
-const sectionData = [
-    {blankSection},
-];
-
-const Exercise = (id, sets) => {
-    const [nameSearch, onChangeSearch] = React.useState('');
-    //make onChangeSearch have a timeout for onChangeText
-    //the onChangeSearch should also trigger a worker after timeout to search the video database and offer dropdown of options to select
-    const [setDisplay, onChangeSets] = React.useState(sets);
-    
-    return (
-        <>
-            <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-                <Text style={styles.regularText}>Name:</Text>
-                <TextInput 
-                    value={nameSearch}
-                    onChangeText={onChangeSearch(nameSearch)}
-                    placeholder='exercise name'
-                    keyboardType='default'
-                    style={styles.input}
-                />
-            </KeyboardAvoidingView>
-            <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-                <Text style={styles.regularText}>Sets:</Text>
-                <TextInput 
-                    value={setDisplay}
-                    onChangeText={onChangeSets(setDisplay)}
-                    //check that this onBlur method works
-                    onBlur={() => {sets = setDisplay}}
-                    keyboardType='numeric'
-                    style={styles.input}
-                />
-            </KeyboardAvoidingView>
-        </>
-    );
-}
+const initialValues = {
+    id: uuid.v4(),
+    data: [
+        {
+            timed: false,
+            circuit: true,
+            exercises: [
+                {
+                    id: null,
+                    sets: null,
+                },
+            ],
+        },
+    ],
+};  
 
 const Section = (timed, circuit, exercises) => {
     const [isTimed, onSelectTimed] = React.useState(timed);
     const [isCircuit, onSelectCircuit] = React.useState(circuit);
-
-    const renderItem = ({ item }) => <Exercise id={item.id} sets={item.sets} />;
 
     return (
         <>
@@ -76,14 +41,6 @@ const Section = (timed, circuit, exercises) => {
                 />
                 <Text style={styles.regularText}>Section is a circuit</Text>
             </View>
-            <View>
-                <FlatList 
-                    data={exercises}
-                    //keyExtractor={(item) => item.id}
-                    renderItem={renderItem}
-                    keyboardDismissMode='on-drag'
-                />
-            </View>
             <Pressable style={styles.button} onPress={() => {exercises.push(blankExercise)}}>
                 <Text style={styles.buttonText}>Add Exercise</Text>
             </Pressable>
@@ -92,31 +49,101 @@ const Section = (timed, circuit, exercises) => {
 }
 
 export default function CreateWorkout() {
-    const [isSaved, onSave] = React.useState(false);
-
-    const renderItem = ({item}) => <Section timed={item.timed} circuit={item.circuit} exercises={item.exercises} />;
-
     return (
         <ScrollView style={styles.container}>
-            {isSaved && (
-                <Text style={styles.regularText}>Workout has been saved</Text>
-            )}
-            {!isSaved && (
-                <View style={styles.container}>
-                    <FlatList 
-                        data={sectionData}
-                        //keyExtractor={(item) => item.id}
-                        renderItem={renderItem}
-                        keyboardDismissMode='on-drag'
-                    />
-                    <Pressable style={styles.button} onPress={() => sectionData.push(blankSection)}>
-                        <Text style={styles.buttonText}>Add Section</Text>
-                    </Pressable>
-                    <Pressable style={styles.button} onPress={() => {onSave(!isSaved)}}>
-                        <Text style={styles.buttonText}>Save</Text>
-                    </Pressable>
-                </View>
-            )}
+            <Formik
+                initialValues={initialValues}
+                onSubmit={async (values) => {
+                    await new Promise((r) => setTimeout(r, 500));
+                    alert(JSON.stringify(values, null, 2));
+                }}
+            >
+                {({ handleChange, handleBlur, handleSubmit, setFieldValue, values }) => (
+                    <View>
+                        <FieldArray name="data">
+                            {({ insert, remove, push }) => (
+                                <View>
+                                    {values.data.length > 0 && values.data.map((section, index) => (
+                                        <View key={index}>
+                                            <View style={styles.switch}>
+                                                <Switch 
+                                                    trackColor={{false: '#767577', true: '#7bb533'}}
+                                                    onValueChange={(value) => setFieldValue(`data.${index}.timed`, value)}
+                                                    value={section.timed}
+                                                />
+                                                <Text style={styles.regularText}>Section is timed</Text>
+                                            </View>
+                                            <View style={styles.switch}>
+                                                <Switch 
+                                                    trackColor={{false: '#767577', true: '#7bb533'}}
+                                                    onValueChange={(value) => setFieldValue(`data.${index}.circuit`, value)}
+                                                    value={section.circuit}
+                                                />
+                                                <Text style={styles.regularText}>Section is a circuit</Text>
+                                            </View>
+                                            <View>
+                                                <FieldArray name={`data.${index}.exercises`}>
+                                                    {({insert, remove, push}) => (
+                                                        <View>
+                                                            {section.exercises.length > 0 && section.exercises.map((exercise, index) => (
+                                                                <View key={index}>
+                                                                    <View>
+                                                                        <Text style={styles.regularText}>Sets</Text>
+                                                                        <TextInput keyboardType='numeric' onChangeText={handleChange(`exercises.${index}.sets`)} onBlur={handleBlur(`exercises.${index}.sets`)} value={exercise.sets} />
+                                                                    </View>
+                                                                    <View>
+                                                                        <Pressable style={styles.button} onPress={() => remove(index)}>
+                                                                            <Text style={styles.buttonText}>Remove Exercise</Text>
+                                                                        </Pressable>
+                                                                    </View>
+                                                                </View>
+                                                            ))}
+                                                            <Pressable
+                                                                style={styles.button}
+                                                                onPress={() => push(
+                                                                        {
+                                                                            id: null,
+                                                                            sets: null,
+                                                                        },
+                                                                )}
+                                                            >
+                                                                <Text style={styles.buttonText}>Add Exercise</Text>
+                                                            </Pressable>
+                                                        </View>
+                                                    )}
+                                                </FieldArray>
+                                            </View>
+                                            <View>
+                                                <Pressable style={styles.button} onPress={() => remove(index)}>
+                                                    <Text style={styles.buttonText}>Remove Section</Text>
+                                                </Pressable>
+                                            </View>
+                                        </View>
+                                    ))}
+                                    <Pressable
+                                        style={styles.button}
+                                        onPress={() => push({ 
+                                            timed: false, 
+                                            circuit: true, 
+                                            exercises: [
+                                                {
+                                                    id: null,
+                                                    sets: null,
+                                                },
+                                        ],})}
+                                    >
+                                        <Text style={styles.buttonText}>Add Section</Text>
+                                    </Pressable>
+                                </View>
+                            )}
+                        </FieldArray>
+                        <Pressable style={styles.button} onPress={handleSubmit}>
+                            <Text style={styles.buttonText}>Save Workout</Text>
+                        </Pressable>
+                    </View>
+                )}
+
+            </Formik>
         </ScrollView>
     );
 }
