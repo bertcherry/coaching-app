@@ -1,9 +1,9 @@
 import * as React from 'react';
 import { FieldArray, Formik } from 'formik';
 import uuid from 'react-native-uuid';
-import { View, Switch, Text, TextInput, Pressable, StyleSheet, ScrollView } from 'react-native';
+import { View, Switch, Text, TextInput, Pressable, StyleSheet, ScrollView, KeyboardAvoidingView, Modal, Platform } from 'react-native';
 import RNPickerSelect from 'react-native-picker-select';
-import AntDesign from '@expo/vector-icons/AntDesign';
+import Feather from '@expo/vector-icons/Feather';
 
 const initialValues = {
     id: uuid.v4(),
@@ -23,6 +23,54 @@ const initialValues = {
     ],
 };  
 
+const Search = (id) => {
+    const [searchValue, setSearchValue] = React.useState('');
+    const [results, setResults] = React.useState([]);
+
+    React.useEffect(() => {
+        const timeoutId = setTimeout(async () => {
+            if (searchValue.length !== 0) {
+                try {
+                    const searchParams = searchValue.replace(/ /g, '%20');
+                    const resp = await fetch(new URL(`https://exercise-search.bert-m-cherry.workers.dev/?name=${searchParams}`));
+                    const results = await resp.json();
+                    setResults(results);
+                } catch (error) {
+                    console.error(error);
+                }
+            } else if (searchValue.length === 0) {
+                setResults([]);
+            }
+        }, 750);
+
+        return () => clearTimeout(timeoutId);
+    }, [searchValue]);
+
+    const Item = ({name, id}) => {
+        const [selectedId, setSelectedId] = React.useState('');
+
+        return (
+            <Pressable onPress={() => setSelectedId(id)}>
+                <Text style={styles.regularText}>{name}</Text>
+            </Pressable>
+        );
+    };
+
+    const renderItem = ({ item }) => <Item id={item.id} name={item.name} />;
+
+    return (
+        <KeyboardAvoidingView style={styles.inputContainer} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+            <Text style={{...styles.regularText, ...styles.labelText}}>Exercise Name</Text>
+            <TextInput style={styles.input} onChangeText={setSearchValue}></TextInput>
+            {results.length > 0 && results.map((result, index) => (
+                <Pressable onPress={() => setSelectedId(id)}>
+                    <Text style={styles.regularText} key={index}>{result.name}</Text>
+                </Pressable>
+            ))}
+        </KeyboardAvoidingView>
+    )
+}
+
 export default function CreateWorkout() {
     return (
         <ScrollView style={styles.container}>
@@ -39,7 +87,7 @@ export default function CreateWorkout() {
                             {({ insert, remove, push }) => (
                                 <View>
                                     {values.data.length > 0 && values.data.map((section, index) => (
-                                        <View key={index}>
+                                        <View style={{...styles.container, ...styles.sectionContainer}} key={index}>
                                             <View style={styles.switch}>
                                                 <Switch 
                                                     trackColor={{false: '#767577', true: '#e7f6d0'}}
@@ -63,36 +111,44 @@ export default function CreateWorkout() {
                                                     {({insert, remove, push}) => (
                                                         <View>
                                                             {section.exercises.length > 0 && section.exercises.map((exercise, i) => (
-                                                                <View key={i}>
-                                                                    <View>
-                                                                        <Text style={styles.regularText}>Sets</Text>
-                                                                        <TextInput style={styles.input} keyboardType='numeric' onChangeText={handleChange(`data.${index}.exercises.${i}.sets`)} onBlur={handleBlur(`data.${index}.exercises.${i}.sets`)} value={exercise.sets} />
-                                                                    </View>
-                                                                    <View>
-                                                                        <Text style={styles.regularText}>Reps or Time</Text>
-                                                                        {exercise.countType != 'AMRAP' &&
-                                                                            <TextInput style={styles.input} keyboardType='numeric' onChangeText={handleChange(`data.${index}.exercises.${i}.count`)} onBlur={handleBlur(`data.${index}.exercises.${i}.count`)} value={exercise.count} editable={exercise.countType!='AMRAP'} />
-                                                                        }
-                                                                        <RNPickerSelect 
-                                                                            items={[
-                                                                                { label: 'Reps', value: 'Reps', key: 'reps' },
-                                                                                { label: 'Timed', value: 'Timed', key: 'timed' },
-                                                                                { label: 'AMRAP', value: 'AMRAP', key: 'amrap' },
-                                                                            ]}
-                                                                            onValueChange={(value) => setFieldValue(`data.${index}.exercises.${i}.countType`, value)}
-                                                                            onBlur={handleBlur(`data.${index}.exercises.${i}.countType`)}
-                                                                            value={exercise.countType}
-                                                                            style={pickerSelectStyles}
-                                                                            Icon={() => {
-                                                                                return <AntDesign name="down" size={20} color="#fae9e9" />;
-                                                                            }}
-                                                                            // Add a placeholder object to render() {const placeholder = {label, value, color}}
-                                                                        />
-                                                                    </View>
-                                                                    <View>
-                                                                        <Pressable style={styles.button} onPress={() => remove(i)}>
-                                                                            <Text style={styles.buttonText}>Remove Exercise</Text>
-                                                                        </Pressable>
+                                                                <View style={styles.exerciseContainer} key={i}>
+                                                                    <Search id={exercise.id}/>
+                                                                    {/* Name search API call needed here from textinput, select and set the exercise id */}
+                                                                    <View style={styles.rowContainer}>
+                                                                        <View style={styles.inputContainer}>
+                                                                            <Text style={{...styles.regularText, ...styles.labelText}}>Sets</Text>
+                                                                            <TextInput style={styles.input} keyboardType='numeric' onChangeText={handleChange(`data.${index}.exercises.${i}.sets`)} onBlur={handleBlur(`data.${index}.exercises.${i}.sets`)} value={exercise.sets} />
+                                                                        </View>
+                                                                        <View style={{...styles.inputContainer, flex: 4}}>
+                                                                            <Text style={{...styles.regularText, ...styles.labelText}}>Reps or Time</Text>
+                                                                            <View style={styles.rowContainer}>
+                                                                                {exercise.countType != 'AMRAP' &&
+                                                                                        <TextInput style={{...styles.input, flex: .3}} keyboardType='numeric' onChangeText={handleChange(`data.${index}.exercises.${i}.count`)} onBlur={handleBlur(`data.${index}.exercises.${i}.count`)} value={exercise.count} editable={exercise.countType!='AMRAP'} />
+                                                                                    }
+                                                                                <View style={{flex: 1}}>
+                                                                                    <RNPickerSelect 
+                                                                                        items={[
+                                                                                            { label: 'Reps', value: 'Reps', key: 'reps' },
+                                                                                            { label: 'Timed', value: 'Timed', key: 'timed' },
+                                                                                            { label: 'AMRAP', value: 'AMRAP', key: 'amrap' },
+                                                                                        ]}
+                                                                                        onValueChange={(value) => setFieldValue(`data.${index}.exercises.${i}.countType`, value)}
+                                                                                        onBlur={handleBlur(`data.${index}.exercises.${i}.countType`)}
+                                                                                        value={exercise.countType}
+                                                                                        style={pickerSelectStyles}
+                                                                                        Icon={() => {
+                                                                                            return <Feather name="chevron-down" size={20} color="#fae9e9" />;
+                                                                                        }}
+                                                                                        // Add a placeholder object to render() {const placeholder = {label, value, color}}
+                                                                                    />
+                                                                                </View>
+                                                                            </View>
+                                                                        </View>
+                                                                        <View style={{alignSelf: 'center'}}>
+                                                                            <Pressable style={{...styles.button, ...styles.iconButton}} onPress={() => remove(i)}>
+                                                                                <Feather name="trash-2" size={20} color="black" />
+                                                                            </Pressable>
+                                                                        </View>
                                                                     </View>
                                                                 </View>
                                                             ))}
@@ -162,16 +218,38 @@ const styles = StyleSheet.create({
       textAlign: 'center',
     },
     regularText: {
-      fontSize: 24,
-      padding: 20,
-      marginVertical: 8,
+      fontSize: 16,
+      padding: 8,
+      marginVertical: 5,
       color: '#fae9e9',
-      textAlign: 'center',
+    },
+    labelText: {
+        fontWeight: 'bold',
+    },
+    sectionContainer: {
+        marginBottom: 10,
+        borderBottomColor: 'grey',
+        borderBottomWidth: 2,
+        paddingBottom: 10,
+    },
+    exerciseContainer: {
+        marginTop: 10,
+        borderTopColor: 'grey',
+        borderStyle: 'dotted',
+        borderTopWidth: 1,
+    },
+    inputContainer: {
+        flex: 1,
+        margin: 10,
+    },
+    rowContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        gap: 20,
     },
     input: {
-      flex: 1,
+      flex: 0,
       height: 40,
-      margin: 12,
       borderWidth: 1,
       padding: 10,
       fontSize: 16,
@@ -189,6 +267,9 @@ const styles = StyleSheet.create({
       backgroundColor: '#fba8a0',
       borderRadius: 8,
     },
+    iconButton: {
+        paddingHorizontal: 10,
+    },
     buttonText: {
       fontSize: 24,
       color: 'black',
@@ -205,7 +286,7 @@ const pickerSelectStyles = StyleSheet.create({
         borderColor: 'gray',
         borderRadius: 4,
         color: '#fae9e9',
-        paddingRight: 30, // to ensure the text is never behind the icon
+        paddingRight: 20, // to ensure the text is never behind the icon
       },
       inputAndroid: {
         fontSize: 16,
@@ -215,6 +296,6 @@ const pickerSelectStyles = StyleSheet.create({
         borderColor: 'purple',
         borderRadius: 8,
         color: '#fae9e9',
-        paddingRight: 30, // to ensure the text is never behind the icon
+        paddingRight: 20, // to ensure the text is never behind the icon
       },
 });
