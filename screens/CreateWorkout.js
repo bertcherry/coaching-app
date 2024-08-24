@@ -14,6 +14,7 @@ const initialValues = {
             exercises: [
                 {
                     id: null,
+                    name: null,
                     sets: null,
                     countType: null,
                     count: '',
@@ -23,7 +24,9 @@ const initialValues = {
     ],
 };  
 
-const Search = (id) => {
+const Search = (exercise) => {
+    const [showInput, setShowInput] = React.useState(true);
+    const [showOptions, setShowOptions] = React.useState(false);
     const [searchValue, setSearchValue] = React.useState('');
     const [results, setResults] = React.useState([]);
 
@@ -35,6 +38,7 @@ const Search = (id) => {
                     const resp = await fetch(new URL(`https://exercise-search.bert-m-cherry.workers.dev/?name=${searchParams}`));
                     const results = await resp.json();
                     setResults(results);
+                    setShowOptions(true);
                 } catch (error) {
                     console.error(error);
                 }
@@ -46,24 +50,31 @@ const Search = (id) => {
         return () => clearTimeout(timeoutId);
     }, [searchValue]);
 
-    const Item = ({name, id}) => {
-        const [selectedId, setSelectedId] = React.useState('');
+    const onSelectExercise = (id, name) => {
+        exercise.id = id;
+        exercise.name = name;
+        setShowInput(false);
+        setShowOptions(false);
+    }
 
-        return (
-            <Pressable onPress={() => setSelectedId(id)}>
-                <Text style={styles.regularText}>{name}</Text>
-            </Pressable>
-        );
-    };
-
-    const renderItem = ({ item }) => <Item id={item.id} name={item.name} />;
+    const handlePressSelected = () => {
+        setShowInput(true);
+        setShowOptions(true);
+    }
 
     return (
         <KeyboardAvoidingView style={styles.inputContainer} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
             <Text style={{...styles.regularText, ...styles.labelText}}>Exercise Name</Text>
-            <TextInput style={styles.input} onChangeText={setSearchValue}></TextInput>
-            {results.length > 0 && results.map((result, index) => (
-                <Pressable onPress={() => setSelectedId(id)}>
+            {!showInput && (
+                <Pressable onPress={handlePressSelected}>
+                    <Text styles={styles.regularText}>{exercise.name}</Text>
+                </Pressable>
+            )}
+            {showInput &&
+               <TextInput style={styles.input} onChangeText={setSearchValue} placeholder='Search exercises...'></TextInput>
+            }
+            {showOptions && results.length > 0 && results.map((result, index) => (
+                <Pressable onPress={() => onSelectExercise(result.id, result.name)}>
                     <Text style={styles.regularText} key={index}>{result.name}</Text>
                 </Pressable>
             ))}
@@ -112,7 +123,8 @@ export default function CreateWorkout() {
                                                         <View>
                                                             {section.exercises.length > 0 && section.exercises.map((exercise, i) => (
                                                                 <View style={styles.exerciseContainer} key={i}>
-                                                                    <Search id={exercise.id}/>
+                                                                    {/* Need to change prop for exercise to store data properly, use Formik handlechange */}
+                                                                    <Search exercise={exercise} />
                                                                     {/* Name search API call needed here from textinput, select and set the exercise id */}
                                                                     <View style={styles.rowContainer}>
                                                                         <View style={styles.inputContainer}>
@@ -157,6 +169,7 @@ export default function CreateWorkout() {
                                                                 onPress={() => push(
                                                                         {
                                                                             id: null,
+                                                                            name: null,
                                                                             sets: null,
                                                                             countType: null,
                                                                             count: '',
@@ -184,6 +197,7 @@ export default function CreateWorkout() {
                                             exercises: [
                                                 {
                                                     id: null,
+                                                    name: null,
                                                     sets: null,
                                                     countType: null,
                                                     count: '',
