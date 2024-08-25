@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { FieldArray, Formik } from 'formik';
 import uuid from 'react-native-uuid';
-import { View, Switch, Text, TextInput, Pressable, StyleSheet, ScrollView, KeyboardAvoidingView, Modal, Platform } from 'react-native';
+import { View, Switch, Text, TextInput, Pressable, StyleSheet, ScrollView, KeyboardAvoidingView, FlatList, Modal, Platform, Keyboard } from 'react-native';
 import RNPickerSelect from 'react-native-picker-select';
 import Feather from '@expo/vector-icons/Feather';
 
@@ -27,6 +27,7 @@ const initialValues = {
 const Search = ({exercise, exerciseName, exerciseId, setFieldValue}) => {
     const [showInput, setShowInput] = React.useState(true);
     const [showOptions, setShowOptions] = React.useState(false);
+    const [showModal, setShowModal] = React.useState(false);
     const [searchValue, setSearchValue] = React.useState('');
     const [results, setResults] = React.useState([]);
 
@@ -54,13 +55,21 @@ const Search = ({exercise, exerciseName, exerciseId, setFieldValue}) => {
         setShowOptions(false);
         setFieldValue(exerciseId, id);
         setFieldValue(exerciseName, name);
+        setShowModal(false);
         setShowInput(false);
     }
 
     const handlePressSelected = () => {
+        setShowModal(true);
         setShowInput(true);
         setShowOptions(true);
     }
+
+    const renderItem = ({item}) => (
+        <Pressable onPress={() => onSelectExercise(item.id, item.name)}>
+            <Text style={styles.regularText}>{item.name}</Text>
+        </Pressable>
+    );
 
     return (
         <KeyboardAvoidingView style={styles.inputContainer} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
@@ -72,13 +81,32 @@ const Search = ({exercise, exerciseName, exerciseId, setFieldValue}) => {
                 </Pressable>
             )}
             {showInput &&
-               <TextInput style={styles.input} onChangeText={setSearchValue} placeholder='Search exercises...'></TextInput>
+               <Pressable style={styles.input} onPress={() => setShowModal(true)}>
+                    <Text>Search exercises...</Text>
+               </Pressable>
+            } 
+            {showModal &&
+            <Modal onRequestClose={() => {setShowModal(false)}} transparent={true}>
+                <KeyboardAvoidingView style={{...styles.modalView, ...styles.container}} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+                    <View style={{...styles.rowContainer, alignItems: 'center'}}>
+                        {/* needs fix: android autofocus doesn't work because component has to mount before calling focus */}
+                        <TextInput style={{...styles.input, flex: 1}} onChangeText={setSearchValue} placeholder='Search exercises...' autoFocus={true} ></TextInput>
+                        <Pressable style={{...styles.button, ...styles.iconButton}} onPress={() => {setShowModal(false)}}>
+                            <Feather name="x" size={20} color="black" style={{flex: 0}} />
+                        </Pressable>
+                    </View>
+                    {showOptions && results.length > 0 && (
+                        <FlatList 
+                            data={results}                            
+                            persistentScrollbar={true}
+                            indicatorStyle='white'
+                            renderItem={renderItem}
+                            keyExtractor={item => item.id}
+                        />   
+                    )}
+                </KeyboardAvoidingView>
+            </Modal>
             }
-            {showOptions && results.length > 0 && results.map((result, index) => (
-                <Pressable onPress={() => onSelectExercise(result.id, result.name)} key={index}>
-                    <Text style={styles.regularText}>{result.name}</Text>
-                </Pressable>
-            ))}
         </KeyboardAvoidingView>
     )
 }
@@ -92,12 +120,13 @@ export default function CreateWorkout() {
                     await new Promise((r) => setTimeout(r, 500));
                     alert(JSON.stringify(values, null, 2));
                 }}
+                style={styles.container}
             >
                 {({ handleChange, handleBlur, handleSubmit, setFieldValue, values }) => (
-                    <View>
-                        <FieldArray name="data">
+                    <View style={styles.container}>
+                        <FieldArray name="data" style={styles.container}>
                             {({ insert, remove, push }) => (
-                                <View>
+                                <View style={styles.container}>
                                     {values.data.length > 0 && values.data.map((section, index) => (
                                         <View style={{...styles.container, ...styles.sectionContainer}} key={index}>
                                             <View style={styles.switch}>
@@ -118,15 +147,13 @@ export default function CreateWorkout() {
                                                 />
                                                 <Text style={styles.regularText}>Section is a circuit</Text>
                                             </View>
-                                            <View>
-                                                <FieldArray name={`data.${index}.exercises`}>
+                                            <View style={styles.container}>
+                                                <FieldArray name={`data.${index}.exercises`} style={styles.container}>
                                                     {({insert, remove, push}) => (
-                                                        <View>
+                                                        <View style={styles.container}>
                                                             {section.exercises.length > 0 && section.exercises.map((exercise, i) => (
                                                                 <View style={styles.exerciseContainer} key={i}>
-                                                                    {/* Need to change prop for exercise to store data properly, use Formik handlechange */}
                                                                     <Search exercise={exercise} exerciseName={`data.${index}.exercises.${i}.name`} exerciseId={`data.${index}.exercises.${i}.id`} setFieldValue={setFieldValue} />
-                                                                    {/* Name search API call needed here from textinput, select and set the exercise id */}
                                                                     <View style={styles.rowContainer}>
                                                                         <View style={styles.inputContainer}>
                                                                             <Text style={{...styles.regularText, ...styles.labelText}}>Sets</Text>
@@ -242,12 +269,14 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
     },
     sectionContainer: {
+        flex: 1,
         marginBottom: 10,
         borderBottomColor: 'grey',
         borderBottomWidth: 2,
         paddingBottom: 10,
     },
     exerciseContainer: {
+        flex: 1,
         marginTop: 10,
         borderTopColor: 'grey',
         borderStyle: 'dotted',
@@ -261,6 +290,9 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         gap: 20,
+    },
+    modalView: {
+        marginVertical: 50,
     },
     input: {
       flex: 0,
