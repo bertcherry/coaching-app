@@ -138,6 +138,18 @@ export default function CreateWorkout() {
                                                 />
                                                 <Text style={styles.regularText}>Section is timed</Text>
                                             </View>
+                                            {section.timed && 
+                                                <View style={{...styles.rowContainer, justifyContent: 'space-around', marginBottom: 15}}>
+                                                    <View>
+                                                        <Text style={{...styles.regularText, ...styles.labelText}}>Rest Between Reps</Text>
+                                                        <TextInput style={styles.input} keyboardType='numeric' onChangeText={handleChange(`data.${index}.repRest`)} onBlur={handleBlur(`data.${index}.repRest`)} value={section.repRest} placeholder='Enter in seconds' />
+                                                    </View>
+                                                    <View>
+                                                        <Text style={{...styles.regularText, ...styles.labelText}}>Rest Between Sets</Text>
+                                                        <TextInput style={styles.input} keyboardType='numeric' onChangeText={handleChange(`data.${index}.setRest`)} onBlur={handleBlur(`data.${index}.setRest`)} value={section.setRest} placeholder='Enter in seconds' />
+                                                    </View>
+                                                </View>
+                                            }
                                             <View style={styles.switch}>
                                                 <Switch 
                                                     trackColor={{false: '#767577', true: '#e7f6d0'}}
