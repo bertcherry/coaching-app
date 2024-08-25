@@ -129,6 +129,7 @@ export default function CreateWorkout() {
                                 <View style={styles.container}>
                                     {values.data.length > 0 && values.data.map((section, index) => (
                                         <View style={{...styles.container, ...styles.sectionContainer}} key={index}>
+                                            <Text style={styles.headerText}>Section {index + 1}</Text>
                                             <View style={styles.switch}>
                                                 <Switch 
                                                     trackColor={{false: '#767577', true: '#e7f6d0'}}
@@ -266,8 +267,8 @@ const styles = StyleSheet.create({
       backgroundColor: 'black',
     },
     headerText: {
-      padding: 40,
-      fontSize: 30,
+      padding: 10,
+      fontSize: 24,
       color: '#fae9e9',
       textAlign: 'center',
     },
