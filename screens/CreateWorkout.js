@@ -24,7 +24,7 @@ const initialValues = {
     ],
 };  
 
-const Search = (exercise) => {
+const Search = ({exercise, exerciseName, exerciseId, setFieldValue}) => {
     const [showInput, setShowInput] = React.useState(true);
     const [showOptions, setShowOptions] = React.useState(false);
     const [searchValue, setSearchValue] = React.useState('');
@@ -51,10 +51,10 @@ const Search = (exercise) => {
     }, [searchValue]);
 
     const onSelectExercise = (id, name) => {
-        exercise.id = id;
-        exercise.name = name;
-        setShowInput(false);
         setShowOptions(false);
+        setFieldValue(exerciseId, id);
+        setFieldValue(exerciseName, name);
+        setShowInput(false);
     }
 
     const handlePressSelected = () => {
@@ -66,16 +66,17 @@ const Search = (exercise) => {
         <KeyboardAvoidingView style={styles.inputContainer} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
             <Text style={{...styles.regularText, ...styles.labelText}}>Exercise Name</Text>
             {!showInput && (
-                <Pressable onPress={handlePressSelected}>
-                    <Text styles={styles.regularText}>{exercise.name}</Text>
+                <Pressable style={styles.rowContainer} onPress={handlePressSelected}>
+                    <Text style={styles.regularText}>{exercise.name}</Text>
+                    <Feather name="chevron-down" size={20} color="#fae9e9" style={{flex: 0}} />
                 </Pressable>
             )}
             {showInput &&
                <TextInput style={styles.input} onChangeText={setSearchValue} placeholder='Search exercises...'></TextInput>
             }
             {showOptions && results.length > 0 && results.map((result, index) => (
-                <Pressable onPress={() => onSelectExercise(result.id, result.name)}>
-                    <Text style={styles.regularText} key={index}>{result.name}</Text>
+                <Pressable onPress={() => onSelectExercise(result.id, result.name)} key={index}>
+                    <Text style={styles.regularText}>{result.name}</Text>
                 </Pressable>
             ))}
         </KeyboardAvoidingView>
@@ -124,7 +125,7 @@ export default function CreateWorkout() {
                                                             {section.exercises.length > 0 && section.exercises.map((exercise, i) => (
                                                                 <View style={styles.exerciseContainer} key={i}>
                                                                     {/* Need to change prop for exercise to store data properly, use Formik handlechange */}
-                                                                    <Search exercise={exercise} />
+                                                                    <Search exercise={exercise} exerciseName={`data.${index}.exercises.${i}.name`} exerciseId={`data.${index}.exercises.${i}.id`} setFieldValue={setFieldValue} />
                                                                     {/* Name search API call needed here from textinput, select and set the exercise id */}
                                                                     <View style={styles.rowContainer}>
                                                                         <View style={styles.inputContainer}>
@@ -182,7 +183,7 @@ export default function CreateWorkout() {
                                                     )}
                                                 </FieldArray>
                                             </View>
-                                            <View>
+                                            <View style={{marginTop: 10}}>
                                                 <Pressable style={styles.button} onPress={() => remove(index)}>
                                                     <Text style={styles.buttonText}>Remove Section</Text>
                                                 </Pressable>
