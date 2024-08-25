@@ -82,7 +82,7 @@ const Search = ({exercise, exerciseName, exerciseId, setFieldValue}) => {
             )}
             {showInput &&
                <Pressable style={styles.input} onPress={() => setShowModal(true)}>
-                    <Text>Search exercises...</Text>
+                    <Text style={{color: 'grey'}}>Search exercises...</Text>
                </Pressable>
             } 
             {showModal &&
@@ -120,6 +120,7 @@ export default function CreateWorkout() {
                     await new Promise((r) => setTimeout(r, 500));
                     alert(JSON.stringify(values, null, 2));
                 }}
+                //add form validation and error messages
                 style={styles.container}
             >
                 {({ handleChange, handleBlur, handleSubmit, setFieldValue, values }) => (
