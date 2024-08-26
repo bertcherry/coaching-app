@@ -60,7 +60,7 @@ const Item = ({ id, reps }) => {
     if (!Object.keys(video).length) return (
         <>
             <View style={styles.itemContainer}>
-                <Text style={styles.bodyText}>Oops</Text>
+                <Text style={styles.bodyText}>Loading...</Text>
                 <Text style={styles.bodyText}>Reps or Time: {reps}</Text>
             </View>
         </>
