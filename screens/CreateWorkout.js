@@ -306,7 +306,7 @@ const styles = StyleSheet.create({
         gap: 20,
     },
     modalView: {
-        marginVertical: 50,
+        marginTop: 50,
     },
     input: {
       flex: 0,
