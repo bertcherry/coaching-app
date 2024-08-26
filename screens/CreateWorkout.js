@@ -180,6 +180,7 @@ export default function CreateWorkout() {
                                                                                         <TextInput style={{...styles.input, flex: .3}} keyboardType='numeric' onChangeText={handleChange(`data.${index}.exercises.${i}.count`)} onBlur={handleBlur(`data.${index}.exercises.${i}.count`)} value={exercise.count} editable={exercise.countType!='AMRAP'} />
                                                                                     }
                                                                                 <View style={{flex: 1}}>
+                                                                                    {/* redo picker to have clickable icon, better placeholder */}
                                                                                     <RNPickerSelect 
                                                                                         items={[
                                                                                             { label: 'Reps', value: 'Reps', key: 'reps' },
