@@ -1,9 +1,10 @@
 import * as React from 'react';
-import { FieldArray, Formik } from 'formik';
+import { ErrorMessage, FieldArray, Formik } from 'formik';
 import uuid from 'react-native-uuid';
 import { View, Switch, Text, TextInput, Pressable, StyleSheet, ScrollView, KeyboardAvoidingView, FlatList, Modal, Platform, Keyboard } from 'react-native';
 import RNPickerSelect from 'react-native-picker-select';
 import Feather from '@expo/vector-icons/Feather';
+import * as Yup from 'yup';
 
 const initialValues = {
     id: uuid.v4(),
@@ -17,14 +18,48 @@ const initialValues = {
                     name: null,
                     sets: null,
                     countType: null,
-                    count: '',
+                    count: null,
                 },
             ],
         },
     ],
 };  
 
-const Search = ({exercise, exerciseName, exerciseId, setFieldValue}) => {
+const exerciseSchema = Yup.object().shape({
+    id: Yup.string(),
+    name: Yup.string().required('Select an exercise from the library'),
+    sets: Yup.number().required('Designate number of sets').positive('Sets must be a positive number').truncate(),
+    countType: Yup.string().oneOf(['Reps', 'Timed', 'AMRAP']),
+    // force revalidation of the count if amrap is selected
+    count: Yup.number().when('AMRAP', {
+        is: true,
+        then: (schema) => schema.optional(),
+        otherwise: (schema) => schema.required('Reps or time required unless AMRAP selected'),
+    }).positive('Reps or time must be a positive number').truncate(),
+});
+
+const sectionSchema = Yup.object().shape({
+    timed: Yup.boolean(),
+    circuit: Yup.boolean(),
+    exercises: Yup.array().min(1, 'Each section needs at least 1 exercise').of(exerciseSchema),
+    repRest: Yup.number().positive('Must be a positive number').truncate().when('timed', {
+        is: true,
+        then: (schema) => schema.required('Required for timed sections'),
+        otherwise: (schema) => schema.optional()
+    }),
+    setRest: Yup.number().positive('Must be a positive number').truncate().when('timed', {
+        is: true,
+        then: (schema) => schema.required('Required for timed sections'),
+        otherwise: (schema) => schema.optional()
+    }),
+});
+
+const workoutSchema = Yup.object().shape({
+    id: Yup.string(),
+    data: Yup.array().min(1, 'Your workout must have at least one section').of(sectionSchema),
+});
+
+const Search = ({exercise, exerciseName, exerciseId, setFieldValue, handleBlur}) => {
     const [showInput, setShowInput] = React.useState(true);
     const [showOptions, setShowOptions] = React.useState(false);
     const [showModal, setShowModal] = React.useState(false);
@@ -75,14 +110,18 @@ const Search = ({exercise, exerciseName, exerciseId, setFieldValue}) => {
         <KeyboardAvoidingView style={styles.inputContainer} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
             <Text style={{...styles.regularText, ...styles.labelText}}>Exercise Name</Text>
             {!showInput && (
-                <Pressable style={styles.rowContainer} onPress={handlePressSelected}>
-                    <Text style={styles.regularText}>{exercise.name}</Text>
-                    <Feather name="chevron-down" size={20} color="#fae9e9" style={{flex: 0}} />
-                </Pressable>
+                <View>
+                    <Pressable style={styles.rowContainer} onPress={handlePressSelected}>
+                        <Text style={styles.regularText}>{exercise.name}</Text>
+                        <Feather name="chevron-down" size={20} color="#fae9e9" style={{flex: 0}} />
+                    </Pressable>
+                </View>
             )}
             {showInput &&
                <Pressable style={styles.input} onPress={() => setShowModal(true)}>
                     <Text style={{color: 'grey'}}>Search exercises...</Text>
+                    {/* Need to get this error message to render, probably onBlur or visited? */}
+                    {/* <ErrorMessage render={msg => <Text style={styles.errorText}>{msg}</Text>} name={exerciseName} /> */}
                </Pressable>
             } 
             {showModal &&
@@ -120,7 +159,7 @@ export default function CreateWorkout() {
                     await new Promise((r) => setTimeout(r, 500));
                     alert(JSON.stringify(values, null, 2));
                 }}
-                //add form validation and error messages
+                validationSchema={workoutSchema}
                 style={styles.container}
             >
                 {({ handleChange, handleBlur, handleSubmit, setFieldValue, values }) => (
@@ -142,13 +181,15 @@ export default function CreateWorkout() {
                                             </View>
                                             {section.timed && 
                                                 <View style={{...styles.rowContainer, justifyContent: 'space-around', marginBottom: 15}}>
-                                                    <View>
+                                                    <View style={styles.container}>
                                                         <Text style={{...styles.regularText, ...styles.labelText}}>Rest Between Reps</Text>
                                                         <TextInput style={styles.input} keyboardType='numeric' onChangeText={handleChange(`data.${index}.repRest`)} onBlur={handleBlur(`data.${index}.repRest`)} value={section.repRest} placeholder='Enter in seconds' />
+                                                        <ErrorMessage render={msg => <Text style={styles.errorText}>{msg}</Text>} name={`data.${index}.repRest`} />
                                                     </View>
-                                                    <View>
+                                                    <View style={styles.container}>
                                                         <Text style={{...styles.regularText, ...styles.labelText}}>Rest Between Sets</Text>
                                                         <TextInput style={styles.input} keyboardType='numeric' onChangeText={handleChange(`data.${index}.setRest`)} onBlur={handleBlur(`data.${index}.setRest`)} value={section.setRest} placeholder='Enter in seconds' />
+                                                        <ErrorMessage render={msg => <Text style={styles.errorText}>{msg}</Text>} name={`data.${index}.setRest`} />
                                                     </View>
                                                 </View>
                                             }
@@ -167,18 +208,18 @@ export default function CreateWorkout() {
                                                         <View style={styles.container}>
                                                             {section.exercises.length > 0 && section.exercises.map((exercise, i) => (
                                                                 <View style={styles.exerciseContainer} key={i}>
-                                                                    <Search exercise={exercise} exerciseName={`data.${index}.exercises.${i}.name`} exerciseId={`data.${index}.exercises.${i}.id`} setFieldValue={setFieldValue} />
+                                                                    <Search exercise={exercise} exerciseName={`data.${index}.exercises.${i}.name`} exerciseId={`data.${index}.exercises.${i}.id`} setFieldValue={setFieldValue} handleBlur={handleBlur} />
                                                                     <View style={styles.rowContainer}>
                                                                         <View style={styles.inputContainer}>
                                                                             <Text style={{...styles.regularText, ...styles.labelText}}>Sets</Text>
-                                                                            <TextInput style={styles.input} keyboardType='numeric' onChangeText={handleChange(`data.${index}.exercises.${i}.sets`)} onBlur={handleBlur(`data.${index}.exercises.${i}.sets`)} value={exercise.sets} />
+                                                                            <TextInput style={styles.input} keyboardType='numeric' onChangeText={handleChange(`data.${index}.exercises.${i}.sets`)} onBlur={handleBlur(`data.${index}.exercises.${i}.sets`)} value={exercise.sets} />                                                                        
                                                                         </View>
                                                                         <View style={{...styles.inputContainer, flex: 4}}>
                                                                             <Text style={{...styles.regularText, ...styles.labelText}}>Reps or Time</Text>
                                                                             <View style={styles.rowContainer}>
-                                                                                {exercise.countType != 'AMRAP' &&
-                                                                                        <TextInput style={{...styles.input, flex: .3}} keyboardType='numeric' onChangeText={handleChange(`data.${index}.exercises.${i}.count`)} onBlur={handleBlur(`data.${index}.exercises.${i}.count`)} value={exercise.count} editable={exercise.countType!='AMRAP'} />
-                                                                                    }
+                                                                                {exercise.countType != 'AMRAP' && 
+                                                                                    <TextInput style={{...styles.input, flex: .3}} keyboardType='numeric' onChangeText={handleChange(`data.${index}.exercises.${i}.count`)} onBlur={handleBlur(`data.${index}.exercises.${i}.count`)} value={exercise.count} editable={exercise.countType!='AMRAP'} />
+                                                                                }
                                                                                 <View style={{flex: 1}}>
                                                                                     {/* redo picker to have clickable icon, better placeholder */}
                                                                                     <RNPickerSelect 
@@ -205,6 +246,10 @@ export default function CreateWorkout() {
                                                                             </Pressable>
                                                                         </View>
                                                                     </View>
+                                                                    <View>
+                                                                        <ErrorMessage render={msg => <Text style={styles.errorText}>{msg}</Text>} name={`data.${index}.exercises.${i}.sets`} />
+                                                                        <ErrorMessage render={msg => <Text style={styles.errorText}>{msg}</Text>} name={`data.${index}.exercises.${i}.count`} />
+                                                                    </View>
                                                                 </View>
                                                             ))}
                                                             <Pressable
@@ -215,7 +260,7 @@ export default function CreateWorkout() {
                                                                             name: null,
                                                                             sets: null,
                                                                             countType: null,
-                                                                            count: '',
+                                                                            count: null,
                                                                         },
                                                                 )}
                                                             >
@@ -243,7 +288,7 @@ export default function CreateWorkout() {
                                                     name: null,
                                                     sets: null,
                                                     countType: null,
-                                                    count: '',
+                                                    count: null,
                                                 },
                                         ],})}
                                     >
@@ -282,6 +327,14 @@ const styles = StyleSheet.create({
     },
     labelText: {
         fontWeight: 'bold',
+    },
+    errorText: {
+      fontSize: 12,
+      fontStyle: 'italic',
+      padding: 8,
+      marginVertical: 3,
+      color: '#fba8a0',
+      flexWrap: 'wrap',
     },
     sectionContainer: {
         flex: 1,
