@@ -30,12 +30,11 @@ const exerciseSchema = Yup.object().shape({
     name: Yup.string().required('Select an exercise from the library'),
     sets: Yup.number().required('Designate number of sets').positive('Sets must be a positive number').truncate(),
     countType: Yup.string().oneOf(['Reps', 'Timed', 'AMRAP']),
-    // force revalidation of the count if amrap is selected
-    count: Yup.number().when('AMRAP', {
-        is: true,
-        then: (schema) => schema.optional(),
-        otherwise: (schema) => schema.required('Reps or time required unless AMRAP selected'),
-    }).positive('Reps or time must be a positive number').truncate(),
+    count: Yup.number().when('countType', {
+        is: 'AMRAP',
+        then: (schema) => schema.notRequired(),
+        otherwise: (schema) => schema.required('Reps or time required unless AMRAP selected').positive('Reps or time must be a positive number').truncate(),
+    }),
 });
 
 const sectionSchema = Yup.object().shape({
@@ -45,12 +44,12 @@ const sectionSchema = Yup.object().shape({
     repRest: Yup.number().positive('Must be a positive number').truncate().when('timed', {
         is: true,
         then: (schema) => schema.required('Required for timed sections'),
-        otherwise: (schema) => schema.optional()
+        otherwise: (schema) => schema.notRequired()
     }),
     setRest: Yup.number().positive('Must be a positive number').truncate().when('timed', {
         is: true,
         then: (schema) => schema.required('Required for timed sections'),
-        otherwise: (schema) => schema.optional()
+        otherwise: (schema) => schema.notRequired()
     }),
 });
 
@@ -229,7 +228,10 @@ export default function CreateWorkout() {
                                                                                             { label: 'AMRAP', value: 'AMRAP', key: 'amrap' },
                                                                                         ]}
                                                                                         onValueChange={(value) => setFieldValue(`data.${index}.exercises.${i}.countType`, value)}
-                                                                                        onBlur={handleBlur(`data.${index}.exercises.${i}.countType`)}
+                                                                                        onBlur={() => {
+                                                                                            handleBlur(`data.${index}.exercises.${i}.countType`);
+                                                                                            validateField(`data.${index}.exercises.${i}.count`);
+                                                                                        }}
                                                                                         value={exercise.countType}
                                                                                         style={pickerSelectStyles}
                                                                                         Icon={() => {
