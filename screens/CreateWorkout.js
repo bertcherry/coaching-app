@@ -243,7 +243,11 @@ export default function CreateWorkout() {
                                                                             </View>
                                                                         </View>
                                                                         <View style={{alignSelf: 'center'}}>
-                                                                            <Pressable style={{...styles.button, ...styles.iconButton}} onPress={() => remove(i)}>
+                                                                            <Pressable style={{...styles.button, ...styles.iconButton}} onPress={() => {
+                                                                                const exerciseTest = [...section.exercises];
+                                                                                exerciseTest.pop(i);
+                                                                                exerciseTest[0] ? remove(i) : alert('Section must have at least one exercise')}
+                                                                            }>
                                                                                 <Feather name="trash-2" size={20} color="black" />
                                                                             </Pressable>
                                                                         </View>
@@ -274,10 +278,10 @@ export default function CreateWorkout() {
                                             </View>
                                             <View style={{marginTop: 10}}>
                                                 <Pressable style={styles.button} onPress={() => {
-                                                        const sectionTest = [...values.data];
-                                                        sectionTest.pop(index);
-                                                        // need to make this not remove the index no matter what
-                                                        {sectionTest[0] ? remove(index) : alert('Workouts must have at least one section')}}}>
+                                                    const sectionTest = [...values.data];
+                                                    sectionTest.pop(index);
+                                                    sectionTest[0] ? remove(index) : alert('Workouts must have at least one section')}}
+                                                >
                                                     <Text style={styles.buttonText}>Remove Section</Text>
                                                 </Pressable>
                                             </View>
