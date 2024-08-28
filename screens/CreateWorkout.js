@@ -120,15 +120,15 @@ const Search = ({exercise, exerciseName, exerciseId, setFieldValue, handleBlur})
                <Pressable style={styles.input} onPress={() => setShowModal(true)}>
                     <Text style={{color: 'grey'}}>Search exercises...</Text>
                     {/* Need to get this error message to render, probably onBlur or visited? */}
-                    {/* <ErrorMessage render={msg => <Text style={styles.errorText}>{msg}</Text>} name={exerciseName} /> */}
+                    <ErrorMessage render={msg => <Text style={styles.errorText}>{msg}</Text>} name={exerciseName} />
                </Pressable>
             } 
             {showModal &&
-            <Modal onRequestClose={() => {setShowModal(false)}} transparent={true}>
+            <Modal onRequestClose={() => {setShowModal(false); handleBlur(exerciseName);}} transparent={true}>
                 <KeyboardAvoidingView style={{...styles.modalView, ...styles.container}} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
                     <View style={{...styles.rowContainer, alignItems: 'center'}}>
                         {/* needs fix: android autofocus doesn't work because component has to mount before calling focus */}
-                        <TextInput style={{...styles.input, flex: 1}} onChangeText={setSearchValue} placeholder='Search exercises...' autoFocus={true} ></TextInput>
+                        <TextInput style={{...styles.input, flex: 1}} onChangeText={setSearchValue} placeholder='Search exercises...' autoFocus={true} onBlur={handleBlur(exerciseName)}></TextInput>
                         <Pressable style={{...styles.button, ...styles.iconButton}} onPress={() => {setShowModal(false)}}>
                             <Feather name="x" size={20} color="black" style={{flex: 0}} />
                         </Pressable>
@@ -273,7 +273,11 @@ export default function CreateWorkout() {
                                                 </FieldArray>
                                             </View>
                                             <View style={{marginTop: 10}}>
-                                                <Pressable style={styles.button} onPress={() => remove(index)}>
+                                                <Pressable style={styles.button} onPress={() => {
+                                                        const sectionTest = [...values.data];
+                                                        sectionTest.pop(index);
+                                                        // need to make this not remove the index no matter what
+                                                        {sectionTest[0] ? remove(index) : alert('Workouts must have at least one section')}}}>
                                                     <Text style={styles.buttonText}>Remove Section</Text>
                                                 </Pressable>
                                             </View>
