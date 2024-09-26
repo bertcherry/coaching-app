@@ -169,6 +169,7 @@ export default function CreateWorkout() {
                             });
                             setSaved(response);
                         } catch (error) {
+                            // add better error handling in case of server issue
                             console.error(error);
                         }
                     }}
