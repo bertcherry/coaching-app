@@ -150,172 +150,197 @@ const Search = ({exercise, exerciseName, exerciseId, setFieldValue, handleBlur})
 }
 
 export default function CreateWorkout() {
-    return (
-        <ScrollView style={styles.container}>
-            <Formik
-                initialValues={initialValues}
-                onSubmit={async (values) => {
-                    await new Promise((r) => setTimeout(r, 500));
-                    alert(JSON.stringify(values, null, 2));
-                }}
-                validationSchema={workoutSchema}
-                style={styles.container}
-            >
-                {({ handleChange, handleBlur, handleSubmit, setFieldValue, values }) => (
-                    <View style={styles.container}>
-                        <FieldArray name="data" style={styles.container}>
-                            {({ insert, remove, push }) => (
-                                <View style={styles.container}>
-                                    {values.data.length > 0 && values.data.map((section, index) => (
-                                        <View style={{...styles.container, ...styles.sectionContainer}} key={index}>
-                                            <Text style={styles.headerText}>Section {index + 1}</Text>
-                                            <View style={styles.switch}>
-                                                <Switch 
-                                                    trackColor={{false: '#767577', true: '#e7f6d0'}}
-                                                    thumbColor={section.timed ? '#7bb533': '#f4f3f4'}
-                                                    onValueChange={(value) => setFieldValue(`data.${index}.timed`, value)}
-                                                    value={section.timed}
-                                                />
-                                                <Text style={styles.regularText}>Section is timed</Text>
-                                            </View>
-                                            {section.timed && 
-                                                <View style={{...styles.rowContainer, justifyContent: 'space-around', marginBottom: 15}}>
-                                                    <View style={styles.container}>
-                                                        <Text style={{...styles.regularText, ...styles.labelText}}>Rest Between Reps</Text>
-                                                        <TextInput style={styles.input} keyboardType='numeric' onChangeText={handleChange(`data.${index}.repRest`)} onBlur={handleBlur(`data.${index}.repRest`)} value={section.repRest} placeholder='Enter in seconds' />
-                                                        <ErrorMessage render={msg => <Text style={styles.errorText}>{msg}</Text>} name={`data.${index}.repRest`} />
-                                                    </View>
-                                                    <View style={styles.container}>
-                                                        <Text style={{...styles.regularText, ...styles.labelText}}>Rest Between Sets</Text>
-                                                        <TextInput style={styles.input} keyboardType='numeric' onChangeText={handleChange(`data.${index}.setRest`)} onBlur={handleBlur(`data.${index}.setRest`)} value={section.setRest} placeholder='Enter in seconds' />
-                                                        <ErrorMessage render={msg => <Text style={styles.errorText}>{msg}</Text>} name={`data.${index}.setRest`} />
-                                                    </View>
+    const [isSaved, setSaved] = React.useState(false);
+
+    if (!isSaved) {
+        return (
+            <ScrollView style={styles.container}>
+                <Formik
+                    initialValues={initialValues}
+                    onSubmit={async (values) => {
+                        try {
+                            const response = await fetch('https://cc-workouts.bert-m-cherry.workers.dev/', {
+                                method: "POST",
+                                headers: {
+                                    Accept: "application/json",
+                                    "Content-Type": "application/json",
+                                },
+                                body: JSON.stringify(values),
+                            });
+                            setSaved(response);
+                        } catch (error) {
+                            console.error(error);
+                        }
+                    }}
+                    validationSchema={workoutSchema}
+                    style={styles.container}
+                >
+                    {({ handleChange, handleBlur, handleSubmit, setFieldValue, values }) => (
+                        <View style={styles.container}>
+                            <FieldArray name="data" style={styles.container}>
+                                {({ insert, remove, push }) => (
+                                    <View style={styles.container}>
+                                        {values.data.length > 0 && values.data.map((section, index) => (
+                                            <View style={{...styles.container, ...styles.sectionContainer}} key={index}>
+                                                <Text style={styles.headerText}>Section {index + 1}</Text>
+                                                <View style={styles.switch}>
+                                                    <Switch 
+                                                        trackColor={{false: '#767577', true: '#e7f6d0'}}
+                                                        thumbColor={section.timed ? '#7bb533': '#f4f3f4'}
+                                                        onValueChange={(value) => setFieldValue(`data.${index}.timed`, value)}
+                                                        value={section.timed}
+                                                    />
+                                                    <Text style={styles.regularText}>Section is timed</Text>
                                                 </View>
-                                            }
-                                            <View style={styles.switch}>
-                                                <Switch 
-                                                    trackColor={{false: '#767577', true: '#e7f6d0'}}
-                                                    thumbColor={section.circuit ? '#7bb533': '#f4f3f4'}
-                                                    onValueChange={(value) => setFieldValue(`data.${index}.circuit`, value)}
-                                                    value={section.circuit}
-                                                />
-                                                <Text style={styles.regularText}>Section is a circuit</Text>
-                                            </View>
-                                            <View style={styles.container}>
-                                                <FieldArray name={`data.${index}.exercises`} style={styles.container}>
-                                                    {({insert, remove, push}) => (
+                                                {section.timed && 
+                                                    <View style={{...styles.rowContainer, justifyContent: 'space-around', marginBottom: 15}}>
                                                         <View style={styles.container}>
-                                                            {section.exercises.length > 0 && section.exercises.map((exercise, i) => (
-                                                                <View style={styles.exerciseContainer} key={i}>
-                                                                    <Search exercise={exercise} exerciseName={`data.${index}.exercises.${i}.name`} exerciseId={`data.${index}.exercises.${i}.id`} setFieldValue={setFieldValue} handleBlur={handleBlur} />
-                                                                    <View style={styles.rowContainer}>
-                                                                        <View style={styles.inputContainer}>
-                                                                            <Text style={{...styles.regularText, ...styles.labelText}}>Sets</Text>
-                                                                            <TextInput style={styles.input} keyboardType='numeric' onChangeText={handleChange(`data.${index}.exercises.${i}.sets`)} onBlur={handleBlur(`data.${index}.exercises.${i}.sets`)} value={exercise.sets} />                                                                        
-                                                                        </View>
-                                                                        <View style={{...styles.inputContainer, flex: 4}}>
-                                                                            <Text style={{...styles.regularText, ...styles.labelText}}>Reps or Time</Text>
-                                                                            <View style={styles.rowContainer}>
-                                                                                {exercise.countType != 'AMRAP' && 
-                                                                                    <TextInput style={{...styles.input, flex: .3}} keyboardType='numeric' onChangeText={handleChange(`data.${index}.exercises.${i}.count`)} onBlur={handleBlur(`data.${index}.exercises.${i}.count`)} value={exercise.count} editable={exercise.countType!='AMRAP'} />
-                                                                                }
-                                                                                <View style={{flex: 1}}>
-                                                                                    {/* redo picker to have clickable icon, better placeholder */}
-                                                                                    <RNPickerSelect 
-                                                                                        items={[
-                                                                                            { label: 'Reps', value: 'Reps', key: 'reps' },
-                                                                                            { label: 'Timed', value: 'Timed', key: 'timed' },
-                                                                                            { label: 'AMRAP', value: 'AMRAP', key: 'amrap' },
-                                                                                        ]}
-                                                                                        onValueChange={(value) => setFieldValue(`data.${index}.exercises.${i}.countType`, value)}
-                                                                                        onBlur={() => {
-                                                                                            handleBlur(`data.${index}.exercises.${i}.countType`);
-                                                                                            validateField(`data.${index}.exercises.${i}.count`);
-                                                                                        }}
-                                                                                        value={exercise.countType}
-                                                                                        style={pickerSelectStyles}
-                                                                                        Icon={() => {
-                                                                                            return <Feather name="chevron-down" size={20} color="#fae9e9" />;
-                                                                                        }}
-                                                                                        // Add a placeholder object to render() {const placeholder = {label, value, color}}
-                                                                                    />
+                                                            <Text style={{...styles.regularText, ...styles.labelText}}>Rest Between Reps</Text>
+                                                            <TextInput style={styles.input} keyboardType='numeric' onChangeText={handleChange(`data.${index}.repRest`)} onBlur={handleBlur(`data.${index}.repRest`)} value={section.repRest} placeholder='Enter in seconds' />
+                                                            <ErrorMessage render={msg => <Text style={styles.errorText}>{msg}</Text>} name={`data.${index}.repRest`} />
+                                                        </View>
+                                                        <View style={styles.container}>
+                                                            <Text style={{...styles.regularText, ...styles.labelText}}>Rest Between Sets</Text>
+                                                            <TextInput style={styles.input} keyboardType='numeric' onChangeText={handleChange(`data.${index}.setRest`)} onBlur={handleBlur(`data.${index}.setRest`)} value={section.setRest} placeholder='Enter in seconds' />
+                                                            <ErrorMessage render={msg => <Text style={styles.errorText}>{msg}</Text>} name={`data.${index}.setRest`} />
+                                                        </View>
+                                                    </View>
+                                                }
+                                                <View style={styles.switch}>
+                                                    <Switch 
+                                                        trackColor={{false: '#767577', true: '#e7f6d0'}}
+                                                        thumbColor={section.circuit ? '#7bb533': '#f4f3f4'}
+                                                        onValueChange={(value) => setFieldValue(`data.${index}.circuit`, value)}
+                                                        value={section.circuit}
+                                                    />
+                                                    <Text style={styles.regularText}>Section is a circuit</Text>
+                                                </View>
+                                                <View style={styles.container}>
+                                                    <FieldArray name={`data.${index}.exercises`} style={styles.container}>
+                                                        {({insert, remove, push}) => (
+                                                            <View style={styles.container}>
+                                                                {section.exercises.length > 0 && section.exercises.map((exercise, i) => (
+                                                                    <View style={styles.exerciseContainer} key={i}>
+                                                                        <Search exercise={exercise} exerciseName={`data.${index}.exercises.${i}.name`} exerciseId={`data.${index}.exercises.${i}.id`} setFieldValue={setFieldValue} handleBlur={handleBlur} />
+                                                                        <View style={styles.rowContainer}>
+                                                                            <View style={styles.inputContainer}>
+                                                                                <Text style={{...styles.regularText, ...styles.labelText}}>Sets</Text>
+                                                                                <TextInput style={styles.input} keyboardType='numeric' onChangeText={handleChange(`data.${index}.exercises.${i}.sets`)} onBlur={handleBlur(`data.${index}.exercises.${i}.sets`)} value={exercise.sets} />                                                                        
+                                                                            </View>
+                                                                            <View style={{...styles.inputContainer, flex: 4}}>
+                                                                                <Text style={{...styles.regularText, ...styles.labelText}}>Reps or Time</Text>
+                                                                                <View style={styles.rowContainer}>
+                                                                                    {exercise.countType != 'AMRAP' && 
+                                                                                        <TextInput style={{...styles.input, flex: .3}} keyboardType='numeric' onChangeText={handleChange(`data.${index}.exercises.${i}.count`)} onBlur={handleBlur(`data.${index}.exercises.${i}.count`)} value={exercise.count} editable={exercise.countType!='AMRAP'} />
+                                                                                    }
+                                                                                    <View style={{flex: 1}}>
+                                                                                        {/* redo picker to have clickable icon, better placeholder */}
+                                                                                        <RNPickerSelect 
+                                                                                            items={[
+                                                                                                { label: 'Reps', value: 'Reps', key: 'reps' },
+                                                                                                { label: 'Timed', value: 'Timed', key: 'timed' },
+                                                                                                { label: 'AMRAP', value: 'AMRAP', key: 'amrap' },
+                                                                                            ]}
+                                                                                            onValueChange={(value) => setFieldValue(`data.${index}.exercises.${i}.countType`, value)}
+                                                                                            onBlur={() => {
+                                                                                                handleBlur(`data.${index}.exercises.${i}.countType`);
+                                                                                                validateField(`data.${index}.exercises.${i}.count`);
+                                                                                            }}
+                                                                                            value={exercise.countType}
+                                                                                            style={pickerSelectStyles}
+                                                                                            Icon={() => {
+                                                                                                return <Feather name="chevron-down" size={20} color="#fae9e9" />;
+                                                                                            }}
+                                                                                            // Add a placeholder object to render() {const placeholder = {label, value, color}}
+                                                                                        />
+                                                                                    </View>
                                                                                 </View>
                                                                             </View>
+                                                                            <View style={{alignSelf: 'center'}}>
+                                                                                <Pressable style={{...styles.button, ...styles.iconButton}} onPress={() => {
+                                                                                    const exerciseTest = [...section.exercises];
+                                                                                    exerciseTest.pop(i);
+                                                                                    exerciseTest[0] ? remove(i) : alert('Section must have at least one exercise')}
+                                                                                }>
+                                                                                    <Feather name="trash-2" size={20} color="black" />
+                                                                                </Pressable>
+                                                                            </View>
                                                                         </View>
-                                                                        <View style={{alignSelf: 'center'}}>
-                                                                            <Pressable style={{...styles.button, ...styles.iconButton}} onPress={() => {
-                                                                                const exerciseTest = [...section.exercises];
-                                                                                exerciseTest.pop(i);
-                                                                                exerciseTest[0] ? remove(i) : alert('Section must have at least one exercise')}
-                                                                            }>
-                                                                                <Feather name="trash-2" size={20} color="black" />
-                                                                            </Pressable>
+                                                                        <View>
+                                                                            <ErrorMessage render={msg => <Text style={styles.errorText}>{msg}</Text>} name={`data.${index}.exercises.${i}.sets`} />
+                                                                            <ErrorMessage render={msg => <Text style={styles.errorText}>{msg}</Text>} name={`data.${index}.exercises.${i}.count`} />
                                                                         </View>
                                                                     </View>
-                                                                    <View>
-                                                                        <ErrorMessage render={msg => <Text style={styles.errorText}>{msg}</Text>} name={`data.${index}.exercises.${i}.sets`} />
-                                                                        <ErrorMessage render={msg => <Text style={styles.errorText}>{msg}</Text>} name={`data.${index}.exercises.${i}.count`} />
-                                                                    </View>
-                                                                </View>
-                                                            ))}
-                                                            <Pressable
-                                                                style={styles.button}
-                                                                onPress={() => push(
-                                                                        {
-                                                                            id: null,
-                                                                            name: null,
-                                                                            sets: null,
-                                                                            countType: null,
-                                                                            count: null,
-                                                                        },
-                                                                )}
-                                                            >
-                                                                <Text style={styles.buttonText}>Add Exercise</Text>
-                                                            </Pressable>
-                                                        </View>
-                                                    )}
-                                                </FieldArray>
+                                                                ))}
+                                                                <Pressable
+                                                                    style={styles.button}
+                                                                    onPress={() => push(
+                                                                            {
+                                                                                id: null,
+                                                                                name: null,
+                                                                                sets: null,
+                                                                                countType: null,
+                                                                                count: null,
+                                                                            },
+                                                                    )}
+                                                                >
+                                                                    <Text style={styles.buttonText}>Add Exercise</Text>
+                                                                </Pressable>
+                                                            </View>
+                                                        )}
+                                                    </FieldArray>
+                                                </View>
+                                                <View style={{marginTop: 10}}>
+                                                    <Pressable style={styles.button} onPress={() => {
+                                                        const sectionTest = [...values.data];
+                                                        sectionTest.pop(index);
+                                                        sectionTest[0] ? remove(index) : alert('Workouts must have at least one section')}}
+                                                    >
+                                                        <Text style={styles.buttonText}>Remove Section</Text>
+                                                    </Pressable>
+                                                </View>
                                             </View>
-                                            <View style={{marginTop: 10}}>
-                                                <Pressable style={styles.button} onPress={() => {
-                                                    const sectionTest = [...values.data];
-                                                    sectionTest.pop(index);
-                                                    sectionTest[0] ? remove(index) : alert('Workouts must have at least one section')}}
-                                                >
-                                                    <Text style={styles.buttonText}>Remove Section</Text>
-                                                </Pressable>
-                                            </View>
-                                        </View>
-                                    ))}
-                                    <Pressable
-                                        style={styles.button}
-                                        onPress={() => push({ 
-                                            timed: false, 
-                                            circuit: true, 
-                                            exercises: [
-                                                {
-                                                    id: null,
-                                                    name: null,
-                                                    sets: null,
-                                                    countType: null,
-                                                    count: null,
-                                                },
-                                        ],})}
-                                    >
-                                        <Text style={styles.buttonText}>Add Section</Text>
-                                    </Pressable>
-                                </View>
-                            )}
-                        </FieldArray>
-                        <Pressable style={styles.button} onPress={handleSubmit}>
-                            <Text style={styles.buttonText}>Save Workout</Text>
-                        </Pressable>
-                    </View>
-                )}
+                                        ))}
+                                        <Pressable
+                                            style={styles.button}
+                                            onPress={() => push({ 
+                                                timed: false, 
+                                                circuit: true, 
+                                                exercises: [
+                                                    {
+                                                        id: null,
+                                                        name: null,
+                                                        sets: null,
+                                                        countType: null,
+                                                        count: null,
+                                                    },
+                                            ],})}
+                                        >
+                                            <Text style={styles.buttonText}>Add Section</Text>
+                                        </Pressable>
+                                    </View>
+                                )}
+                            </FieldArray>
+                            <Pressable style={styles.button} onPress={handleSubmit}>
+                                <Text style={styles.buttonText}>Save Workout</Text>
+                            </Pressable>
+                        </View>
+                    )}
 
-            </Formik>
-        </ScrollView>
-    );
+                </Formik>
+            </ScrollView>
+        );
+    } else { 
+        return (
+            <View style={styles.container}>
+                <Text style={styles.headerText}>Workout Saved</Text>
+                {/* Add action to pressable to render the workout view for this workoutId */}
+                <Pressable style={styles.button}>
+                    <Text style={styles.buttonText}>Go to Workout</Text>
+                </Pressable>
+            </View>
+        );
+    }
 }
 
 const styles = StyleSheet.create({
