@@ -7,6 +7,7 @@ import SampleWorkout from './screens/SampleWorkout';
 import CoachingHeader from './components/CoachingHeader';
 import CoachingFooter from './components/CoachingFooter';
 import CreateWorkout from './screens/CreateWorkout';
+import WorkoutPreview from './screens/WorkoutPreview';
 
 export default function App() {
   const Drawer = createDrawerNavigator();
@@ -21,6 +22,7 @@ export default function App() {
               <Drawer.Screen name='Sample Workout' component={SampleWorkout} />
               <Drawer.Screen name='Create Workout' component={CreateWorkout} />
               <Drawer.Screen name='Login' component={LoginScreen} />
+              <Drawer.Screen name='Workout Preview' component={WorkoutPreview} options={{drawerItemStyle: {display: 'none'}}} />
           </Drawer.Navigator>
           <CoachingFooter />
         </View>

@@ -12,7 +12,7 @@ const initialValues = {
         {
             timed: false,
             circuit: true,
-            exercises: [
+            data: [
                 {
                     id: null,
                     name: null,
@@ -40,7 +40,7 @@ const exerciseSchema = Yup.object().shape({
 const sectionSchema = Yup.object().shape({
     timed: Yup.boolean(),
     circuit: Yup.boolean(),
-    exercises: Yup.array().min(1, 'Each section needs at least 1 exercise').of(exerciseSchema),
+    data: Yup.array().min(1, 'Each section needs at least 1 exercise').of(exerciseSchema),
     repRest: Yup.number().positive('Must be a positive number').truncate().when('timed', {
         is: true,
         then: (schema) => schema.required('Required for timed sections'),
@@ -149,8 +149,9 @@ const Search = ({exercise, exerciseName, exerciseId, setFieldValue, handleBlur})
     )
 }
 
-export default function CreateWorkout() {
+export default function CreateWorkout({ navigation }) {
     const [isSaved, setSaved] = React.useState(false);
+    const [workoutId, setWorkoutId] = React.useState(undefined);
 
     if (!isSaved) {
         return (
@@ -167,7 +168,13 @@ export default function CreateWorkout() {
                                 },
                                 body: JSON.stringify(values),
                             });
-                            setSaved(response);
+                            console.log(JSON.stringify(values));
+                            if (response.ok === true) {
+                                setWorkoutId(values.id);
+                                setSaved(response.ok);
+                            } else if (response.ok === false) {
+                                alert('Problem saving workout data. Try again later.');
+                            }
                         } catch (error) {
                             // add better error handling in case of server issue
                             console.error(error);
@@ -217,22 +224,22 @@ export default function CreateWorkout() {
                                                     <Text style={styles.regularText}>Section is a circuit</Text>
                                                 </View>
                                                 <View style={styles.container}>
-                                                    <FieldArray name={`data.${index}.exercises`} style={styles.container}>
+                                                    <FieldArray name={`data.${index}.data`} style={styles.container}>
                                                         {({insert, remove, push}) => (
                                                             <View style={styles.container}>
-                                                                {section.exercises.length > 0 && section.exercises.map((exercise, i) => (
+                                                                {section.data.length > 0 && section.data.map((exercise, i) => (
                                                                     <View style={styles.exerciseContainer} key={i}>
-                                                                        <Search exercise={exercise} exerciseName={`data.${index}.exercises.${i}.name`} exerciseId={`data.${index}.exercises.${i}.id`} setFieldValue={setFieldValue} handleBlur={handleBlur} />
+                                                                        <Search exercise={exercise} exerciseName={`data.${index}.data.${i}.name`} exerciseId={`data.${index}.data.${i}.id`} setFieldValue={setFieldValue} handleBlur={handleBlur} />
                                                                         <View style={styles.rowContainer}>
                                                                             <View style={styles.inputContainer}>
                                                                                 <Text style={{...styles.regularText, ...styles.labelText}}>Sets</Text>
-                                                                                <TextInput style={styles.input} keyboardType='numeric' onChangeText={handleChange(`data.${index}.exercises.${i}.sets`)} onBlur={handleBlur(`data.${index}.exercises.${i}.sets`)} value={exercise.sets} />                                                                        
+                                                                                <TextInput style={styles.input} keyboardType='numeric' onChangeText={handleChange(`data.${index}.data.${i}.sets`)} onBlur={handleBlur(`data.${index}.data.${i}.sets`)} value={exercise.sets} />                                                                        
                                                                             </View>
                                                                             <View style={{...styles.inputContainer, flex: 4}}>
                                                                                 <Text style={{...styles.regularText, ...styles.labelText}}>Reps or Time</Text>
                                                                                 <View style={styles.rowContainer}>
                                                                                     {exercise.countType != 'AMRAP' && 
-                                                                                        <TextInput style={{...styles.input, flex: .3}} keyboardType='numeric' onChangeText={handleChange(`data.${index}.exercises.${i}.count`)} onBlur={handleBlur(`data.${index}.exercises.${i}.count`)} value={exercise.count} editable={exercise.countType!='AMRAP'} />
+                                                                                        <TextInput style={{...styles.input, flex: .3}} keyboardType='numeric' onChangeText={handleChange(`data.${index}.data.${i}.count`)} onBlur={handleBlur(`data.${index}.data.${i}.count`)} value={exercise.count} editable={exercise.countType!='AMRAP'} />
                                                                                     }
                                                                                     <View style={{flex: 1}}>
                                                                                         {/* redo picker to have clickable icon, better placeholder */}
@@ -242,10 +249,10 @@ export default function CreateWorkout() {
                                                                                                 { label: 'Timed', value: 'Timed', key: 'timed' },
                                                                                                 { label: 'AMRAP', value: 'AMRAP', key: 'amrap' },
                                                                                             ]}
-                                                                                            onValueChange={(value) => setFieldValue(`data.${index}.exercises.${i}.countType`, value)}
+                                                                                            onValueChange={(value) => setFieldValue(`data.${index}.data.${i}.countType`, value)}
                                                                                             onBlur={() => {
-                                                                                                handleBlur(`data.${index}.exercises.${i}.countType`);
-                                                                                                validateField(`data.${index}.exercises.${i}.count`);
+                                                                                                handleBlur(`data.${index}.data.${i}.countType`);
+                                                                                                validateField(`data.${index}.data.${i}.count`);
                                                                                             }}
                                                                                             value={exercise.countType}
                                                                                             style={pickerSelectStyles}
@@ -259,7 +266,7 @@ export default function CreateWorkout() {
                                                                             </View>
                                                                             <View style={{alignSelf: 'center'}}>
                                                                                 <Pressable style={{...styles.button, ...styles.iconButton}} onPress={() => {
-                                                                                    const exerciseTest = [...section.exercises];
+                                                                                    const exerciseTest = [...section.data];
                                                                                     exerciseTest.pop(i);
                                                                                     exerciseTest[0] ? remove(i) : alert('Section must have at least one exercise')}
                                                                                 }>
@@ -268,8 +275,8 @@ export default function CreateWorkout() {
                                                                             </View>
                                                                         </View>
                                                                         <View>
-                                                                            <ErrorMessage render={msg => <Text style={styles.errorText}>{msg}</Text>} name={`data.${index}.exercises.${i}.sets`} />
-                                                                            <ErrorMessage render={msg => <Text style={styles.errorText}>{msg}</Text>} name={`data.${index}.exercises.${i}.count`} />
+                                                                            <ErrorMessage render={msg => <Text style={styles.errorText}>{msg}</Text>} name={`data.${index}.data.${i}.sets`} />
+                                                                            <ErrorMessage render={msg => <Text style={styles.errorText}>{msg}</Text>} name={`data.${index}.data.${i}.count`} />
                                                                         </View>
                                                                     </View>
                                                                 ))}
@@ -307,7 +314,7 @@ export default function CreateWorkout() {
                                             onPress={() => push({ 
                                                 timed: false, 
                                                 circuit: true, 
-                                                exercises: [
+                                                data: [
                                                     {
                                                         id: null,
                                                         name: null,
@@ -336,7 +343,11 @@ export default function CreateWorkout() {
             <View style={styles.container}>
                 <Text style={styles.headerText}>Workout Saved</Text>
                 {/* Add action to pressable to render the workout view for this workoutId */}
-                <Pressable style={styles.button}>
+                <Pressable style={styles.button} onPress={() => {
+                    navigation.navigate('Workout Preview', {
+                        id: workoutId,
+                    });
+                }}>
                     <Text style={styles.buttonText}>Go to Workout</Text>
                 </Pressable>
             </View>
