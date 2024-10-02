@@ -22,7 +22,9 @@ export default function App() {
               <Drawer.Screen name='Sample Workout' component={SampleWorkout} />
               <Drawer.Screen name='Create Workout' component={CreateWorkout} />
               <Drawer.Screen name='Login' component={LoginScreen} />
-              <Drawer.Screen name='Workout Preview' component={WorkoutPreview} options={{drawerItemStyle: {display: 'none'}}} />
+              <Drawer.Screen name='Workout Preview' component={WorkoutPreview} 
+                // options={{drawerItemStyle: {display: 'none'}}} 
+                initialParams={{id: 'c8d08b56-1303-41d3-ae6f-8883f2f396b7'}} />
           </Drawer.Navigator>
           <CoachingFooter />
         </View>

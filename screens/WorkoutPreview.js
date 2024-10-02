@@ -1,5 +1,7 @@
 import * as React from 'react';
-import { View, Text, SectionList, TextInput, KeyboardAvoidingView, StyleSheet, Platform, Pressable } from 'react-native';
+import { View, Text, SectionList, TextInput, KeyboardAvoidingView, StyleSheet, Platform, Pressable, Button } from 'react-native';
+import Feather from '@expo/vector-icons/Feather';
+import { Video, ResizeMode } from 'expo-av';
 
 const Item = ({ ...item }) => {
     const [video, setVideo] = React.useState({});
@@ -7,6 +9,7 @@ const Item = ({ ...item }) => {
     const [rpe, onChangeRpe] = React.useState('');
     const [notes, onChangeNotes] = React.useState('');
     const [showNotes, setShowNotes] = React.useState(false);
+    const [showVideo, setShowVideo] = React.useState(false);
     
     React.useEffect(() => {
         const getVideo = async () => {
@@ -32,6 +35,35 @@ const Item = ({ ...item }) => {
         
     );
 
+    const VideoPlayer = () => {
+        const video = React.useRef(null);
+        const [status, setStatus] = React.useState({});
+        return (
+            <View style={styles.videoContainer}>
+                <Video
+                    ref={video}
+                    style={styles.video}
+                    source={{
+                    uri: `https://customer-fp1q3oe31pc8sz6g.cloudflarestream.com/${item.id}/manifest/video.m3u8`,
+                    }}
+                    useNativeControls
+                    resizeMode={ResizeMode.CONTAIN}
+                    isLooping
+                    isMuted
+                    onPlaybackStatusUpdate={status => setStatus(() => status)}
+                />
+                <View style={styles.buttons}>
+                    <Button
+                    title={status.isPlaying ? 'Pause' : 'Play'}
+                    onPress={() =>
+                        status.isPlaying ? video.current.pauseAsync() : video.current.playAsync()
+                    }
+                    />
+                </View>
+            </View>
+        );
+    }
+
     return (
         <>
             <View style={styles.itemContainer}>
@@ -42,10 +74,18 @@ const Item = ({ ...item }) => {
                 {(item.countType != 'AMRAP') && (
                     <Text style={styles.bodyText}>{item.countType}: {item.count}</Text>
                 )}
+                <Pressable style={styles.button} onPress={() => {setShowVideo(!showVideo)}}>
+                    <Feather name="film" size={16} color={showVideo ? '#fba8a0' : '#fae9e9'} />
+                </Pressable>
                 <Pressable style={styles.button} onPress={() => {setShowNotes(!showNotes)}}>
-                    <Text style={styles.buttonText}>{showNotes ? 'v' : '>'}</Text>
+                    <Feather name="clipboard" size={16} color={showNotes ? '#fba8a0' : '#fae9e9'} />
                 </Pressable>
             </View>
+            {showVideo && (
+                <View>
+                    <VideoPlayer />
+                </View>
+            )}
             {showNotes && (
             <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
                 <View style={styles.itemContainer}>
@@ -192,5 +232,20 @@ const styles = StyleSheet.create({
         fontSize: 16, 
         borderColor: '#fba8a0',
         backgroundColor: '#fae9e9'
-    }
+    },
+    videoContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        backgroundColor: '#ecf0f1',
+      },
+    video: {
+        alignSelf: 'center',
+        width: 320,
+        height: 200,
+    },
+    buttons: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
 })
