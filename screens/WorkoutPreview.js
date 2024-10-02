@@ -37,29 +37,20 @@ const Item = ({ ...item }) => {
 
     const VideoPlayer = () => {
         const video = React.useRef(null);
-        const [status, setStatus] = React.useState({});
         return (
             <View style={styles.videoContainer}>
                 <Video
                     ref={video}
                     style={styles.video}
                     source={{
-                    uri: `https://customer-fp1q3oe31pc8sz6g.cloudflarestream.com/${item.id}/manifest/video.m3u8`,
+                    uri: `https://customer-fp1q3oe31pc8sz6g.cloudflarestream.com/${item.id}/manifest/video.mpd`,
                     }}
                     useNativeControls
                     resizeMode={ResizeMode.CONTAIN}
                     isLooping
                     isMuted
-                    onPlaybackStatusUpdate={status => setStatus(() => status)}
+                    shouldPlay
                 />
-                <View style={styles.buttons}>
-                    <Button
-                    title={status.isPlaying ? 'Pause' : 'Play'}
-                    onPress={() =>
-                        status.isPlaying ? video.current.pauseAsync() : video.current.playAsync()
-                    }
-                    />
-                </View>
             </View>
         );
     }
@@ -236,7 +227,7 @@ const styles = StyleSheet.create({
     videoContainer: {
         flex: 1,
         justifyContent: 'center',
-        backgroundColor: '#ecf0f1',
+        backgroundColor: 'black',
       },
     video: {
         alignSelf: 'center',
