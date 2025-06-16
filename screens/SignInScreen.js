@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { ScrollView, Text, StyleSheet, KeyboardAvoidingView, TextInput, Platform, Pressable, } from 'react-native';
 import CustomButton from '../components/Button';
+import SocialSignIn from '../components/SocialSignInButtons';
 
 export default function SignInScreen() {
     const [email, onChangeEmail] = React.useState('');
@@ -9,8 +10,6 @@ export default function SignInScreen() {
 
     const onForgotPasswordPressed = () => {};
     const onSignUpPressed = () => {};
-    const onSignInGoogle = () => {};
-    const onSignInApple = () => {};
 
   return (
     <ScrollView style={styles.container}>
@@ -33,8 +32,7 @@ export default function SignInScreen() {
             />
             <CustomButton onPress={() => {onSignIn(!isSignedIn)}} text="Sign In"></CustomButton>
             <CustomButton onPress={onForgotPasswordPressed} text="Forgot Password?" type="TERTIARY"></CustomButton>
-            <CustomButton onPress={onSignInGoogle} text="Sign In with Google" bgColor="#FAE9EA" fgColor="#DD4D44"></CustomButton>
-            <CustomButton onPress={onSignInApple} text="Sign In with Apple" bgColor="#e3e3e3" fgColor="#363636"></CustomButton>
+            <SocialSignIn />
             <CustomButton onPress={onSignUpPressed} text="Don't have an account? Create one" type="TERTIARY"></CustomButton>
         </KeyboardAvoidingView>
       )}
