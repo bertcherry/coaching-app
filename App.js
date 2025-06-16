@@ -1,7 +1,7 @@
 import { View, StyleSheet, SafeAreaView } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createDrawerNavigator } from '@react-navigation/drawer';
-import LoginScreen from './screens/LoginScreen';
+import SignInScreen from './screens/SignInScreen';
 import WelcomeScreen from './screens/WelcomeScreen';
 import SampleWorkout from './screens/SampleWorkout';
 import CoachingHeader from './components/CoachingHeader';
@@ -21,7 +21,7 @@ export default function App() {
               <Drawer.Screen name='Welcome' component={WelcomeScreen} />
               <Drawer.Screen name='Sample Workout' component={SampleWorkout} />
               <Drawer.Screen name='Create Workout' component={CreateWorkout} />
-              <Drawer.Screen name='Login' component={LoginScreen} />
+              <Drawer.Screen name='Sign In' component={SignInScreen} />
               <Drawer.Screen name='Workout Preview' component={WorkoutPreview} 
                 // options={{drawerItemStyle: {display: 'none'}}} 
                 initialParams={{id: 'c8d08b56-1303-41d3-ae6f-8883f2f396b7'}} />
