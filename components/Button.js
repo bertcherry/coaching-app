@@ -27,13 +27,18 @@ const styles = StyleSheet.create({
     container_PRIMARY: {
         backgroundColor: '#fba8a0',
     },
-    container_TERTIARY: {
-
+    container_SECONDARY: {
+        borderColor: '#fba8a0',
+        borderWidth: 2,
     },
+    container_TERTIARY: {},
     text: {
         fontSize: 18,
         color: 'black',
         textAlign: 'center',
+    },
+    text_SECONDARY: {
+        color: '#fba8a0',
     },
     text_TERTIARY: {
         color: 'grey',
