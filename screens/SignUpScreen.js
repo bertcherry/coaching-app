@@ -49,7 +49,7 @@ export default function SignUpScreen() {
                 secureTextEntry={true}
                 style={styles.input}
             />
-            <CustomButton onPress={() => {onRegisterPressed}} text="Register"></CustomButton>
+            <CustomButton onPress={onRegisterPressed} text="Register"></CustomButton>
             <Text style={styles.smallText}>By registering you confirm agreement to our{' '}
               <Text style={styles.link} onPress={onTermsOfUsePressed}>Terms of Use</Text> and{' '}
               <Text style={styles.link} onPress={onPrivacyPressed}>Privacy Policy</Text>. Clients are reminded of their agreement to the{' '}
