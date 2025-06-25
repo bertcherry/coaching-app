@@ -1,13 +1,23 @@
 import * as React from 'react';
 import { ScrollView, Text, StyleSheet, KeyboardAvoidingView, TextInput, Platform } from 'react-native';
 import CustomButton from '../components/Button';
+import { useNavigation } from '@react-navigation/native';
 
 export default function ResetPasswordScreen() {
     const [code, onChangeCode] = React.useState('');
     const [newPassword, onChangeNewPassword] = React.useState('');
 
-    const onSetPressed = () => {};
-    const onSignInPressed = () => {};
+    const navigation = useNavigation();
+
+    const onSetPressed = () => {
+      //update password in back end
+      //validate user
+      navigation.navigate('Welcome');
+    };
+
+    const onSignInPressed = () => {
+      navigation.navigate('Sign In');
+    };
 
   return (
     <ScrollView style={styles.container}>

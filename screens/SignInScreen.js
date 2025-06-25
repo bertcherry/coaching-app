@@ -2,19 +2,30 @@ import * as React from 'react';
 import { ScrollView, Text, StyleSheet, KeyboardAvoidingView, TextInput, Platform, Pressable, } from 'react-native';
 import CustomButton from '../components/Button';
 import SocialSignIn from '../components/SocialSignInButtons';
+import { useNavigation } from '@react-navigation/native';
 
 export default function SignInScreen() {
     const [email, onChangeEmail] = React.useState('');
     const [password, onChangePassword] = React.useState('');
-    const [isSignedIn, onSignIn] = React.useState(false);
 
-    const onForgotPasswordPressed = () => {};
-    const onSignUpPressed = () => {};
+    const navigation = useNavigation();
+
+    const onSignInPressed = () => {
+      // validate user
+      navigation.navigate('Welcome');
+    };
+
+    const onForgotPasswordPressed = () => {
+      navigation.navigate('Forgot Password');
+    };
+
+    const onSignUpPressed = () => {
+      navigation.navigate('Sign Up');
+    };
 
   return (
     <ScrollView style={styles.container}>
-      <Text style={styles.regularText}>{isSignedIn ? 'You are signed in' : 'Sign in to continue'}</Text>
-      {!isSignedIn && (
+      <Text style={styles.regularText}>Sign in to continue</Text>
         <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
             <TextInput 
                 value={email}
@@ -30,12 +41,11 @@ export default function SignInScreen() {
                 secureTextEntry={true}
                 style={styles.input}
             />
-            <CustomButton onPress={() => {onSignIn(!isSignedIn)}} text="Sign In"></CustomButton>
+            <CustomButton onPress={onSignInPressed} text="Sign In"></CustomButton>
             <CustomButton onPress={onForgotPasswordPressed} text="Forgot Password?" type="TERTIARY"></CustomButton>
             <SocialSignIn />
             <CustomButton onPress={onSignUpPressed} text="Don't have an account? Create one" type="TERTIARY"></CustomButton>
         </KeyboardAvoidingView>
-      )}
     </ScrollView>
   );
 }

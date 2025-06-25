@@ -2,6 +2,7 @@ import * as React from 'react';
 import { ScrollView, Text, StyleSheet, KeyboardAvoidingView, TextInput, Platform, Link } from 'react-native';
 import CustomButton from '../components/Button';
 import SocialSignIn from '../components/SocialSignInButtons';
+import { useNavigation } from '@react-navigation/native';
 
 export default function SignUpScreen() {
     const [email, onChangeEmail] = React.useState('');
@@ -9,13 +10,25 @@ export default function SignUpScreen() {
     const [password, onChangePassword] = React.useState('');
     const [passwordRepeat, onChangePasswordRepeat] = React.useState('');
 
-    const onRegisterPressed = () => {};
-    const onTermsOfUsePressed = () => {};
-    const onPrivacyPressed = () => {};
+    const navigation = useNavigation();
+
+    const onRegisterPressed = () => {
+      //send a confirmation code to email
+      navigation.navigate('Confirm Email');
+    };
+
+    const onTermsOfUsePressed = () => {
+      //link to external page on website
+    };
+    const onPrivacyPressed = () => {
+      //link to external page on website
+    };
     const onWaiverPressed = () => {
       //link to external page on website
     };
-    const onSignInPressed = () => {};
+    const onSignInPressed = () => {
+      navigation.navigate('Sign In');
+    };
 
   return (
     <ScrollView style={styles.container}>

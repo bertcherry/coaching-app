@@ -1,13 +1,25 @@
 import * as React from 'react';
 import { ScrollView, Text, StyleSheet, KeyboardAvoidingView, TextInput, Platform } from 'react-native';
 import CustomButton from '../components/Button';
+import { useNavigation } from '@react-navigation/native';
 
 export default function ConfirmEmailScreen() {
     const [confirmationCode, onChangeConfirmationCode] = React.useState('');
+    
+    const navigation = useNavigation();
 
-    const onConfirmPressed = () => {};
-    const onResendPressed = () => {};
-    const onSignInPressed = () => {};
+    const onConfirmPressed = () => {
+      //validate code
+      navigation.navigate('Welcome');
+    };
+
+    const onResendPressed = () => {
+      //send a confirmation code to email
+    };
+
+    const onSignInPressed = () => {
+      navigation.navigate('Sign In');
+    };
 
   return (
     <ScrollView style={styles.container}>
