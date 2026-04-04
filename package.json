@@ -16,7 +16,8 @@
     "expo-av": "~15.0.2",
     "expo-status-bar": "~2.0.1",
     "formik": "^2.4.6",
-    "react": "18.3.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "react-native": "0.76.9",
     "react-native-picker-select": "^9.3.1",
     "react-native-reanimated": "~3.16.1",
@@ -27,7 +28,17 @@
     "yup": "^1.4.0"
   },
   "devDependencies": {
-    "@babel/core": "^7.20.0"
+    "@babel/core": "^7.20.0",
+    "@cloudflare/vitest-pool-workers": "^0.14.1",
+    "@testing-library/react-hooks": "^8.0.1",
+    "@testing-library/react-native": "^13.3.3",
+    "jest": "^30.3.0",
+    "jest-expo": "^55.0.13",
+    "react-test-renderer": "^18.3.1",
+    "vitest": "^4.1.2"
+  },
+  "jest": {
+    "preset": "jest-expo"
   },
   "private": true
 }

@@ -120,7 +120,8 @@ export default function WorkoutPreview({ route }) {
     React.useEffect(() => {
         const getWorkout = async () => {
             try {
-                const resp = await fetch(new URL(`https://cc-workouts.bert-m-cherry.workers.dev/${id}`));
+                const { authFetch } = useAuth();
+                const resp = await authFetch(new URL(`https://cc-workouts.bert-m-cherry.workers.dev/${id}`));
                 const workoutResp = await resp.json();
                 let respData = [...workoutResp];
                 respData.forEach((section, index) => {

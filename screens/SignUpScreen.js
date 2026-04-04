@@ -12,9 +12,17 @@ export default function SignUpScreen() {
 
     const navigation = useNavigation();
 
-    const onRegisterPressed = () => {
-      //send a confirmation code to email
-      navigation.navigate('Confirm Email');
+    const onRegisterPressed = async () => {
+      const res = await fetch('https://auth-worker.bert-m-cherry.workers.dev/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, fname, lname, accessCode }),
+      });
+      if (res.ok) navigation.navigate('Confirm Email');
+      else {
+        const err = await res.json();
+        Alert.alert('Error', err.error);
+      }
     };
 
     const onTermsOfUsePressed = () => {
