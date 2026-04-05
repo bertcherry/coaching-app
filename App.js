@@ -1,12 +1,12 @@
 import { View, StyleSheet, SafeAreaView } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
-import SignInNavigation from './components/SignInNavigation';
 import CoachingHeader from './components/CoachingHeader';
 import CoachingFooter from './components/CoachingFooter';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import SignInNavigation from './navigation/SignInNavigation';
-import CoachNavigation from './navigation/CoachNavigation';   // you'll create this
-import ClientNavigation from './navigation/ClientNavigation'; // you'll create this
+import SignInNavigation from './screens/navigation/SignInNavigation';
+import CoachNavigation from './screens/navigation/CoachNavigation';   // you'll create this
+import ClientNavigation from './screens/navigation/ClientNavigation'; // you'll create this
+import { startNetInfoSync } from './utils/WorkoutSync';
 
 function RootNavigator() {
   const { user, loading } = useAuth();
@@ -18,6 +18,12 @@ function RootNavigator() {
 }
 
 export default function App() {
+  const { accessToken } = useAuth();
+  React.useEffect(() => {
+      startNetInfoSync(() => accessToken);
+      return () => stopNetInfoSync();
+  }, [accessToken]);
+
   return (
     <SafeAreaView style={styles.container}>
       <AuthProvider>
