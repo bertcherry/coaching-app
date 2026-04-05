@@ -11,7 +11,8 @@
  */
 
 import React from 'react';
-import { renderHook, act } from '@testing-library/react-hooks';
+import { act } from '@testing-library/react-hooks';
+import { renderHook } from '@testing-library/react-native';
 import { AuthProvider, useAuth } from '../../context/AuthContext'; // adjust path
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────

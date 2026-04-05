@@ -2,6 +2,8 @@ import { createDrawerNavigator } from '@react-navigation/drawer';
 import WorkoutPreview from '../WorkoutPreview';
 import WelcomeScreen from '../WelcomeScreen';
 import SampleWorkout from '../SampleWorkout';
+import CalendarScreen from '../CalendarScreen';
+
 
 export default function ClientNavigation() {
     const Drawer = createDrawerNavigator();
@@ -13,6 +15,7 @@ export default function ClientNavigation() {
             <Drawer.Screen name='Workout Preview' component={WorkoutPreview} 
                 // options={{drawerItemStyle: {display: 'none'}}} 
                 initialParams={{id: 'c8d08b56-1303-41d3-ae6f-8883f2f396b7'}} />
+            <Drawer.Screen name="Calendar" component={CalendarScreen} />
         </Drawer.Navigator>
     )
 }
