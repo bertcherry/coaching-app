@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { ScrollView, Text, StyleSheet, KeyboardAvoidingView, TextInput, Platform } from 'react-native';
-import CustomButton from '../components/Button';
+import CustomButton from '../../components/Button';
 import { useNavigation } from '@react-navigation/native';
 
 export default function ConfirmEmailScreen() {

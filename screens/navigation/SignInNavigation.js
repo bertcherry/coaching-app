@@ -1,9 +1,9 @@
 import { createStackNavigator } from '@react-navigation/stack';
-import SignInScreen from '../SignInScreen';
-import SignUpScreen from '../SignUpScreen';
-import ForgotPasswordScreen from '../ForgotPasswordScreen';
-import ResetPasswordScreen from '../ResetPasswordScreen';
-import ConfirmEmailScreen from '../ConfirmEmailScreen';
+import SignInScreen from '../sign-in/SignInScreen';
+import SignUpScreen from '../sign-in/SignUpScreen';
+import ForgotPasswordScreen from '../sign-in/ForgotPasswordScreen';
+import ResetPasswordScreen from '../sign-in/ResetPasswordScreen';
+import ConfirmEmailScreen from '../sign-in/ConfirmEmailScreen';
 
 export default function ClientNavigation() {
     const Stack = createStackNavigator();

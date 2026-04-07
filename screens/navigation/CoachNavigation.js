@@ -3,6 +3,7 @@ import CreateWorkout from '../CreateWorkout';
 import WorkoutPreview from '../WorkoutPreview';
 import WelcomeScreen from '../WelcomeScreen';
 import SampleWorkout from '../SampleWorkout';
+import TemplateWorkoutsScreen from '../TemplateWorkoutsScreen';
 
 export default function CoachNavigation() {
     const Drawer = createDrawerNavigator();
@@ -15,6 +16,7 @@ export default function CoachNavigation() {
                 />
             <Drawer.Screen name='Client List' component={ClientList} //build this, put addclient screen on it
                 />
+            <Stack.Screen name="Template Workouts" component={TemplateWorkoutsScreen} />
             <Drawer.Screen name='Workout Preview' component={WorkoutPreview} 
                 // options={{drawerItemStyle: {display: 'none'}}} 
                 initialParams={{id: 'c8d08b56-1303-41d3-ae6f-8883f2f396b7'}} />

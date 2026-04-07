@@ -1,10 +1,10 @@
 import * as React from 'react';
 import { ScrollView, Text, TextInput, StyleSheet, KeyboardAvoidingView, Platform, Alert } from 'react-native';
-import CustomButton from '../components/Button';
+import CustomButton from '../../components/Button';
 import { useNavigation } from '@react-navigation/native';
 import { ErrorMessage, Formik } from 'formik';
 import * as Yup from 'yup';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../../context/AuthContext';
 
 const initialValues = {
     email: '',

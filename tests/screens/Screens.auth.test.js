@@ -26,10 +26,10 @@ jest.mock('../../context/AuthContext', () => ({
 
 global.fetch = jest.fn();
 
-import SignInScreen from '../../screens/SignInScreen';
-import SignUpScreen from '../../screens/SignUpScreen';
-import ForgotPasswordScreen from '../../screens/ForgotPasswordScreen';
-import ResetPasswordScreen from '../../screens/ResetPasswordScreen';
+import SignInScreen from '../../screens/sign-in/SignInScreen';
+import SignUpScreen from '../../screens/sign-in/SignUpScreen';
+import ForgotPasswordScreen from '../../screens/sign-in/ForgotPasswordScreen';
+import ResetPasswordScreen from '../../screens/sign-in/ResetPasswordScreen';
 import ConfirmEmailScreen from '../../screens/ConfirmEmailScreen';
 
 beforeEach(() => {
