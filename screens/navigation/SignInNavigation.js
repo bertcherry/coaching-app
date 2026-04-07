@@ -1,20 +1,20 @@
-import { createDrawerNavigator } from '@react-navigation/drawer';
-import WorkoutPreview from '../WorkoutPreview';
-import WelcomeScreen from '../WelcomeScreen';
-import SampleWorkout from '../SampleWorkout';
+import { createStackNavigator } from '@react-navigation/stack';
+import SignInScreen from '../SignInScreen';
+import SignUpScreen from '../SignUpScreen';
+import ForgotPasswordScreen from '../ForgotPasswordScreen';
+import ResetPasswordScreen from '../ResetPasswordScreen';
+import ConfirmEmailScreen from '../ConfirmEmailScreen';
 
 export default function ClientNavigation() {
-    const Drawer = createDrawerNavigator();
+    const Stack = createStackNavigator();
 
     return(
-        <Drawer.Navigator
-            //decide the best navigation schema for the sign in navigation portion
-        >
-            <Drawer.Screen name='Welcome' component={WelcomeScreen} />
-            <Drawer.Screen name='Sample Workout' component={SampleWorkout} />
-            <Drawer.Screen name='Workout Preview' component={WorkoutPreview} 
-                // options={{drawerItemStyle: {display: 'none'}}} 
-                initialParams={{id: 'c8d08b56-1303-41d3-ae6f-8883f2f396b7'}} />
-        </Drawer.Navigator>
+        <Stack.Navigator>
+            <Stack.Screen name='Sign In' component={SignInScreen} />
+            <Stack.Screen name='Register' component={SignUpScreen} />
+            <Stack.Screen name='Confirm Email' component={ConfirmEmailScreen} />
+            <Stack.Screen name='Forgot Password' component={ForgotPasswordScreen} />
+            <Stack.Screen name='Reset Password' component={ResetPasswordScreen} />
+        </Stack.Navigator>
     )
 }

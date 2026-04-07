@@ -1,7 +1,6 @@
 import * as React from 'react';
-import { ScrollView, Text, StyleSheet, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { ScrollView, Text, TextInput, StyleSheet, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import CustomButton from '../components/Button';
-import SocialSignIn from '../components/SocialSignInButtons';
 import { useNavigation } from '@react-navigation/native';
 import { ErrorMessage, Formik } from 'formik';
 import * as Yup from 'yup';
@@ -26,7 +25,7 @@ export default function SignInScreen() {
     };
 
     const onSignUpPressed = () => {
-        navigation.navigate('Sign Up');
+        navigation.navigate('Register');
     };
 
     return (

@@ -1,7 +1,6 @@
 import * as React from 'react';
 import { ScrollView, Text, StyleSheet, KeyboardAvoidingView, TextInput, Platform, Link } from 'react-native';
 import CustomButton from '../components/Button';
-import SocialSignIn from '../components/SocialSignInButtons';
 import { useNavigation } from '@react-navigation/native';
 
 export default function SignUpScreen() {
@@ -76,7 +75,6 @@ export default function SignUpScreen() {
               <Text style={styles.link} onPress={onPrivacyPressed}>Privacy Policy</Text>. Clients are reminded of their agreement to the{' '}
               <Text style={styles.link} onPress={onWaiverPressed}>coaching waiver</Text>.
             </Text>
-            <SocialSignIn/>
             <CustomButton onPress={onSignInPressed} text="Have an account? Sign in" type="TERTIARY"></CustomButton>
         </KeyboardAvoidingView>
     </ScrollView>
