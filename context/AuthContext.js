@@ -50,7 +50,6 @@ export function AuthProvider({ children }) {
     });
           
     if (!res.ok) {
-      console.log(res);
       const err = await res.json();
       throw new Error(err.error || 'Login failed');
     }
