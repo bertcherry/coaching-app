@@ -16,7 +16,7 @@
 	"d1_databases": [
 		{
 			"binding": "DB",
-			"database_name": "cc-workouts",
+			"database_name": "cherry-coaching-app",
 			"database_id": "2b48acd8-3b0b-402f-99ae-f38afb6f2565",
 		}
 	],
