@@ -10,6 +10,7 @@ import ExerciseCountInput from '../components/ExerciseCountInput';
 import Feather from '@expo/vector-icons/Feather';
 import * as Yup from 'yup';
 import { useAuth } from '../context/AuthContext';
+import ExerciseSearch from '../components/ExerciseSearch';
 
 // ─── Schemas ──────────────────────────────────────────────────────────────────
 
@@ -137,7 +138,7 @@ const ClientSearch = ({ selectedEmail, selectedName, onSelect, coachEmail, authF
     React.useEffect(() => {
         const load = async () => {
             try {
-                const res = await authFetch('https://your-auth-worker.workers.dev/coach/clients');
+                const res = await authFetch('https://coaching-app.bert.m.cherry.workers.dev/coach/clients');
                 const body = await res.json();
                 setAllClients(body.clients ?? []);
                 setFiltered((body.clients ?? []).slice(0, 5));
@@ -370,106 +371,6 @@ const DateField = ({ value, onChange, onBlur, fieldName }) => {
     );
 };
 
-// ─── Exercise search (unchanged from original) ────────────────────────────────
-
-const Search = ({ exercise, exerciseName, exerciseId, setFieldValue, handleBlur }) => {
-    const [showInput, setShowInput] = React.useState(true);
-    const [showOptions, setShowOptions] = React.useState(false);
-    const [showModal, setShowModal] = React.useState(false);
-    const [searchValue, setSearchValue] = React.useState('');
-    const [results, setResults] = React.useState([]);
-
-    React.useEffect(() => {
-        const timeoutId = setTimeout(async () => {
-            if (searchValue.length !== 0) {
-                try {
-                    const searchParams = searchValue.replace(/ /g, '%20');
-                    const resp = await fetch(new URL(`https://exercise-search.bert-m-cherry.workers.dev/?name=${searchParams}`));
-                    const results = await resp.json();
-                    setResults(results);
-                    setShowOptions(true);
-                } catch (error) {
-                    console.error(error);
-                }
-            } else {
-                setResults([]);
-            }
-        }, 750);
-        return () => clearTimeout(timeoutId);
-    }, [searchValue]);
-
-    const onSelectExercise = (id, name) => {
-        setShowOptions(false);
-        setFieldValue(exerciseId, id);
-        setFieldValue(exerciseName, name);
-        setShowModal(false);
-        setShowInput(false);
-    };
-
-    const handlePressSelected = () => {
-        setShowModal(true);
-        setShowInput(true);
-        setShowOptions(true);
-    };
-
-    const renderItem = ({ item }) => (
-        <Pressable onPress={() => onSelectExercise(item.id, item.name)}>
-            <Text style={styles.regularText}>{item.name}</Text>
-        </Pressable>
-    );
-
-    return (
-        <KeyboardAvoidingView style={styles.inputContainer} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-            <Text style={{ ...styles.regularText, ...styles.labelText }}>Exercise Name</Text>
-            {!showInput && (
-                <Pressable style={styles.rowContainer} onPress={handlePressSelected}>
-                    <Text style={styles.regularText}>{exercise.name}</Text>
-                    <Feather name="chevron-down" size={20} color="#fae9e9" style={{ flex: 0 }} />
-                </Pressable>
-            )}
-            {showInput && (
-                <Pressable style={styles.input} onPress={() => setShowModal(true)}>
-                    <Text style={{ color: 'grey' }}>Search exercises...</Text>
-                    <ErrorMessage render={msg => <Text style={styles.errorText}>{msg}</Text>} name={exerciseName} />
-                </Pressable>
-            )}
-            {showModal && (
-                <Modal onRequestClose={() => { setShowModal(false); handleBlur(exerciseName); }} transparent>
-                    <KeyboardAvoidingView
-                        style={{ ...styles.modalView, ...styles.container }}
-                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                    >
-                        <View style={{ ...styles.rowContainer, alignItems: 'center' }}>
-                            <TextInput
-                                style={{ ...styles.input, flex: 1 }}
-                                onChangeText={setSearchValue}
-                                placeholder="Search exercises..."
-                                autoFocus
-                                onBlur={handleBlur(exerciseName)}
-                            />
-                            <Pressable
-                                style={{ ...styles.button, ...styles.iconButton }}
-                                onPress={() => setShowModal(false)}
-                            >
-                                <Feather name="x" size={20} color="black" />
-                            </Pressable>
-                        </View>
-                        {showOptions && results.length > 0 && (
-                            <FlatList
-                                data={results}
-                                persistentScrollbar
-                                indicatorStyle="white"
-                                renderItem={renderItem}
-                                keyExtractor={item => item.id}
-                            />
-                        )}
-                    </KeyboardAvoidingView>
-                </Modal>
-            )}
-        </KeyboardAvoidingView>
-    );
-};
-
 // ─── CreateWorkout ────────────────────────────────────────────────────────────
 
 export default function CreateWorkout({ navigation, route }) {
@@ -662,12 +563,14 @@ export default function CreateWorkout({ navigation, route }) {
                                                         <View style={styles.container}>
                                                             {section.data.length > 0 && section.data.map((exercise, i) => (
                                                                 <View style={styles.exerciseContainer} key={i}>
-                                                                    <Search
+                                                                    <ExerciseSearch
                                                                         exercise={exercise}
-                                                                        exerciseName={`data.${index}.data.${i}.name`}
-                                                                        exerciseId={`data.${index}.data.${i}.id`}
+                                                                        exerciseNameField={`data.${index}.data.${i}.name`}
+                                                                        exerciseIdField={`data.${index}.data.${i}.id`}
                                                                         setFieldValue={setFieldValue}
                                                                         handleBlur={handleBlur}
+                                                                        isCoach={user?.isCoach}
+                                                                        authFetch={authFetch}
                                                                     />
                                                                     <View style={styles.rowContainer}>
                                                                         <View style={styles.inputContainer}>

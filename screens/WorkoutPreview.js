@@ -8,6 +8,7 @@ import { Video, ResizeMode } from 'expo-av';
 import { useAuth } from '../context/AuthContext';
 import { enqueueRecord, syncQueue } from '../utils/WorkoutSync';
 import SetRow from '../components/SetRow';
+import WorkoutPreviewItem from '../components/WorkoutPreviewItem';
 
 // ─── Rotating finish messages ─────────────────────────────────────────────────
 
@@ -231,7 +232,7 @@ export default function WorkoutPreview({ route, navigation }) {
     }
 
     const renderItem = ({ item }) => (
-        <Item
+        <WorkoutPreviewItem
             {...item}
             workoutId={id}
             clientId={user?.email}
