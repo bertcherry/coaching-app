@@ -18,6 +18,12 @@
 			"binding": "DB",
 			"database_name": "cherry-coaching-app",
 			"database_id": "2b48acd8-3b0b-402f-99ae-f38afb6f2565",
+		},
+		{
+			"binding": "demosDB",
+			"database_name": "videos",
+			"database_id": "e4f459c8-cfc2-4ba0-8f67-1d7bea98d088",
+			"remote": true,
 		}
 	],
 	"env": {
