@@ -118,13 +118,13 @@ async function handleMoveWorkout(request, env) {
     try { caller = await requireAuth(request, env); }
     catch (e) { return e; }
     const { id, newDate } = await request.json();
-    if (!id || !newDate) return json({ error: 'id and newDate are required' }, 400);
+    if (!id || !newDate || !today) return json({ error: 'id, newDate, and today are required' }, 400);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(newDate)) return json({ error: 'newDate must be YYYY-MM-DD' }, 400);
     const workout = await env.DB.prepare('SELECT * FROM scheduled_workouts WHERE id = ?').bind(id).first();
     if (!workout) return json({ error: 'Workout not found' }, 404);
     if (!caller.isCoach && workout.clientEmail !== caller.email) return json({ error: 'Forbidden' }, 403);
     if (workout.status === 'completed') return json({ error: 'Completed workouts cannot be moved' }, 422);
-    if (newDate < todayISO()) return json({ error: 'Cannot move a workout to a past date' }, 422);
+    if (newDate < today) return json({ error: 'Cannot move a workout to a past date' }, 422);
     const originalDate = workout.originalDate ?? workout.scheduledDate;
     const newStatus = (workout.status === 'skipped' || workout.status === 'missed') ? 'scheduled' : workout.status;
     await env.DB.prepare(`UPDATE scheduled_workouts SET scheduledDate = ?, originalDate = ?, status = ?, skipReason = null WHERE id = ?`).bind(newDate, originalDate, newStatus, id).run();

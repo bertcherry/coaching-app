@@ -27,11 +27,19 @@ const DAYS_OF_WEEK = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 // ─── Date helpers ─────────────────────────────────────────────────────────────
 
 function toISO(date) {
-    return date.toISOString().split('T')[0];
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
 }
 
-function today() {
-    return toISO(new Date());
+function todayInTimezone(tz = Intl.DateTimeFormat().resolvedOptions().timeZone) {
+    const now = new Date();
+    const parts = new Intl.DateTimeFormat('en-CA', { timeZone: tz }).formatToParts(now);
+    const y = parts.find(p => p.type === 'year').value;
+    const m = parts.find(p => p.type === 'month').value;
+    const d = parts.find(p => p.type === 'day').value;
+    return `${y}-${m}-${d}`;
 }
 
 function parseISO(str) {
@@ -44,22 +52,26 @@ function isBefore(dateStr, referenceStr) {
 }
 
 function getMonthGrid(year, month) {
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
     const grid = [];
-    for (let i = 0; i < firstDay.getDay(); i++) {
-        const d = new Date(year, month, 1 - (firstDay.getDay() - i));
-        grid.push({ dateStr: toISO(d), currentMonth: false });
+
+    // First day of the month (local time)
+    const firstDay = new Date(year, month, 1);
+    const startDayOfWeek = firstDay.getDay(); // 0 = Sunday
+
+    // Start date = Sunday of the first visible week
+    const startDate = new Date(year, month, 1 - startDayOfWeek);
+
+    // Always render 6 weeks (6 × 7 = 42 cells) → standard calendar layout
+    for (let i = 0; i < 42; i++) {
+        const d = new Date(startDate);
+        d.setDate(startDate.getDate() + i);
+
+        grid.push({
+            dateStr: toISO(d),
+            currentMonth: d.getMonth() === month,
+        });
     }
-    for (let d = 1; d <= lastDay.getDate(); d++) {
-        grid.push({ dateStr: toISO(new Date(year, month, d)), currentMonth: true });
-    }
-    const remaining = 7 - (grid.length % 7);
-    if (remaining < 7) {
-        for (let i = 1; i <= remaining; i++) {
-            grid.push({ dateStr: toISO(new Date(year, month + 1, i)), currentMonth: false });
-        }
-    }
+
     return grid;
 }
 
@@ -119,9 +131,10 @@ const DayCell = ({
     onWorkoutLongPress,
     onEmptyDayLongPress,
     dragTargetDate,
+    clientTimezone
 }) => {
     const isTarget = dragTargetDate === dateStr;
-    const isPast = isBefore(dateStr, today());
+    const isPast = isBefore(dateStr, todayInTimezone(clientTimezone));
 
     return (
         <Pressable
@@ -291,13 +304,13 @@ const SkipModal = ({ workout, onClose, onConfirm }) => {
 
 // ─── Date picker modal (copy / move destination) ──────────────────────────────
 
-const DatePickerModal = ({ title, minDate, onClose, onConfirm }) => {
+const DatePickerModal = ({ title, minDate, clientTimezone, onClose, onConfirm }) => {
     const now = new Date();
     const [year, setYear] = React.useState(now.getFullYear());
     const [month, setMonth] = React.useState(now.getMonth());
     const [selected, setSelected] = React.useState(null);
     const grid = getMonthGrid(year, month);
-    const todayStr = today();
+    const todayStr = todayInTimezone(clientTimezone);
 
     const prevMonth = () => {
         if (month === 0) { setMonth(11); setYear(y => y - 1); }
@@ -382,9 +395,10 @@ export default function CalendarScreen({ navigation, route }) {
 
     // When a coach opens this from a client view, these params come in via route
     const clientEmail = route?.params?.clientEmail ?? user?.email;
-    const clientName  = route?.params?.clientName
-        ?? `${user?.fname ?? ''} ${user?.lname ?? ''}`.trim();
+    const clientName  = route?.params?.clientName ?? `${user?.fname ?? ''} ${user?.lname ?? ''}`.trim();
 
+    // ── CLIENT TIMEZONE ──
+    const clientTimezone = route?.params?.clientTimezone ?? 'UTC';
     const now = new Date();
     const [year, setYear]       = React.useState(now.getFullYear());
     const [month, setMonth]     = React.useState(now.getMonth());
@@ -404,7 +418,7 @@ export default function CalendarScreen({ navigation, route }) {
     const [addDayTarget,       setAddDayTarget]       = React.useState(null);
     const [showTemplatePicker, setShowTemplatePicker] = React.useState(false);
 
-    const todayStr = today();
+    const todayStr = todayInTimezone(clientTimezone);
     const grid = getMonthGrid(year, month);
 
     // ── Fetch ───────────────────────────────────────────────────────────────
@@ -414,7 +428,7 @@ export default function CalendarScreen({ navigation, route }) {
         try {
             const monthStr = `${year}-${String(month + 1).padStart(2, '0')}`;
             const res = await authFetch(
-                `https://coaching-app.bert-m-cherry.workers.dev/schedule?clientEmail=${encodeURIComponent(clientEmail)}&month=${monthStr}`
+                `https://coaching-app.bert-m-cherry.workers.dev/schedule?clientEmail=${encodeURIComponent(clientEmail)}&month=${monthStr}&tz=${encodeURIComponent(clientTimezone)}`
             );
             const body = await res.json();
             setWorkouts(body.workouts ?? []);
@@ -571,7 +585,7 @@ export default function CalendarScreen({ navigation, route }) {
                 {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id: workout.id, newDate }),
+                    body: JSON.stringify({ id: workout.id, newDate, today: todayInTimezone(clientTimezone) }),
                 }
             );
             if (!res.ok) throw new Error();
@@ -634,6 +648,7 @@ export default function CalendarScreen({ navigation, route }) {
                                 onWorkoutLongPress={handleWorkoutLongPress}
                                 onEmptyDayLongPress={handleEmptyDayLongPress}
                                 dragTargetDate={null}
+                                clientTimezone={clientTimezone}
                             />
                         ))}
                     </View>
@@ -704,6 +719,7 @@ export default function CalendarScreen({ navigation, route }) {
                 <DatePickerModal
                     title="Copy workout to..."
                     minDate={null}
+                    clientTimezone={clientTimezone}
                     onClose={() => setCopyWorkout(null)}
                     onConfirm={handleCopyConfirm}
                 />
@@ -713,7 +729,7 @@ export default function CalendarScreen({ navigation, route }) {
             {moveWorkout && (
                 <DatePickerModal
                     title="Move workout to..."
-                    minDate={today()}
+                    minDate={todayStr}
                     onClose={() => setMoveWorkout(null)}
                     onConfirm={handleMoveConfirm}
                 />
