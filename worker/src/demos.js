@@ -34,7 +34,7 @@ export async function handleSearchDemos(request, env) {
 
     if (!q) return json({ exercises: [] });
 
-    const { results } = await env.DB.prepare(`
+    const { results } = await env.demosDB.prepare(`
         SELECT id, name, description, hasVideo, streamId
         FROM demos
         WHERE name LIKE ?
@@ -53,7 +53,7 @@ export async function handleSearchDemos(request, env) {
 export async function handleGetDemo(id, env) {
     if (!id) return json({ error: 'id required' }, 400);
 
-    const row = await env.DB.prepare(
+    const row = await env.demosDB.prepare(
         'SELECT id, name, description, hasVideo, streamId FROM demos WHERE id = ? LIMIT 1'
     ).bind(id).first();
 
@@ -81,13 +81,13 @@ export async function handleGetUnfilmed(request, env) {
         ...(search ? [`%${search}%`] : []),
     ];
 
-    const countRow = await env.DB.prepare(
+    const countRow = await env.demosDB.prepare(
         `SELECT COUNT(*) as total FROM demos WHERE hasVideo = 0 ${searchClause}`
     ).bind(...params).first();
 
     const total = countRow?.total ?? 0;
 
-    const { results } = await env.DB.prepare(`
+    const { results } = await env.demosDB.prepare(`
         SELECT id, name, description, hasVideo
         FROM demos
         WHERE hasVideo = 0 ${searchClause}
@@ -114,7 +114,7 @@ export async function handleCreateDemo(request, env) {
     if (!description?.trim()) return json({ error: 'description is required' }, 400);
 
     // Check for duplicate name (case-insensitive)
-    const existing = await env.DB.prepare(
+    const existing = await env.demosDB.prepare(
         'SELECT id FROM demos WHERE lower(name) = lower(?)'
     ).bind(name.trim()).first();
 
@@ -125,7 +125,7 @@ export async function handleCreateDemo(request, env) {
     // Generate stable UUID
     const id = crypto.randomUUID();
 
-    await env.DB.prepare(
+    await env.demosDB.prepare(
         'INSERT INTO demos (id, name, description, streamId, hasVideo) VALUES (?, ?, ?, NULL, 0)'
     ).bind(id, name.trim(), description.trim()).run();
 
@@ -147,7 +147,7 @@ export async function handleUpdateStreamId(id, request, env) {
 
     const { streamId } = await request.json();
 
-    const existing = await env.DB.prepare(
+    const existing = await env.demosDB.prepare(
         'SELECT id FROM demos WHERE id = ?'
     ).bind(id).first();
 
@@ -155,13 +155,13 @@ export async function handleUpdateStreamId(id, request, env) {
 
     if (!streamId?.trim()) {
         // Clearing the stream ID (e.g. video removed)
-        await env.DB.prepare(
+        await env.demosDB.prepare(
             'UPDATE demos SET streamId = NULL, hasVideo = 0 WHERE id = ?'
         ).bind(id).run();
         return json({ message: 'Stream ID cleared', id, hasVideo: false });
     }
 
-    await env.DB.prepare(
+    await env.demosDB.prepare(
         'UPDATE demos SET streamId = ?, hasVideo = 1 WHERE id = ?'
     ).bind(streamId.trim(), id).run();
 
