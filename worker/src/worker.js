@@ -492,12 +492,12 @@ export default {
             '/workouts/templates':  handleGetTemplates,
         };
 
-        if (method === 'POST' && postRoutes[path]) {
-            return postRoutes[path](request, env);
+        if (method === 'POST' && postRoutes[pathname]) {
+            return postRoutes[pathname](request, env);
         }
 
-        if (method === 'GET' && getRoutes[path]) {
-            return getRoutes[path](request, env);
+        if (method === 'GET' && getRoutes[pathname]) {
+            return getRoutes[pathname](request, env);
         }
 
         if (method === 'GET') {

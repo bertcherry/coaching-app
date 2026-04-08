@@ -1,6 +1,4 @@
 /**
- * coach.js — coach routes for the auth worker
- *
  * Env vars required:
  *   JWT_SECRET      — same secret used to sign access tokens
  *   RESEND_API_KEY  — from resend.com dashboard
@@ -69,7 +67,7 @@ async function sendEmail({ to, subject, html }, env) {
 }
 
 async function sendInviteEmail({ toEmail, toName, coachName, accessCode }, env) {
-  const signupUrl = env.APP_URL ? `${env.APP_URL}/signup` : 'https://yourapp.com/signup';
+  const signupUrl = env.APP_URL ? `${env.APP_URL}/signup` : 'https://cherry-coaching.com/signup';
 
   await sendEmail({
     to: toEmail,
