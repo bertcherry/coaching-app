@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import * as SecureStore from 'expo-secure-store'; 
 
 const AuthContext = createContext(null);
-const API = 'https://auth-worker.bert-m-cherry.workers.dev/';
+const API = 'https://auth-worker.bert-m-cherry.workers.dev';
 
 // Decode a JWT payload without a library (it's just base64)
 function decodeJWT(token) {
@@ -48,7 +48,9 @@ export function AuthProvider({ children }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
     });
+          
     if (!res.ok) {
+      console.log(res);
       const err = await res.json();
       throw new Error(err.error || 'Login failed');
     }
