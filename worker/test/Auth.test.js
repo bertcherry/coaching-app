@@ -13,7 +13,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import worker from '../../src/auth-worker.js'; // adjust path to your worker entry
+import worker from '../src/worker.js'; // adjust path to your worker entry
 
 // ─── Mock D1 database ─────────────────────────────────────────────────────────
 
