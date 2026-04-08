@@ -151,9 +151,11 @@ export default function ExerciseSearch({
     // Debounced search
     React.useEffect(() => {
         if (!showModal) return;
+        let isActive = true;
         if (!searchValue.trim()) {
             setResults([]);
             setSearched(false);
+            setLoading(false);
             return;
         }
         setLoading(true);
@@ -162,16 +164,29 @@ export default function ExerciseSearch({
                 const res = await fetch(
                     `${WORKER_URL}/demos/search?q=${encodeURIComponent(searchValue.trim())}&limit=15`
                 );
+                if (!res.ok) {
+                    const text = await res.text();
+                    console.error('Search failed:', res.status, text);
+                    throw new Error('Search failed');
+                }
                 const body = await res.json();
-                setResults(body.exercises ?? []);
+                if (!isActive) return;
+                const exercises = Array.isArray(body.exercises) ? body.exercises : [];
+                setResults(exercises);
+                console.log('results length:', exercises.length);
                 setSearched(true);
             } catch (e) {
                 console.error('Exercise search error:', e);
+                setResults([]);
             } finally {
+                if (!isActive) return;
                 setLoading(false);
             }
         }, 500);
-        return () => clearTimeout(t);
+        return () => {
+            isActive = false;
+            clearTimeout(t);
+        }
     }, [searchValue, showModal]);
 
     const onSelectExercise = (item) => {
@@ -282,7 +297,7 @@ export default function ExerciseSearch({
                         )}
 
                         {/* Prompt before searching */}
-                        {!loading && !searched && !searchValue && isCoach && (
+                        {!loading && !noResults && isCoach && (
                             <Pressable
                                 style={styles.createPrompt}
                                 onPress={() => {
@@ -327,7 +342,7 @@ const styles = StyleSheet.create({
 
     // Modal
     modalContainer: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'flex-end' },
-    modalContent:   { backgroundColor: '#0d0d0d', borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '80%', paddingBottom: 40 },
+    modalContent:   { backgroundColor: '#0d0d0d', borderTopLeftRadius: 16, borderTopRightRadius: 16, height: '80%'},
 
     searchBar:   { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 0.5, borderBottomColor: '#222' },
     searchInput: { flex: 1, color: '#fae9e9', fontSize: 16 },
