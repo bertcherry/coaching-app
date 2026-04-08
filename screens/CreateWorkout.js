@@ -509,7 +509,7 @@ export default function CreateWorkout({ navigation, route }) {
     const handleSave = async (values) => {
         try {
             // 1. Save workout to workouts table
-            const response = await authFetch('https://cc-workouts.bert-m-cherry.workers.dev/', {
+            const response = await authFetch('https://coaching-app.bert-m-cherry.workers.dev/workouts/save', {
                 method: 'POST',
                 headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -527,7 +527,7 @@ export default function CreateWorkout({ navigation, route }) {
 
             // 2. If client selected, create scheduled_workouts row
             if (values.clientEmail) {
-                const schedRes = await authFetch('https://your-auth-worker.workers.dev/schedule/assign', {
+                const schedRes = await authFetch('https://coaching-app.bert-m-cherry.workers.dev/schedule/assign', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({

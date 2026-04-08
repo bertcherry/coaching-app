@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import * as SecureStore from 'expo-secure-store'; 
 
 const AuthContext = createContext(null);
-const API = 'https://auth-worker.bert-m-cherry.workers.dev';
+const API = 'https://coaching-app.bert-m-cherry.workers.dev';
 
 // Decode a JWT payload without a library (it's just base64)
 function decodeJWT(token) {

@@ -36,7 +36,7 @@ export default function AddClientScreen() {
 
         setLoading(true);
         try {
-            const response = await authFetch('https://auth-worker.bert-m-cherry.workers.dev/coach/add-client', {
+            const response = await authFetch('https://coaching-app.bert-m-cherry.workers.dev/coach/add-client', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

@@ -114,7 +114,7 @@ export default function UnscheduledWorkoutsScreen({ navigation }) {
                 ...(targetSearch ? { search: targetSearch } : {}),
             });
             const res = await authFetch(
-                `https://your-auth-worker.workers.dev/workouts/templates?${params}`
+                `https://coaching-app.bert.m.cherry.workers.dev/workouts/templates?${params}`
             );
             const body = await res.json();
             setTotal(body.total ?? 0);

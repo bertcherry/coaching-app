@@ -414,7 +414,7 @@ export default function CalendarScreen({ navigation, route }) {
         try {
             const monthStr = `${year}-${String(month + 1).padStart(2, '0')}`;
             const res = await authFetch(
-                `https://cc-workouts.bert-m-cherry.workers.dev/schedule?clientEmail=${encodeURIComponent(clientEmail)}&month=${monthStr}`
+                `https://coaching-app.bert-m-cherry.workers.dev/schedule?clientEmail=${encodeURIComponent(clientEmail)}&month=${monthStr}`
             );
             const body = await res.json();
             setWorkouts(body.workouts ?? []);
@@ -504,7 +504,7 @@ export default function CalendarScreen({ navigation, route }) {
         setSaving(true);
         try {
             const res = await authFetch(
-                'https://cc-workouts.bert-m-cherry.workers.dev/schedule/skip',
+                'https://coaching-app.bert-m-cherry.workers.dev/schedule/skip',
                 {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -527,7 +527,7 @@ export default function CalendarScreen({ navigation, route }) {
         setSaving(true);
         try {
             const res = await authFetch(
-                'https://cc-workouts.bert-m-cherry.workers.dev/schedule/copy',
+                'https://coaching-app.bert-m-cherry.workers.dev/schedule/copy',
                 {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -567,7 +567,7 @@ export default function CalendarScreen({ navigation, route }) {
         setSaving(true);
         try {
             const res = await authFetch(
-                'https://cc-workouts.bert-m-cherry.workers.dev/schedule/move',
+                'https://coaching-app.bert-m-cherry.workers.dev/schedule/move',
                 {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },

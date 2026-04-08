@@ -7,6 +7,7 @@ import Feather from '@expo/vector-icons/Feather';
 import { Video, ResizeMode } from 'expo-av';
 import { useAuth } from '../context/AuthContext';
 import { enqueueRecord, syncQueue } from '../utils/WorkoutSync';
+import SetRow from '../components/SetRow';
 
 // ─── Rotating finish messages ─────────────────────────────────────────────────
 
@@ -50,101 +51,20 @@ const FinishOverlay = ({ visible, onDismiss, onConfirm }) => {
     );
 };
 
-// ─── Per-set row ──────────────────────────────────────────────────────────────
-
-const SetRow = ({ setNumber, exerciseId, workoutId, clientId, unitDefault, onSave }) => {
-    const [weight, setWeight] = React.useState('');
-    const [reps, setReps] = React.useState('');
-    const [rpe, setRpe] = React.useState('');
-    const [note, setNote] = React.useState('');
-    const [saved, setSaved] = React.useState(false);
-
-    const handleBlurSave = () => {
-        // Only enqueue if at least one field has data
-        if (!weight && !reps && !rpe && !note) return;
-
-        const record = {
-            dateTime: new Date().toISOString(),
-            clientId,
-            workoutId,
-            exerciseId,
-            set: setNumber,
-            weight: weight ? parseFloat(weight) : null,
-            weightUnit: unitDefault ?? 'lbs',
-            reps: reps ? parseInt(reps) : null,
-            rpe: rpe ? parseFloat(rpe) : null,
-            note: note || null,
-        };
-
-        enqueueRecord(record);
-        onSave(record);
-        setSaved(true);
-    };
-
-    return (
-        <View style={styles.setRow}>
-            <Text style={styles.setLabel}>Set {setNumber}</Text>
-            <View style={styles.setInputs}>
-                <View style={styles.setInputGroup}>
-                    <Text style={styles.setInputLabel}>Wt</Text>
-                    <TextInput
-                        style={[styles.setInput, saved && styles.setInputSaved]}
-                        value={weight}
-                        onChangeText={setWeight}
-                        onBlur={handleBlurSave}
-                        placeholder="—"
-                        placeholderTextColor="#555"
-                        keyboardType="decimal-pad"
-                        returnKeyType="next"
-                    />
-                </View>
-                <View style={styles.setInputGroup}>
-                    <Text style={styles.setInputLabel}>Reps</Text>
-                    <TextInput
-                        style={[styles.setInput, saved && styles.setInputSaved]}
-                        value={reps}
-                        onChangeText={setReps}
-                        onBlur={handleBlurSave}
-                        placeholder="—"
-                        placeholderTextColor="#555"
-                        keyboardType="number-pad"
-                        returnKeyType="next"
-                    />
-                </View>
-                <View style={styles.setInputGroup}>
-                    <Text style={styles.setInputLabel}>RPE</Text>
-                    <TextInput
-                        style={[styles.setInput, saved && styles.setInputSaved]}
-                        value={rpe}
-                        onChangeText={setRpe}
-                        onBlur={handleBlurSave}
-                        placeholder="—"
-                        placeholderTextColor="#555"
-                        keyboardType="decimal-pad"
-                        returnKeyType="done"
-                    />
-                </View>
-            </View>
-            <TextInput
-                style={[styles.setNoteInput, saved && styles.setInputSaved]}
-                value={note}
-                onChangeText={setNote}
-                onBlur={handleBlurSave}
-                placeholder="Note (optional)"
-                placeholderTextColor="#555"
-                multiline
-            />
-            {saved && (
-                <View style={styles.savedBadge}>
-                    <Feather name="check" size={10} color="#7bb533" />
-                    <Text style={styles.savedBadgeText}>Saved</Text>
-                </View>
-            )}
-        </View>
-    );
-};
-
 // ─── Exercise item ────────────────────────────────────────────────────────────
+function formatPrescription(item) {
+    const { countType, countMin, countMax, timeCapSeconds } = item;
+    if (!countType) return '';
+    if (countType === 'AMRAP') {
+        return timeCapSeconds
+            ? `AMRAP · ${Math.round(timeCapSeconds / 60)} min cap`
+            : 'AMRAP';
+    }
+    const unit = countType === 'Timed' ? 'sec' : 'reps';
+    if (countMax) return `${countMin}–${countMax} ${unit}`;
+    if (countMin) return `${countMin} ${unit}`;
+    return countType;
+}
 
 const Item = ({ workoutId, clientId, unitDefault, onSetSaved, ...item }) => {
     const [video, setVideo] = React.useState({});
@@ -217,7 +137,7 @@ const Item = ({ workoutId, clientId, unitDefault, onSetSaved, ...item }) => {
                     style={styles.logsContainer}
                 >
                     <Text style={styles.setsHeader}>
-                        {setCount} set{setCount !== 1 ? 's' : ''} · {item.countType === 'AMRAP' ? 'AMRAP' : `${item.count} ${item.countType}`}
+                        {setCount} set{setCount !== 1 ? 's' : ''} · {formatPrescription(item)}
                     </Text>
                     {setRows.map(setNum => (
                         <SetRow
@@ -227,6 +147,10 @@ const Item = ({ workoutId, clientId, unitDefault, onSetSaved, ...item }) => {
                             workoutId={workoutId}
                             clientId={clientId}
                             unitDefault={unitDefault}
+                            countType={item.countType}
+                            countMin={item.countMin != null ? parseFloat(item.countMin) : null}
+                            countMax={item.countMax != null ? parseFloat(item.countMax) : null}
+                            timeCapSeconds={item.timeCapSeconds != null ? parseFloat(item.timeCapSeconds) : null}
                             onSave={onSetSaved}
                         />
                     ))}
@@ -249,7 +173,7 @@ export default function WorkoutPreview({ route, navigation }) {
     React.useEffect(() => {
         const getWorkout = async () => {
             try {
-                const resp = await fetch(new URL(`https://cc-workouts.bert-m-cherry.workers.dev/${id}`));
+                const resp = await fetch(new URL(`https://coaching-app.bert-m-cherry.workers.dev/${id}`));
                 const workoutResp = await resp.json();
                 let respData = [...workoutResp];
                 respData.forEach((section, index) => {
@@ -280,7 +204,7 @@ export default function WorkoutPreview({ route, navigation }) {
         // Mark scheduled workout complete on server
         if (scheduledWorkoutId) {
             try {
-                await authFetch('https://cc-workouts.bert-m-cherry.workers.dev/schedule/complete', {
+                await authFetch('https://coaching-app.bert-m-cherry.workers.dev/schedule/complete', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({

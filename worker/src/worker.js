@@ -27,6 +27,8 @@
  */
 
 import { jwtVerify } from 'jose';
+import { handleLogin, handleRegister, handleRefresh, handleLogout, handleForgotPassword, handleResetPassword } from './auth-worker';
+import { handleAddClient, handleGetClients } from './coach';
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
 
@@ -465,31 +467,38 @@ export default {
         const method   = request.method;
         const pathname = url.pathname;
 
-        // Schedule routes
-        if (pathname === '/schedule' && method === 'GET')
-            return handleGetSchedule(request, env);
-        if (pathname === '/schedule/assign' && method === 'POST')
-            return handleAssignWorkout(request, env);
-        if (pathname === '/schedule/move' && method === 'POST')
-            return handleMoveWorkout(request, env);
-        if (pathname === '/schedule/skip' && method === 'POST')
-            return handleSkipWorkout(request, env);
-        if (pathname === '/schedule/copy' && method === 'POST')
-            return handleCopyWorkout(request, env);
-        if (pathname === '/schedule/complete' && method === 'POST')
-            return handleScheduleComplete(request, env);
+        // POST-only auth routes
+        const postRoutes = {
+            '/auth/login':           handleLogin,
+            '/auth/register':        handleRegister,
+            '/auth/refresh':         handleRefresh,
+            '/auth/logout':          handleLogout,
+            '/auth/forgot-password': handleForgotPassword,
+            '/auth/reset-password':  handleResetPassword,
+            '/coach/add-client':     handleAddClient,
+            '/schedule/assign':      handleAssignWorkout,
+            '/schedule/move':        handleMoveWorkout,
+            '/schedule/skip':        handleSkipWorkout,
+            '/schedule/copy':        handleCopyWorkout,
+            '/schedule/complete':    handleScheduleComplete,
+            '/history/batch':        handleHistoryBatch,
+            '/workouts/save':        handleSaveWorkout,
+        };
+        
+        // GET Routes
+        const getRoutes = {
+            '/coach/clients':       handleGetClients,
+            '/schedule':            handleGetSchedule,
+            '/workouts/templates':  handleGetTemplates,
+        };
 
-        // History
-        if (pathname === '/history/batch' && method === 'POST')
-            return handleHistoryBatch(request, env);
+        if (method === 'POST' && postRoutes[path]) {
+            return postRoutes[path](request, env);
+        }
 
-        // Template workouts
-        if (pathname === '/workouts/templates' && method === 'GET')
-            return handleGetTemplates(request, env);
-
-        // Core workout CRUD
-        if (pathname === '/' && method === 'POST')
-            return handleSaveWorkout(request, env);
+        if (method === 'GET' && getRoutes[path]) {
+            return getRoutes[path](request, env);
+        }
 
         if (method === 'GET') {
             const id = pathname.slice(1);

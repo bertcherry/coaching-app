@@ -42,7 +42,7 @@ function json(data, status = 200) {
 
 // ── Route handlers ────────────────────────────────────────────────────────────
 
-async function handleLogin(request, env) {
+export async function handleLogin(request, env) {
   const { email, password } = await request.json();
   if (!email || !password) return json({ error: 'Missing fields' }, 400);
 
@@ -69,7 +69,7 @@ async function handleLogin(request, env) {
   return json({ accessToken, refreshToken });
 }
 
-async function handleRegister(request, env) {
+export async function handleRegister(request, env) {
   const { email, password, fname, lname, accessCode } = await request.json();
 
   if (!email || !password || !fname || !lname || !accessCode) {
@@ -114,7 +114,7 @@ async function handleRegister(request, env) {
   return json({ message: 'Registered successfully.' }, 201);
 }
 
-async function handleRefresh(request, env) {
+export async function handleRefresh(request, env) {
   const { refreshToken } = await request.json();
   if (!refreshToken) return json({ error: 'Missing token' }, 400);
 
@@ -144,7 +144,7 @@ async function handleRefresh(request, env) {
   return json({ accessToken });
 }
 
-async function handleLogout(request, env) {
+export async function handleLogout(request, env) {
   const { refreshToken } = await request.json();
   if (!refreshToken) return json({ error: 'Missing token' }, 400);
   await env.DB.prepare(
@@ -153,7 +153,7 @@ async function handleLogout(request, env) {
   return json({ message: 'Logged out' });
 }
 
-async function handleForgotPassword(request, env) {
+export async function handleForgotPassword(request, env) {
   const { email } = await request.json();
   const client = await env.DB.prepare(
     `SELECT email, fname FROM clients WHERE email = ?`
@@ -190,7 +190,7 @@ async function handleForgotPassword(request, env) {
   return json({ message: 'If that email exists, a code was sent.' });
 }
 
-async function handleResetPassword(request, env) {
+export async function handleResetPassword(request, env) {
   const { email, code, newPassword } = await request.json();
   if (!email || !code || !newPassword) return json({ error: 'Missing fields' }, 400);
 
@@ -229,7 +229,7 @@ async function handleResetPassword(request, env) {
  *   RESEND_API_KEY  — from resend.com dashboard
  *   FROM_EMAIL      — e.g. "Cherry Coaching <noreply@yourdomain.com>"
  */
-async function sendEmail({ to, subject, html }, env) {
+export async function sendEmail({ to, subject, html }, env) {
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
@@ -251,39 +251,3 @@ async function sendEmail({ to, subject, html }, env) {
 
   return res.json();
 }
-
-// ── Main handler ──────────────────────────────────────────────────────────────
-
-export default {
-  async fetch(request, env) {
-    const url = new URL(request.url);
-    const path = url.pathname;
-    const method = request.method;
-
-    // POST-only auth routes
-    const postRoutes = {
-      '/auth/login':           handleLogin,
-      '/auth/register':        handleRegister,
-      '/auth/refresh':         handleRefresh,
-      '/auth/logout':          handleLogout,
-      '/auth/forgot-password': handleForgotPassword,
-      '/auth/reset-password':  handleResetPassword,
-      '/coach/add-client':     handleAddClient,
-    };
-
-    // GET-only routes
-    const getRoutes = {
-      '/coach/clients': handleGetClients,
-    };
-
-    if (method === 'POST' && postRoutes[path]) {
-      return postRoutes[path](request, env);
-    }
-
-    if (method === 'GET' && getRoutes[path]) {
-      return getRoutes[path](request, env);
-    }
-
-    return new Response('Not found', { status: 404 });
-  },
-};

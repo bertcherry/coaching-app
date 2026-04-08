@@ -12,7 +12,7 @@ export default function SignUpScreen() {
     const navigation = useNavigation();
 
     const onRegisterPressed = async () => {
-      const res = await fetch('https://auth-worker.bert-m-cherry.workers.dev/auth/register', {
+      const res = await fetch('https://coaching-app.bert-m-cherry.workers.dev/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password, fname, lname, accessCode }),
