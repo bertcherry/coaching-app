@@ -138,7 +138,7 @@ const ClientSearch = ({ selectedEmail, selectedName, onSelect, coachEmail, authF
     React.useEffect(() => {
         const load = async () => {
             try {
-                const res = await authFetch('https://coaching-app.bert.m.cherry.workers.dev/coach/clients');
+                const res = await authFetch('https://coaching-app.bert-m-cherry.workers.dev/coach/clients');
                 const body = await res.json();
                 setAllClients(body.clients ?? []);
                 setFiltered((body.clients ?? []).slice(0, 5));
