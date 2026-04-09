@@ -137,9 +137,6 @@ const Item = ({ workoutId, clientId, unitDefault, onSetSaved, ...item }) => {
                     behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                     style={styles.logsContainer}
                 >
-                    <Text style={styles.setsHeader}>
-                        {setCount} set{setCount !== 1 ? 's' : ''} · {formatPrescription(item)}
-                    </Text>
                     {setRows.map(setNum => (
                         <SetRow
                             key={`${item.id}-set-${setNum}`}
