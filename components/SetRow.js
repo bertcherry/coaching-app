@@ -207,7 +207,7 @@ const styles = StyleSheet.create({
     setInputs: { flexDirection: 'row', gap: 8, marginBottom: 6 },
     setInputGroup: { flex: 1, alignItems: 'center' },
     setInputLabel: { fontSize: 10, color: '#bbb', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5, textAlign: 'center' },
-    setInput:      { width: '100%', height: 36, borderWidth: 1, borderColor: '#333', borderRadius: 6, backgroundColor: '#1a1a1a', color: '#fae9e9', textAlign: 'center', fontSize: 15 },
+    setInput:      { width: '100%', height: 38, borderWidth: 1, borderColor: '#333', borderRadius: 6, backgroundColor: '#1a1a1a', color: '#fae9e9', textAlign: 'center', fontSize: 15 },
     setInputSaved: { borderColor: '#7bb533' },
     setInputPrefilled: { borderColor: '#fba8a0', borderStyle: 'dashed' },
     setInputError: { borderColor: '#fba8a0' },
