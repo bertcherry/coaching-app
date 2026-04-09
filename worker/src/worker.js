@@ -9,6 +9,7 @@ import {
     handleUpdateStreamId,
 } from './demos';
 import { handleHistoryBatch, handleExerciseSummary } from './history';
+import { handleUpdateName, handleUpdateEmail, handleUpdatePassword, handleUpdateUnit } from './profile';
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
 
@@ -221,6 +222,10 @@ export default {
             '/schedule/complete':    handleScheduleComplete,
             '/history/batch':        handleHistoryBatch,
             '/workouts/save':        handleSaveWorkout,
+            '/profile/name':         handleUpdateName,
+            '/profile/email':        handleUpdateEmail,
+            '/profile/password':     handleUpdatePassword,
+            '/profile/unit':         handleUpdateUnit,
         };
 
         const getRoutes = {
@@ -230,7 +235,7 @@ export default {
             '/history/exercise-summary':    handleExerciseSummary,
         };
 
-        if (method === 'POST' && postRoutes[pathname]) {
+        if (method === 'POST' || method === 'PATCH' && postRoutes[pathname]) {
             return postRoutes[pathname](request, env);
         }
         if (method === 'GET' && getRoutes[pathname]) {

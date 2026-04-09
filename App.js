@@ -6,6 +6,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import CoachingHeader from './components/CoachingHeader';
 import CoachingFooter from './components/CoachingFooter';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ThemeProvider, useTheme } from './context/ThemeContext';
 import SignInNavigation from './screens/navigation/SignInNavigation';
 import CoachNavigation from './screens/navigation/CoachNavigation';
 import ClientNavigation from './screens/navigation/ClientNavigation';
@@ -25,26 +26,38 @@ function RootNavigator() {
   return <ClientNavigation />;
 }
 
+function ThemedApp() {
+  const { theme } = useTheme();
+
+  return (
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.headerBackground }]}>
+      <NavigationContainer>
+        <View style={[styles.container, { backgroundColor: theme.background }]}>
+          <CoachingHeader />
+          <RootNavigator />
+          <CoachingFooter />
+        </View>
+      </NavigationContainer>
+    </SafeAreaView>
+  );
+}
+
 export default function App() {
   return (
-    <AuthProvider>
-      <SafeAreaView style={styles.container}>
-        <NavigationContainer>
-          <View style={styles.container}>
-            <CoachingHeader />
-            <RootNavigator />
-            <CoachingFooter />
-          </View>
-        </NavigationContainer>
-      </SafeAreaView>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <ThemedApp />
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+  },
   container: {
     flex: 1,
-    backgroundColor: 'black',
     justifyContent: 'space-between',
   },
 });
