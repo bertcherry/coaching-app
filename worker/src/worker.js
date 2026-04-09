@@ -10,6 +10,7 @@ import {
 } from './demos';
 import { handleHistoryBatch, handleExerciseSummary } from './history';
 import { handleUpdateName, handleUpdateEmail, handleUpdatePassword, handleUpdateUnit } from './profile';
+import { handleGetSchedule } from './schedule';
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
 
@@ -83,25 +84,7 @@ async function handleGetTemplates(request, env) {
     return json({ workouts, total, page, pageSize });
 }
 
-// ─── Schedule handlers (unchanged) ───────────────────────────────────────────
-
-async function handleGetSchedule(request, env) {
-    let caller;
-    try { caller = await requireAuth(request, env); }
-    catch (e) { return e; }
-    const url = new URL(request.url);
-    const clientEmail = url.searchParams.get('clientEmail');
-    const month       = url.searchParams.get('month');
-    if (!clientEmail || !month) return json({ error: 'clientEmail and month are required' }, 400);
-    if (!caller.isCoach && caller.email !== clientEmail) return json({ error: 'Forbidden' }, 403);
-    if (caller.isCoach) {
-        const client = await env.DB.prepare('SELECT email FROM clients WHERE email = ? AND coachedBy = ?').bind(clientEmail, caller.email).first();
-        if (!client) return json({ error: 'Client not found' }, 404);
-    }
-    const { results } = await env.DB.prepare(`SELECT id, clientEmail, workoutId, workoutName, scheduledDate, status, skipReason, completedAt, originalDate, copiedFrom FROM scheduled_workouts WHERE clientEmail = ? AND scheduledDate LIKE ? ORDER BY scheduledDate ASC`).bind(clientEmail, `${month}%`).all();
-    return json({ workouts: results });
-}
-
+// ─── Schedule handlers  ───────────────────────────────────────────
 async function handleAssignWorkout(request, env) {
     let coach;
     try { coach = await requireCoach(request, env); }
@@ -119,7 +102,7 @@ async function handleMoveWorkout(request, env) {
     let caller;
     try { caller = await requireAuth(request, env); }
     catch (e) { return e; }
-    const { id, newDate } = await request.json();
+    const { id, newDate, today } = await request.json();
     if (!id || !newDate || !today) return json({ error: 'id, newDate, and today are required' }, 400);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(newDate)) return json({ error: 'newDate must be YYYY-MM-DD' }, 400);
     const workout = await env.DB.prepare('SELECT * FROM scheduled_workouts WHERE id = ?').bind(id).first();

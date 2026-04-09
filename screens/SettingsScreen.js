@@ -3,10 +3,11 @@
  * Location: screens/SettingsScreen.js
  *
  * Sections:
- *   Appearance — light / dark / system theme toggle
- *   Profile    — change first name, last name
- *   Security   — change email (requires password confirm), change password
- *   Workout    — default weight unit (lbs / kg)
+ *   Appearance  — light / dark / system theme toggle
+ *   Calendar    — default calendar view (month / week)
+ *   Profile     — change first name, last name
+ *   Security    — change email (requires password confirm), change password
+ *   Workout     — default weight unit (lbs / kg)
  */
 
 import * as React from 'react';
@@ -16,12 +17,14 @@ import {
     KeyboardAvoidingView, Platform,
 } from 'react-native';
 import Feather from '@expo/vector-icons/Feather';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
+import { CALENDAR_VIEW_KEY } from '../screens/CalendarScreen';
 
 const WORKER_URL = 'https://coaching-app.bert-m-cherry.workers.dev';
 
-// ─── Small reusable pieces ────────────────────────────────────────────────────
+// ─── Reusable pieces ──────────────────────────────────────────────────────────
 
 const SectionHeader = ({ title, theme }) => (
     <Text style={[styles.sectionHeader, { color: theme.textTertiary, borderBottomColor: theme.divider }]}>
@@ -37,6 +40,8 @@ const Row = ({ icon, label, value, onPress, theme, last = false, destructive = f
             last && styles.rowLast,
         ]}
         onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={value ? `${label}: ${value}` : label}
     >
         <View style={[styles.rowIcon, { backgroundColor: theme.accentSubtle }]}>
             <Feather name={icon} size={18} color={destructive ? '#e05050' : theme.accent} />
@@ -63,6 +68,9 @@ const ThemeOption = ({ value, label, icon, current, onSelect, theme }) => {
                 selected && { borderColor: theme.accent, backgroundColor: theme.accentSubtle },
             ]}
             onPress={() => onSelect(value)}
+            accessibilityRole="radio"
+            accessibilityLabel={label}
+            accessibilityState={{ selected }}
         >
             <Feather name={icon} size={22} color={selected ? theme.accent : theme.textSecondary} />
             <Text style={[styles.themeOptionLabel, { color: selected ? theme.accent : theme.textSecondary }]}>
@@ -71,6 +79,42 @@ const ThemeOption = ({ value, label, icon, current, onSelect, theme }) => {
             {selected && (
                 <View style={[styles.themeCheck, { backgroundColor: theme.accent }]}>
                     <Feather name="check" size={10} color="#000" />
+                </View>
+            )}
+        </Pressable>
+    );
+};
+
+// ─── Calendar view picker ─────────────────────────────────────────────────────
+
+const CalendarViewOption = ({ value, label, icon, desc, current, onSelect, theme }) => {
+    const selected = current === value;
+    return (
+        <Pressable
+            style={[
+                styles.calViewOption,
+                { backgroundColor: theme.surfaceElevated, borderColor: theme.surfaceBorder },
+                selected && { borderColor: theme.accent, backgroundColor: theme.accentSubtle },
+            ]}
+            onPress={() => onSelect(value)}
+            accessibilityRole="radio"
+            accessibilityLabel={label}
+            accessibilityState={{ selected }}
+        >
+            <View style={styles.calViewOptionLeft}>
+                <Feather name={icon} size={22} color={selected ? theme.accent : theme.textSecondary} />
+                <View>
+                    <Text style={[styles.calViewOptionLabel, { color: selected ? theme.accent : theme.textPrimary }]}>
+                        {label}
+                    </Text>
+                    <Text style={[styles.calViewOptionDesc, { color: theme.textSecondary }]}>
+                        {desc}
+                    </Text>
+                </View>
+            </View>
+            {selected && (
+                <View style={[styles.calViewCheck, { backgroundColor: theme.accent }]}>
+                    <Feather name="check" size={12} color="#000" />
                 </View>
             )}
         </Pressable>
@@ -93,8 +137,6 @@ const EditModal = ({
         }
     }, [visible]);
 
-    const handleSubmit = () => onSubmit(values);
-
     return (
         <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
             <KeyboardAvoidingView
@@ -104,7 +146,7 @@ const EditModal = ({
                 <View style={[styles.modalCard, { backgroundColor: theme.surfaceElevated, borderColor: theme.surfaceBorder }]}>
                     <View style={styles.modalHeader}>
                         <Text style={[styles.modalTitle, { color: theme.textPrimary }]}>{title}</Text>
-                        <Pressable onPress={onClose}>
+                        <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="Close" style={styles.modalClose}>
                             <Feather name="x" size={20} color={theme.textTertiary} />
                         </Pressable>
                     </View>
@@ -129,6 +171,7 @@ const EditModal = ({
                                 keyboardType={f.keyboardType ?? 'default'}
                                 autoCapitalize={f.autoCapitalize ?? 'sentences'}
                                 autoCorrect={false}
+                                accessibilityLabel={f.label}
                             />
                         </View>
                     ))}
@@ -137,15 +180,17 @@ const EditModal = ({
                         <Pressable
                             style={[styles.modalButtonSecondary, { borderColor: theme.divider }]}
                             onPress={onClose}
+                            accessibilityRole="button"
+                            accessibilityLabel="Cancel"
                         >
-                            <Text style={[styles.modalButtonSecondaryText, { color: theme.textSecondary }]}>
-                                Cancel
-                            </Text>
+                            <Text style={[styles.modalButtonSecondaryText, { color: theme.textSecondary }]}>Cancel</Text>
                         </Pressable>
                         <Pressable
                             style={[styles.modalButtonPrimary, { backgroundColor: theme.accent }]}
-                            onPress={handleSubmit}
+                            onPress={() => onSubmit(values)}
                             disabled={loading}
+                            accessibilityRole="button"
+                            accessibilityLabel={submitLabel}
                         >
                             {loading
                                 ? <ActivityIndicator size="small" color="#000" />
@@ -180,6 +225,9 @@ const UnitPickerModal = ({ visible, current, onClose, onSelect, theme }) => (
                             current === opt.value && { borderColor: theme.accent, backgroundColor: theme.accentSubtle },
                         ]}
                         onPress={() => { onSelect(opt.value); onClose(); }}
+                        accessibilityRole="radio"
+                        accessibilityLabel={opt.label}
+                        accessibilityState={{ selected: current === opt.value }}
                     >
                         <View style={{ flex: 1 }}>
                             <Text style={[styles.unitOptionLabel, { color: theme.textPrimary }]}>{opt.label}</Text>
@@ -209,15 +257,28 @@ export default function SettingsScreen() {
     const [showEditPassword, setShowEditPassword] = React.useState(false);
     const [showUnitPicker,   setShowUnitPicker]   = React.useState(false);
 
-    // Local copy of user prefs (synced from user token)
-    const [unitDefault, setUnitDefault] = React.useState(user?.unitDefault ?? 'imperial');
+    // Local prefs
+    const [unitDefault,   setUnitDefault]   = React.useState(user?.unitDefault ?? 'imperial');
+    const [calendarView,  setCalendarView]  = React.useState('month'); // 'month' | 'week'
 
-    // Keep unit in sync if user token refreshes
+    // Load saved calendar view preference
+    React.useEffect(() => {
+        AsyncStorage.getItem(CALENDAR_VIEW_KEY).then(v => {
+            if (v === 'week' || v === 'month') setCalendarView(v);
+        });
+    }, []);
+
+    // Sync unit from token refresh
     React.useEffect(() => {
         if (user?.unitDefault) setUnitDefault(user.unitDefault);
     }, [user?.unitDefault]);
 
     // ── Handlers ────────────────────────────────────────────────────────────
+
+    const handleCalendarViewSelect = async (value) => {
+        setCalendarView(value);
+        try { await AsyncStorage.setItem(CALENDAR_VIEW_KEY, value); } catch {}
+    };
 
     const handleSaveName = async ({ fname, lname }) => {
         if (!fname.trim() || !lname.trim()) {
@@ -240,9 +301,7 @@ export default function SettingsScreen() {
             }
         } catch {
             Alert.alert('Error', 'Network error. Please try again.');
-        } finally {
-            setLoading(false);
-        }
+        } finally { setLoading(false); }
     };
 
     const handleSaveEmail = async ({ newEmail, password }) => {
@@ -275,9 +334,7 @@ export default function SettingsScreen() {
             }
         } catch {
             Alert.alert('Error', 'Network error. Please try again.');
-        } finally {
-            setLoading(false);
-        }
+        } finally { setLoading(false); }
     };
 
     const handleSavePassword = async ({ currentPassword, newPassword, confirmPassword }) => {
@@ -309,9 +366,7 @@ export default function SettingsScreen() {
             }
         } catch {
             Alert.alert('Error', 'Network error. Please try again.');
-        } finally {
-            setLoading(false);
-        }
+        } finally { setLoading(false); }
     };
 
     const handleSaveUnit = async (unit) => {
@@ -322,17 +377,15 @@ export default function SettingsScreen() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ unitDefault: unit }),
             });
-        } catch {
-            // Non-fatal — local state already updated, will sync on next token refresh
-        }
+        } catch {}
     };
 
     // ── Render ───────────────────────────────────────────────────────────────
 
     const s = makeStyles(theme);
-
     const themeLabel = { system: 'System', light: 'Light', dark: 'Dark' }[preference];
     const unitLabel  = unitDefault === 'metric' ? 'kg' : 'lbs';
+    const calLabel   = calendarView === 'week' ? 'Weekly' : 'Monthly';
 
     return (
         <View style={s.container}>
@@ -340,7 +393,6 @@ export default function SettingsScreen() {
 
                 {/* ── Appearance ── */}
                 <SectionHeader title="APPEARANCE" theme={theme} />
-
                 <View style={[s.themeCard, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}>
                     <Text style={[s.themeCardLabel, { color: theme.textSecondary }]}>Color theme</Text>
                     <View style={s.themeOptions}>
@@ -349,10 +401,47 @@ export default function SettingsScreen() {
                         <ThemeOption value="dark"   label="Dark"  icon="moon"        current={preference} onSelect={setPreference} theme={theme} />
                     </View>
                     <Text style={[s.themeHint, { color: theme.textTertiary }]}>
-                        {preference === 'system'
-                            ? 'Follows your device setting'
-                            : `Always use ${preference} mode`}
+                        {preference === 'system' ? 'Follows your device setting' : `Always use ${preference} mode`}
                     </Text>
+                </View>
+
+                {/* ── Calendar ── */}
+                <SectionHeader title="CALENDAR" theme={theme} />
+                <View style={[s.calCard, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}>
+                    <Text style={[s.calCardLabel, { color: theme.textSecondary }]}>
+                        Default calendar view
+                    </Text>
+                    <Text style={[s.calCardHint, { color: theme.textTertiary }]}>
+                        You can also toggle the view directly in the calendar header.
+                    </Text>
+                    <View style={s.calViewOptions}>
+                        <CalendarViewOption
+                            value="month"
+                            label="Monthly"
+                            icon="grid"
+                            desc="See the whole month at a glance"
+                            current={calendarView}
+                            onSelect={handleCalendarViewSelect}
+                            theme={theme}
+                        />
+                        <CalendarViewOption
+                            value="week"
+                            label="Weekly"
+                            icon="columns"
+                            desc="Focus on the current week with a detailed list"
+                            current={calendarView}
+                            onSelect={handleCalendarViewSelect}
+                            theme={theme}
+                        />
+                    </View>
+                    <View style={[s.tzNote, { backgroundColor: theme.surfaceElevated, borderColor: theme.surfaceBorder }]}>
+                        <Feather name="globe" size={13} color={theme.textTertiary} style={{ marginRight: 8, flexShrink: 0, marginTop: 1 }} />
+                        <Text style={[s.tzNoteText, { color: theme.textTertiary }]}>
+                            Today is always highlighted based on your device's current timezone.
+                            Workout dates are calendar dates — a workout on April 10 shows as April 10
+                            everywhere, regardless of timezone.
+                        </Text>
+                    </View>
                 </View>
 
                 {/* ── Profile ── */}
@@ -400,9 +489,7 @@ export default function SettingsScreen() {
                     />
                 </View>
 
-                {/* Spacer */}
                 <View style={{ height: 40 }} />
-
             </ScrollView>
 
             {/* ── Modals ── */}
@@ -464,127 +551,64 @@ export default function SettingsScreen() {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-// Dynamic styles that depend on theme
 function makeStyles(theme) {
     return StyleSheet.create({
         container:    { flex: 1, backgroundColor: theme.background },
         scrollContent:{ paddingBottom: 40 },
         themeCard:    { marginHorizontal: 16, marginBottom: 8, borderRadius: 12, borderWidth: 1, padding: 16 },
-        themeCardLabel:{ fontSize: 13, fontWeight: '600', marginBottom: 12 },
+        themeCardLabel:{ fontSize: 13, fontWeight: '600', marginBottom: 12, color: theme.textSecondary },
         themeOptions: { flexDirection: 'row', gap: 10 },
         themeHint:    { fontSize: 11, marginTop: 10 },
-        group:        { marginHorizontal: 16, marginBottom: 8, borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: theme.surfaceBorder },
+
+        calCard:        { marginHorizontal: 16, marginBottom: 8, borderRadius: 12, borderWidth: 1, padding: 16 },
+        calCardLabel:   { fontSize: 13, fontWeight: '600', marginBottom: 4 },
+        calCardHint:    { fontSize: 12, marginBottom: 14, lineHeight: 16 },
+        calViewOptions: { gap: 10 },
+        tzNote:         { flexDirection: 'row', alignItems: 'flex-start', borderRadius: 8, borderWidth: 1, padding: 12, marginTop: 14 },
+        tzNoteText:     { fontSize: 12, lineHeight: 17, flex: 1 },
+
+        group: { marginHorizontal: 16, marginBottom: 8, borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: theme.surfaceBorder },
     });
 }
 
-// Static styles
 const styles = StyleSheet.create({
     sectionHeader: {
-        fontSize: 11,
-        fontWeight: '700',
-        letterSpacing: 0.8,
-        paddingHorizontal: 20,
-        paddingTop: 24,
-        paddingBottom: 8,
-        borderBottomWidth: 0,
+        fontSize: 11, fontWeight: '700', letterSpacing: 0.8,
+        paddingHorizontal: 20, paddingTop: 24, paddingBottom: 8,
     },
-    row: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 16,
-        paddingVertical: 14,
-        borderBottomWidth: 0.5,
-    },
+    row:     { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 0.5, minHeight: 56 },
     rowLast: { borderBottomWidth: 0 },
-    rowIcon: {
-        width: 32,
-        height: 32,
-        borderRadius: 8,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 14,
-    },
-    rowLabel:  { flex: 1, fontSize: 15 },
-    rowRight:  { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    rowValue:  { fontSize: 14 },
+    rowIcon: { width: 32, height: 32, borderRadius: 8, justifyContent: 'center', alignItems: 'center', marginRight: 14 },
+    rowLabel:{ flex: 1, fontSize: 15 },
+    rowRight:{ flexDirection: 'row', alignItems: 'center', gap: 8 },
+    rowValue:{ fontSize: 14 },
 
-    themeOption: {
-        flex: 1,
-        alignItems: 'center',
-        paddingVertical: 12,
-        borderRadius: 10,
-        borderWidth: 1.5,
-        gap: 6,
-        position: 'relative',
-    },
+    themeOption:      { flex: 1, alignItems: 'center', paddingVertical: 12, borderRadius: 10, borderWidth: 1.5, gap: 6, position: 'relative', minHeight: 72 },
     themeOptionLabel: { fontSize: 12, fontWeight: '600' },
-    themeCheck: {
-        position: 'absolute',
-        top: 6,
-        right: 6,
-        width: 16,
-        height: 16,
-        borderRadius: 8,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
+    themeCheck:       { position: 'absolute', top: 6, right: 6, width: 16, height: 16, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
 
-    unitOption: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 14,
-        borderRadius: 10,
-        borderWidth: 1,
-        marginBottom: 10,
-    },
+    calViewOption:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderRadius: 10, borderWidth: 1.5, padding: 14, minHeight: 64 },
+    calViewOptionLeft:  { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
+    calViewOptionLabel: { fontSize: 15, fontWeight: '600' },
+    calViewOptionDesc:  { fontSize: 12, marginTop: 2 },
+    calViewCheck:       { width: 20, height: 20, borderRadius: 10, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
+
+    unitOption:      { flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 10, borderWidth: 1, marginBottom: 10 },
     unitOptionLabel: { fontSize: 15, fontWeight: '600' },
     unitOptionDesc:  { fontSize: 12, marginTop: 2 },
 
-    // Modal
-    modalOverlay: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 24,
-    },
-    modalCard: {
-        width: '100%',
-        borderRadius: 16,
-        padding: 24,
-        borderWidth: 1,
-    },
-    modalHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 6,
-    },
-    modalTitle:    { fontSize: 18, fontWeight: 'bold' },
-    modalSubtitle: { fontSize: 13, lineHeight: 18, marginBottom: 12 },
-    modalField:    { marginBottom: 14 },
-    fieldLabel:    { fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 },
-    modalInput: {
-        height: 42,
-        borderWidth: 1,
-        borderRadius: 8,
-        paddingHorizontal: 12,
-        fontSize: 15,
-    },
-    modalActions: { flexDirection: 'row', gap: 12, marginTop: 8 },
-    modalButtonPrimary: {
-        flex: 1,
-        borderRadius: 8,
-        paddingVertical: 12,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
+    modalOverlay:   { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
+    modalCard:      { width: '100%', borderRadius: 16, padding: 24, borderWidth: 1 },
+    modalHeader:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
+    modalClose:     { minWidth: 44, minHeight: 44, justifyContent: 'center', alignItems: 'center' },
+    modalTitle:     { fontSize: 18, fontWeight: 'bold' },
+    modalSubtitle:  { fontSize: 13, lineHeight: 18, marginBottom: 12 },
+    modalField:     { marginBottom: 14 },
+    fieldLabel:     { fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 },
+    modalInput:     { height: 42, borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, fontSize: 15 },
+    modalActions:   { flexDirection: 'row', gap: 12, marginTop: 8 },
+    modalButtonPrimary:       { flex: 1, borderRadius: 8, paddingVertical: 12, alignItems: 'center', justifyContent: 'center', minHeight: 48 },
     modalButtonPrimaryText:   { color: '#000', fontWeight: '700', fontSize: 15 },
-    modalButtonSecondary: {
-        flex: 1,
-        borderWidth: 1,
-        borderRadius: 8,
-        paddingVertical: 12,
-        alignItems: 'center',
-    },
+    modalButtonSecondary:     { flex: 1, borderWidth: 1, borderRadius: 8, paddingVertical: 12, alignItems: 'center', minHeight: 48 },
     modalButtonSecondaryText: { fontSize: 15 },
 });
