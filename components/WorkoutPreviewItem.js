@@ -1,91 +1,59 @@
 import * as React from 'react';
-import {
-    View, Text, StyleSheet, Pressable, KeyboardAvoidingView, Platform,
-} from 'react-native';
+import { View, Text, StyleSheet, Pressable, KeyboardAvoidingView, Platform } from 'react-native';
 import Feather from '@expo/vector-icons/Feather';
 import { Video, ResizeMode } from 'expo-av';
 import SetRow from './SetRow';
 
 const WORKER_URL = 'https://coaching-app.bert-m-cherry.workers.dev';
 
-// ─── Stream URL helper ────────────────────────────────────────────────────────
-
 function streamUrl(streamId) {
     return `https://customer-fp1q3oe31pc8sz6g.cloudflarestream.com/${streamId}/manifest/video.mpd`;
 }
-
-// ─── Video player (only rendered when hasVideo) ───────────────────────────────
 
 const VideoPlayer = ({ streamId }) => {
     const videoRef = React.useRef(null);
     return (
         <View style={styles.videoContainer}>
-            <Video
-                ref={videoRef}
-                style={styles.video}
-                source={{ uri: streamUrl(streamId) }}
-                useNativeControls
-                resizeMode={ResizeMode.CONTAIN}
-                isLooping
-                isMuted
-                shouldPlay
-            />
+            <Video ref={videoRef} style={styles.video} source={{ uri: streamUrl(streamId) }}
+                useNativeControls resizeMode={ResizeMode.CONTAIN} isLooping isMuted shouldPlay />
         </View>
     );
 };
 
-// ─── Prescription formatter ───────────────────────────────────────────────────
-
 function formatPrescription(item) {
     const { countType, countMin, countMax, timeCapSeconds } = item;
     if (!countType) return '';
-    if (countType === 'AMRAP') {
-        return timeCapSeconds
-            ? `AMRAP · ${Math.round(timeCapSeconds / 60)} min cap`
-            : 'AMRAP';
-    }
+    if (countType === 'AMRAP') return timeCapSeconds ? `AMRAP · ${Math.round(timeCapSeconds / 60)} min cap` : 'AMRAP';
     const unit = countType === 'Timed' ? 'sec' : 'reps';
     if (countMax) return `${countMin}–${countMax} ${unit}`;
     if (countMin) return `${countMin} ${unit}`;
     return countType;
 }
 
-// ─── Main component ───────────────────────────────────────────────────────────
-
 export default function WorkoutPreviewItem({
-    workoutId,
-    clientId,
-    unitDefault,
-    onSetSaved,
-    // exercise fields from workout JSON
-    id,         // stable demo UUID
-    name,       // may be pre-filled from workout JSON; will be overwritten by API response
-    sets,
-    countType,
-    countMin,
-    countMax,
-    timeCapSeconds,
+    workoutId, clientId, unitDefault, onSetSaved,
+    id, name,
+    sets,      // legacy
+    setsMin, setsMax,
+    countType, countMin, countMax, timeCapSeconds,
+    recommendedRpe, recommendedWeight,
+    coachNotes,
 }) {
-    const [demo, setDemo]         = React.useState(null);  // full demo row from API
-    const [loading, setLoading]   = React.useState(true);
-    const [showLogs, setShowLogs] = React.useState(false);
+    const [demo,      setDemo]      = React.useState(null);
+    const [loading,   setLoading]   = React.useState(true);
+    const [showLogs,  setShowLogs]  = React.useState(false);
     const [showVideo, setShowVideo] = React.useState(false);
 
     React.useEffect(() => {
-        if (!id) {
-            setLoading(false);
-            return;
-        }
+        if (!id) { setLoading(false); return; }
         let cancelled = false;
         (async () => {
             try {
-                const res = await fetch(`${WORKER_URL}/demos/${id}`);
-                if (!res.ok) throw new Error('Not found');
+                const res  = await fetch(`${WORKER_URL}/demos/${id}`);
+                if (!res.ok) throw new Error();
                 const data = await res.json();
                 if (!cancelled) setDemo(data);
-            } catch (e) {
-                console.error('Could not load demo:', e);
-                // Fall back to name stored in workout JSON
+            } catch {
                 if (!cancelled) setDemo({ id, name, hasVideo: false, streamId: null });
             } finally {
                 if (!cancelled) setLoading(false);
@@ -94,81 +62,93 @@ export default function WorkoutPreviewItem({
         return () => { cancelled = true; };
     }, [id]);
 
-    const setCount = sets ? parseInt(sets) : 1;
-    const setRows  = Array.from({ length: setCount }, (_, i) => i + 1);
+    // Resolve sets: new setsMin/setsMax > legacy sets
+    const resolvedSetsMin = setsMin ?? (sets ? parseInt(sets) : null);
+    const resolvedSetsMax = setsMax ?? null;
+    const hasRange        = resolvedSetsMax && resolvedSetsMax > (resolvedSetsMin ?? 0);
+    const totalSets       = resolvedSetsMax ?? resolvedSetsMin ?? 1;
+    const requiredSets    = resolvedSetsMin ?? totalSets;
+    const setRows         = Array.from({ length: totalSets }, (_, i) => ({ setNumber: i + 1, isOptional: i >= requiredSets }));
+
+    const setsLabel = hasRange
+        ? `${resolvedSetsMin}–${resolvedSetsMax} sets (+${resolvedSetsMax - resolvedSetsMin} optional)`
+        : resolvedSetsMin ? `${resolvedSetsMin} set${resolvedSetsMin !== 1 ? 's' : ''}` : null;
+
     const displayName = demo?.name ?? name ?? 'Unknown exercise';
     const hasVideo    = !!demo?.streamId;
 
-    if (loading) {
-        return (
-            <View style={styles.itemContainer}>
-                <Text style={styles.loadingText}>Loading...</Text>
-            </View>
-        );
-    }
+    if (loading) return (
+        <View style={styles.itemContainer}>
+            <Text style={styles.loadingText}>Loading...</Text>
+        </View>
+    );
 
     return (
         <>
-            {/* ── Exercise row ── */}
             <View style={styles.itemContainer}>
                 <View style={styles.exerciseInfo}>
                     <Text style={styles.exerciseText}>{displayName}</Text>
-                    {countType === 'AMRAP'
-                        ? <Text style={styles.bodyText}>AMRAP</Text>
-                        : <Text style={styles.bodyText}>{countType}: {countMin ?? '—'}</Text>
-                    }
+                    <View style={styles.pillsRow}>
+                        {setsLabel && (
+                            <View style={styles.pill}>
+                                <Text style={styles.pillText}>{setsLabel}</Text>
+                            </View>
+                        )}
+                        {countType && (
+                            <View style={styles.pill}>
+                                <Text style={styles.pillText}>
+                                    {formatPrescription({ countType, countMin, countMax, timeCapSeconds })}
+                                </Text>
+                            </View>
+                        )}
+                    </View>
                 </View>
 
-                {/* Video button — only shown when video exists */}
-                {hasVideo && (
-                    <Pressable
-                        style={[styles.iconButton, showVideo && styles.iconButtonActive]}
-                        onPress={() => setShowVideo(v => !v)}
-                    >
-                        <Feather name="film" size={16} color={showVideo ? '#fba8a0' : '#fae9e9'} />
+                <View style={styles.actionButtons}>
+                    {hasVideo && (
+                        <Pressable style={[styles.iconButton, showVideo && styles.iconButtonActive]} onPress={() => setShowVideo(v => !v)}>
+                            <Feather name="film" size={15} color={showVideo ? '#fba8a0' : '#fae9e9'} />
+                        </Pressable>
+                    )}
+                    {!hasVideo && <View style={styles.noVideoTag}><Feather name="video-off" size={12} color="#333" /></View>}
+                    <Pressable style={[styles.iconButton, showLogs && styles.iconButtonActive]} onPress={() => setShowLogs(v => !v)}>
+                        <Feather name="edit-3" size={15} color={showLogs ? '#fba8a0' : '#fae9e9'} />
                     </Pressable>
-                )}
-
-                {/* No video indicator — subtle, not intrusive */}
-                {!hasVideo && (
-                    <View style={styles.noVideoTag}>
-                        <Feather name="video-off" size={12} color="#444" />
-                    </View>
-                )}
-
-                {/* Log sets button */}
-                <Pressable
-                    style={[styles.iconButton, showLogs && styles.iconButtonActive]}
-                    onPress={() => setShowLogs(v => !v)}
-                >
-                    <Feather name="clipboard" size={16} color={showLogs ? '#fba8a0' : '#fae9e9'} />
-                </Pressable>
+                </View>
             </View>
 
-            {/* ── Video player ── */}
+            {/* Coach notes — shown as guidance below exercise row */}
+            {coachNotes ? (
+                <View style={styles.coachNotesContainer}>
+                    <Feather name="message-square" size={12} color="#fba8a0" style={{ marginRight: 6, marginTop: 1, flexShrink: 0 }} />
+                    <Text style={styles.coachNotesText}>{coachNotes}</Text>
+                </View>
+            ) : null}
+
             {showVideo && hasVideo && <VideoPlayer streamId={demo.streamId} />}
 
-            {/* ── No video message — only shown if user tries to expand (shouldn't happen with hidden button) ── */}
-            {showVideo && !hasVideo && (
-                <View style={styles.noVideoMessage}>
-                    <Feather name="video-off" size={16} color="#444" />
-                    <Text style={styles.noVideoMessageText}>No video available yet</Text>
-                </View>
-            )}
-
-            {/* ── Set logging ── */}
             {showLogs && (
-                <KeyboardAvoidingView
-                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                    style={styles.logsContainer}
-                >
-                    <Text style={styles.setsHeader}>
-                        {setCount} set{setCount !== 1 ? 's' : ''} · {formatPrescription({ countType, countMin, countMax, timeCapSeconds })}
-                    </Text>
-                    {setRows.map(setNum => (
+                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.logsContainer}>
+                    <View style={styles.logsHeader}>
+                        <Text style={styles.setsHeader}>
+                            {setsLabel ?? `${totalSets} sets`} · {formatPrescription({ countType, countMin, countMax, timeCapSeconds })}
+                        </Text>
+                        {/* Recommendations as helper text above set rows */}
+                        {(recommendedWeight || recommendedRpe) && (
+                            <View style={styles.recBanner}>
+                                <Feather name="info" size={12} color="#fba8a0" style={{ marginRight: 6 }} />
+                                <Text style={styles.recBannerText}>
+                                    Coach rec:{recommendedWeight ? ` ${recommendedWeight} ${unitDefault ?? 'lbs'}` : ''}{recommendedRpe ? `  ·  RPE ${recommendedRpe}` : ''}
+                                </Text>
+                            </View>
+                        )}
+                    </View>
+
+                    {setRows.map(({ setNumber, isOptional }) => (
                         <SetRow
-                            key={`${id}-set-${setNum}`}
-                            setNumber={setNum}
+                            key={`${id}-set-${setNumber}`}
+                            setNumber={setNumber}
+                            isOptional={isOptional}
                             exerciseId={id}
                             workoutId={workoutId}
                             clientId={clientId}
@@ -177,6 +157,8 @@ export default function WorkoutPreviewItem({
                             countMin={countMin != null ? parseFloat(countMin) : null}
                             countMax={countMax != null ? parseFloat(countMax) : null}
                             timeCapSeconds={timeCapSeconds != null ? parseFloat(timeCapSeconds) : null}
+                            recommendedWeight={recommendedWeight ?? null}
+                            recommendedRpe={recommendedRpe ?? null}
                             onSave={onSetSaved}
                         />
                     ))}
@@ -187,93 +169,27 @@ export default function WorkoutPreviewItem({
 }
 
 const styles = StyleSheet.create({
-    itemContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 4,
-    },
-    exerciseInfo: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    exerciseText: {
-        padding: 20,
-        paddingRight: 8,
-        fontSize: 16,
-        color: '#fae9e9',
-        flexWrap: 'wrap',
-        flex: 1,
-    },
-    bodyText: {
-        paddingRight: 12,
-        fontSize: 14,
-        color: '#888',
-        flexShrink: 0,
-    },
-    loadingText: {
-        padding: 20,
-        fontSize: 14,
-        color: '#555',
-    },
-    iconButton: {
-        padding: 10,
-        height: 40,
-        justifyContent: 'center',
-        alignSelf: 'center',
-        borderColor: '#333',
-        borderWidth: 1,
-        borderRadius: 8,
-        marginHorizontal: 2,
-    },
-    iconButtonActive: {
-        borderColor: '#fba8a0',
-        backgroundColor: 'rgba(251,168,160,0.1)',
-    },
-    noVideoTag: {
-        padding: 10,
-        marginHorizontal: 2,
-        alignSelf: 'center',
-        justifyContent: 'center',
-    },
-    noVideoMessage: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        paddingHorizontal: 20,
-        paddingVertical: 10,
-        backgroundColor: '#0d0d0d',
-    },
-    noVideoMessageText: {
-        fontSize: 13,
-        color: '#444',
-        fontStyle: 'italic',
-    },
-    videoContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        backgroundColor: 'black',
-    },
-    video: {
-        alignSelf: 'center',
-        width: 320,
-        height: 200,
-    },
-    logsContainer: {
-        backgroundColor: '#0d0d0d',
-        marginHorizontal: 8,
-        marginBottom: 8,
-        borderRadius: 8,
-        padding: 10,
-        borderWidth: 0.5,
-        borderColor: '#222',
-    },
-    setsHeader: {
-        fontSize: 12,
-        color: '#888',
-        fontWeight: '600',
-        textTransform: 'uppercase',
-        letterSpacing: 0.6,
-        paddingBottom: 8,
-    },
+    itemContainer:   { flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 4, paddingVertical: 8 },
+    exerciseInfo:    { flex: 1 },
+    exerciseText:    { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 6, fontSize: 16, color: '#fae9e9', fontWeight: '500' },
+    pillsRow:        { flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingHorizontal: 16, paddingBottom: 4 },
+    pill:            { backgroundColor: '#1a1a1a', borderRadius: 12, paddingHorizontal: 8, paddingVertical: 3 },
+    pillText:        { fontSize: 12, color: '#ccc' },
+    loadingText:     { padding: 20, fontSize: 14, color: '#888' },
+    actionButtons:   { flexDirection: 'row', alignItems: 'center', gap: 6, paddingRight: 8, paddingTop: 4 },
+    iconButton:      { width: 34, height: 34, justifyContent: 'center', alignItems: 'center', borderColor: '#222', borderWidth: 1, borderRadius: 8 },
+    iconButtonActive:{ borderColor: '#fba8a0', backgroundColor: 'rgba(251,168,160,0.08)' },
+    noVideoTag:      { width: 34, height: 34, justifyContent: 'center', alignItems: 'center' },
+
+    coachNotesContainer: { flexDirection: 'row', alignItems: 'flex-start', marginHorizontal: 16, marginBottom: 8, backgroundColor: 'rgba(251,168,160,0.05)', borderLeftWidth: 2, borderLeftColor: 'rgba(251,168,160,0.3)', paddingHorizontal: 10, paddingVertical: 8, borderRadius: 4 },
+    coachNotesText:      { fontSize: 13, color: '#ccc', flex: 1, lineHeight: 18, fontStyle: 'italic' },
+
+    videoContainer: { flex: 1, justifyContent: 'center', backgroundColor: 'black' },
+    video:          { alignSelf: 'center', width: 320, height: 200 },
+
+    logsContainer: { backgroundColor: '#0d0d0d', marginHorizontal: 8, marginBottom: 8, borderRadius: 8, padding: 10, borderWidth: 0.5, borderColor: '#222' },
+    logsHeader:    { marginBottom: 8, gap: 6 },
+    setsHeader:    { fontSize: 11, color: '#bbb', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.6 },
+    recBanner:     { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(251,168,160,0.06)', borderWidth: 0.5, borderColor: 'rgba(251,168,160,0.2)', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 5 },
+    recBannerText: { fontSize: 12, color: '#fba8a0', fontStyle: 'italic' },
 });

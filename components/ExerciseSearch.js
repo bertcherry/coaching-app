@@ -331,13 +331,13 @@ export default function ExerciseSearch({
 
 const styles = StyleSheet.create({
     container:      { flex: 1, marginHorizontal: 10, marginTop: 8 },
-    label:          { fontSize: 16, fontWeight: 'bold', color: '#fae9e9', padding: 8 },
+    label:          { fontSize: 11, fontWeight: '600', color: '#ccc', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4 },
 
     selectedRow:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: '#fba8a0', backgroundColor: '#fae9e9', paddingHorizontal: 12, paddingVertical: 10 },
     selectedName:   { fontSize: 15, color: '#000', flex: 1 },
 
-    searchPlaceholder:     { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#fba8a0', backgroundColor: '#fae9e9', paddingHorizontal: 12, height: 40 },
-    searchPlaceholderText: { color: '#555', fontSize: 15 },
+    searchPlaceholder:     { flexDirection: 'row', alignItems: 'center', backgroundColor: '#111', borderWidth: 1, borderColor: '#333', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, color: '#fae9e9' },
+    searchPlaceholderText: { color: '#ccc', fontSize: 15 },
 
     // Modal
     modalContainer: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'flex-end' },

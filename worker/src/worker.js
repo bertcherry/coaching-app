@@ -8,6 +8,7 @@ import {
     handleCreateDemo,
     handleUpdateStreamId,
 } from './demos';
+import { handleHistoryBatch, handleExerciseSummary } from './history';
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
 
@@ -173,28 +174,6 @@ async function handleScheduleComplete(request, env) {
     return json({ message: 'Workout marked complete', id });
 }
 
-async function handleHistoryBatch(request, env) {
-    let caller;
-    try { caller = await requireAuth(request, env); }
-    catch (e) { return e; }
-    const { records } = await request.json();
-    if (!Array.isArray(records) || records.length === 0) return json({ error: 'records array is required' }, 400);
-    const succeeded = [];
-    const failed    = [];
-    const syncedAt  = new Date().toISOString();
-    for (const r of records) {
-        if (r.clientId !== caller.email) { failed.push(r.id); continue; }
-        try {
-            await env.DB.prepare(`INSERT INTO history (id, dateTime, clientId, workoutId, exerciseId, set, weight, weightUnit, reps, rpe, note, syncedAt, countType, prescribed, prescribedMax, unit) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (id) DO NOTHING`).bind(r.id, r.dateTime, r.clientId, r.workoutId, r.exerciseId, r.set, r.weight ?? null, r.weightUnit ?? 'lbs', r.reps ?? null, r.rpe ?? null, r.note ?? null, syncedAt, r.countType ?? null, r.prescribed ?? null, r.prescribedMax ?? null, r.unit ?? null).run();
-            succeeded.push(r.id);
-        } catch (err) {
-            console.error(`Failed to insert history record ${r.id}:`, err);
-            failed.push(r.id);
-        }
-    }
-    return json({ succeeded, failed });
-}
-
 // ─── Main router ──────────────────────────────────────────────────────────────
 
 export default {
@@ -245,9 +224,10 @@ export default {
         };
 
         const getRoutes = {
-            '/coach/clients':      handleGetClients,
-            '/schedule':           handleGetSchedule,
-            '/workouts/templates': handleGetTemplates,
+            '/coach/clients':               handleGetClients,
+            '/schedule':                    handleGetSchedule,
+            '/workouts/templates':          handleGetTemplates,
+            '/history/exercise-summary':    handleExerciseSummary,
         };
 
         if (method === 'POST' && postRoutes[pathname]) {
