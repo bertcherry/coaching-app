@@ -183,19 +183,17 @@ export async function handleAddClient(request, env) {
 // ── Route: GET /coach/clients ─────────────────────────────────────────────────
 
 export async function handleGetClients(request, env) {
-  let coach;
-  try {
-    coach = await requireCoach(request, env);
-  } catch (errResponse) {
-    return errResponse;
-  }
-
-  const { results } = await env.DB.prepare(`
-    SELECT email, fname, lname, emailConfirmed, unitDefault
-    FROM clients
-    WHERE coachedBy = ?
-    ORDER BY lname ASC, fname ASC
-  `).bind(coach.email).all();
-
-  return json({ clients: results });
+    let coach;
+    try { coach = await requireCoach(request, env); }
+    catch (errResponse) { return errResponse; }
+ 
+    const { results } = await env.DB.prepare(`
+        SELECT email, fname, lname, emailConfirmed, unitDefault,
+               COALESCE(timezone, 'UTC') as timezone
+        FROM clients
+        WHERE coachedBy = ?
+        ORDER BY lname ASC, fname ASC
+    `).bind(coach.email).all();
+ 
+    return json({ clients: results });
 }

@@ -43,6 +43,14 @@ function todayISO() {
     return new Date().toISOString().split('T')[0];
 }
 
+function todayForTimezone(tz) {
+    try {
+        return new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(new Date());
+    } catch {
+        return new Date().toISOString().split('T')[0]; // UTC fallback
+    }
+}
+
 // ─── Workout handlers (unchanged) ─────────────────────────────────────────────
 
 async function handleSaveWorkout(request, env) {
@@ -85,16 +93,48 @@ async function handleGetTemplates(request, env) {
 }
 
 // ─── Schedule handlers  ───────────────────────────────────────────
-async function handleAssignWorkout(request, env) {
+
+export async function handleAssignWorkout(request, env) {
     let coach;
     try { coach = await requireCoach(request, env); }
     catch (e) { return e; }
+ 
     const { clientEmail, workoutId, workoutName, scheduledDate } = await request.json();
-    if (!clientEmail || !workoutId || !workoutName) return json({ error: 'clientEmail, workoutId, and workoutName are required' }, 400);
-    const client = await env.DB.prepare('SELECT email FROM clients WHERE email = ? AND coachedBy = ?').bind(clientEmail, coach.email).first();
+ 
+    if (!clientEmail || !workoutId || !workoutName) {
+        return json({ error: 'clientEmail, workoutId, and workoutName are required' }, 400);
+    }
+ 
+    // Verify the client belongs to this coach
+    const client = await env.DB.prepare(
+        'SELECT email, timezone FROM clients WHERE email = ? AND coachedBy = ?'
+    ).bind(clientEmail, coach.email).first();
+ 
     if (!client) return json({ error: 'Client not found' }, 404);
+ 
+    // If a date was provided, validate it hasn't passed in the CLIENT's timezone.
+    // This is the authoritative check — the UI check is for UX only.
+    if (scheduledDate) {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(scheduledDate)) {
+            return json({ error: 'scheduledDate must be YYYY-MM-DD' }, 400);
+        }
+ 
+        const clientTimezone = client.timezone ?? 'UTC';
+        const clientToday = todayForTimezone(clientTimezone);
+ 
+        if (scheduledDate < clientToday) {
+            return json({
+                error: `Cannot schedule a workout on ${scheduledDate} — that date has already passed for this client (their current date is ${clientToday} in ${clientTimezone}).`
+            }, 422);
+        }
+    }
+ 
     const id = crypto.randomUUID();
-    await env.DB.prepare(`INSERT INTO scheduled_workouts (id, clientEmail, workoutId, workoutName, scheduledDate, status) VALUES (?, ?, ?, ?, ?, 'scheduled')`).bind(id, clientEmail, workoutId, workoutName, scheduledDate ?? null).run();
+    await env.DB.prepare(
+        `INSERT INTO scheduled_workouts (id, clientEmail, workoutId, workoutName, scheduledDate, status)
+         VALUES (?, ?, ?, ?, ?, 'scheduled')`
+    ).bind(id, clientEmail, workoutId, workoutName, scheduledDate ?? null).run();
+ 
     return json({ message: 'Workout assigned', id }, 201);
 }
 

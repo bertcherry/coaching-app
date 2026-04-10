@@ -188,19 +188,24 @@ const WorkoutPill = ({ workout, onPress, onLongPress, compact }) => {
 
 const MonthDayCell = ({
     dateStr, currentMonth, workouts, isToday,
-    isCoach, onWorkoutPress, onWorkoutLongPress,
-    onEmptyDayLongPress,
+    isCoach, isPast,
+    onWorkoutPress, onWorkoutLongPress,
+    onAddWorkoutPress, // long-press → add workout (fired on upcoming days only)
 }) => {
-    const isPast = dateStr < todayInTimezone();
+    // isPast is computed by the parent using the CLIENT's timezone today,
+    // so a coach in Seattle can still long-press a date that hasn't passed
+    // yet for a client in Sydney, and vice versa.
+    const canAdd = isCoach && currentMonth && !isPast;
+
     return (
         <Pressable
             style={[
                 styles.dayCell,
                 !currentMonth && styles.dayCellOtherMonth,
             ]}
-            onLongPress={() => isCoach && currentMonth && onEmptyDayLongPress(dateStr)}
+            onLongPress={() => canAdd && onAddWorkoutPress(dateStr)}
             delayLongPress={400}
-            accessible={false} // cell itself not a button; children are
+            accessible={false} // cell itself is not focusable; children are
         >
             {/* Date number — AAA on black */}
             <View style={[styles.dayNumberContainer, isToday && styles.dayNumberTodayContainer]}>
@@ -227,7 +232,9 @@ const MonthDayCell = ({
                 />
             ))}
 
-            {isCoach && workouts.length === 0 && currentMonth && !isPast && (
+            {/* Show + hint on ALL upcoming days (even days with workouts) so the
+                coach knows they can add a second workout. Hidden from screen readers. */}
+            {canAdd && (
                 <Text
                     style={styles.emptyDayHint}
                     accessibilityElementsHidden
@@ -244,18 +251,19 @@ const MonthDayCell = ({
 
 const WeekDayColumn = ({
     dateStr, workouts, isToday,
-    isCoach, onWorkoutPress, onWorkoutLongPress,
-    onEmptyDayLongPress,
+    isCoach, isPast,
+    onWorkoutPress, onWorkoutLongPress,
+    onAddWorkoutPress,
 }) => {
     const d = parseISO(dateStr);
     const dayName = DAYS_OF_WEEK[d.getDay()];
     const dayNum  = d.getDate();
-    const isPast  = dateStr < todayInTimezone();
+    const canAdd  = isCoach && !isPast;
 
     return (
         <Pressable
             style={styles.weekColumn}
-            onLongPress={() => isCoach && onEmptyDayLongPress(dateStr)}
+            onLongPress={() => canAdd && onAddWorkoutPress(dateStr)}
             delayLongPress={400}
             accessible={false}
         >
@@ -285,7 +293,8 @@ const WeekDayColumn = ({
                         onLongPress={() => onWorkoutLongPress(w)}
                     />
                 ))}
-                {isCoach && workouts.length === 0 && !isPast && (
+                {/* Show + on all upcoming days, not just empty ones */}
+                {canAdd && (
                     <View
                         style={styles.weekEmptyDay}
                         accessibilityElementsHidden
@@ -415,63 +424,110 @@ const DatePickerModal = ({ title, minDate, onClose, onConfirm }) => {
     const [year, setYear]   = React.useState(now.getFullYear());
     const [month, setMonth] = React.useState(now.getMonth());
     const [selected, setSelected] = React.useState(null);
-    const grid = getMonthGrid(year, month);
-    const todayStr = todayInTimezone(); // always device local
+    const todayStr = todayInTimezone();
 
-    const prevMonth = () => { if (month === 0) { setMonth(11); setYear(y => y - 1); } else setMonth(m => m - 1); setSelected(null); };
-    const nextMonth = () => { if (month === 11) { setMonth(0); setYear(y => y + 1); } else setMonth(m => m + 1); setSelected(null); };
+    const prevMonth = () => {
+        if (month === 0) { setMonth(11); setYear(y => y - 1); }
+        else setMonth(m => m - 1);
+        setSelected(null);
+    };
+    const nextMonth = () => {
+        if (month === 11) { setMonth(0); setYear(y => y + 1); }
+        else setMonth(m => m + 1);
+        setSelected(null);
+    };
+
+    // Build a proper row-based grid to avoid React Native's flexWrap percentage
+    // rounding bug which causes columns to stack incorrectly.
+    // getMonthGrid returns exactly 42 cells (6 rows × 7 cols). Slice into rows.
+    const flat = getMonthGrid(year, month); // 42 items
+    const rows = [];
+    for (let r = 0; r < 6; r++) rows.push(flat.slice(r * 7, r * 7 + 7));
 
     return (
         <Modal transparent animationType="fade" onRequestClose={onClose}>
             <View style={styles.modalOverlay}>
                 <View style={styles.modalCard}>
                     <Text style={styles.modalTitle}>{title}</Text>
+
+                    {/* Month nav */}
                     <View style={styles.miniCalHeader}>
-                        <Pressable onPress={prevMonth} style={styles.miniNavBtn} accessibilityRole="button" accessibilityLabel="Previous month">
+                        <Pressable onPress={prevMonth} style={styles.miniNavBtn}
+                            accessibilityRole="button" accessibilityLabel="Previous month">
                             <Feather name="chevron-left" size={20} color="#fae9e9" />
                         </Pressable>
                         <Text style={styles.miniCalMonthLabel}>{monthLabel(year, month)}</Text>
-                        <Pressable onPress={nextMonth} style={styles.miniNavBtn} accessibilityRole="button" accessibilityLabel="Next month">
+                        <Pressable onPress={nextMonth} style={styles.miniNavBtn}
+                            accessibilityRole="button" accessibilityLabel="Next month">
                             <Feather name="chevron-right" size={20} color="#fae9e9" />
                         </Pressable>
                     </View>
-                    <View style={styles.miniCalGrid}>
+
+                    {/* Day-of-week header row */}
+                    <View style={styles.miniCalRow} accessibilityElementsHidden>
                         {DAYS_OF_WEEK.map(d => (
-                            <Text key={d} style={styles.miniCalDayLabel} accessibilityElementsHidden>{d}</Text>
+                            <View key={d} style={styles.miniCalCellWrap}>
+                                <Text style={styles.miniCalDayLabel}>{d}</Text>
+                            </View>
                         ))}
-                        {grid.map(({ dateStr, currentMonth }) => {
-                            const disabled = minDate ? dateStr < minDate : false;
-                            const isSel = selected === dateStr;
-                            return (
-                                <Pressable
-                                    key={dateStr}
-                                    style={[
-                                        styles.miniCalCell,
-                                        !currentMonth && styles.miniCalCellOtherMonth,
-                                        isSel && styles.miniCalCellSelected,
-                                        disabled && styles.miniCalCellDisabled,
-                                    ]}
-                                    onPress={() => !disabled && setSelected(dateStr)}
-                                    disabled={disabled}
-                                    accessibilityRole="button"
-                                    accessibilityLabel={`${dateStr}${isSel ? ', selected' : ''}${dateStr === todayStr ? ', today' : ''}`}
-                                    accessibilityState={{ selected: isSel, disabled }}
-                                >
-                                    <Text style={[
-                                        styles.miniCalCellText,
-                                        dateStr === todayStr && styles.miniCalCellToday,
-                                        isSel && styles.miniCalCellSelectedText,
-                                        disabled && styles.miniCalCellDisabledText,
-                                        !currentMonth && styles.miniCalCellOtherMonthText,
-                                    ]}>
-                                        {parseInt(dateStr.split('-')[2])}
-                                    </Text>
-                                </Pressable>
-                            );
-                        })}
                     </View>
+
+                    {/* Date rows — 6 explicit rows, no flexWrap */}
+                    {rows.map((row, ri) => (
+                        <View key={ri} style={styles.miniCalRow}>
+                            {row.map(({ dateStr, currentMonth: inMonth }) => {
+                                // A date is "inaccessible" (can't be picked) if:
+                                //   • it's outside the current month, OR
+                                //   • it's before the minDate (already-passed dates for move,
+                                //     or no restriction for copy)
+                                const beforeMin = minDate ? dateStr < minDate : false;
+                                const inaccessible = !inMonth || beforeMin;
+                                const isSel = selected === dateStr;
+                                const isToday = dateStr === todayStr;
+
+                                return (
+                                    <View key={dateStr} style={styles.miniCalCellWrap}>
+                                        <Pressable
+                                            style={[
+                                                styles.miniCalCell,
+                                                isSel && styles.miniCalCellSelected,
+                                            ]}
+                                            onPress={() => !inaccessible && setSelected(dateStr)}
+                                            disabled={inaccessible}
+                                            accessibilityRole="button"
+                                            accessibilityLabel={
+                                                inaccessible ? undefined
+                                                : `${dateStr}${isSel ? ', selected' : ''}${isToday ? ', today' : ''}`
+                                            }
+                                            accessibilityState={inaccessible
+                                                ? { disabled: true }
+                                                : { selected: isSel }
+                                            }
+                                        >
+                                            <Text style={[
+                                                styles.miniCalCellText,
+                                                // Priority: selected → today → inaccessible → normal
+                                                isSel        && styles.miniCalCellSelectedText,
+                                                !isSel && isToday && styles.miniCalCellToday,
+                                                !isSel && inaccessible && (
+                                                    beforeMin
+                                                        ? styles.miniCalCellPast      // past/blocked: visibly faded
+                                                        : styles.miniCalCellOtherMonth // other month: very faint
+                                                ),
+                                            ]}>
+                                                {parseInt(dateStr.split('-')[2])}
+                                            </Text>
+                                        </Pressable>
+                                    </View>
+                                );
+                            })}
+                        </View>
+                    ))}
+
+                    {/* Action buttons */}
                     <View style={styles.modalActions}>
-                        <Pressable style={styles.modalButtonSecondary} onPress={onClose} accessibilityRole="button" accessibilityLabel="Cancel">
+                        <Pressable style={styles.modalButtonSecondary} onPress={onClose}
+                            accessibilityRole="button" accessibilityLabel="Cancel">
                             <Text style={styles.modalButtonSecondaryText}>Cancel</Text>
                         </Pressable>
                         <Pressable
@@ -504,8 +560,15 @@ export default function CalendarScreen({ navigation, route }) {
     // viewing device's timezone (correct for clients viewing their own calendar).
     const clientTimezone = route?.params?.clientTimezone ?? deviceTimezone();
 
-    // "Today" for the VIEWING device — used to highlight today in UI
-    const viewingDeviceTodayStr = todayInTimezone(); // always device local
+    // "Today" for the CLIENT — governs which dates a coach is allowed to schedule on.
+    // Rule: a coach may only add workouts to dates that have NOT yet passed for the CLIENT.
+    //   Coach in Seattle (Apr 9) + client in Sydney (Apr 10) → clientTodayStr = "Apr 10"
+    //     → Apr 9 is past for the client → coach cannot schedule there
+    //   Coach in Sydney (Apr 10) + client in Seattle (Apr 9) → clientTodayStr = "Apr 9"
+    //     → Apr 9 is today/future for the client → coach CAN schedule there
+    // When a client views their own calendar, clientTimezone == deviceTimezone(),
+    // so clientTodayStr == viewingDeviceTodayStr and behaviour is unchanged.
+    const clientTodayStr = todayInTimezone(clientTimezone);
 
     // ── View preference ──────────────────────────────────────────────────────
 
@@ -539,7 +602,7 @@ export default function CalendarScreen({ navigation, route }) {
     // ── Week navigation state — tracks the Sunday of the current week ────────
     // Initialise to the Sunday of the current week on the viewing device
     const [weekAnchor, setWeekAnchor] = React.useState(() => {
-        const today = parseISO(viewingDeviceTodayStr);
+        const today = parseISO(clientTodayStr);
         const dow = today.getDay();
         const sunday = new Date(today);
         sunday.setDate(today.getDate() - dow);
@@ -704,7 +767,7 @@ export default function CalendarScreen({ navigation, route }) {
         try {
             const res = await authFetch('https://coaching-app.bert-m-cherry.workers.dev/schedule/move', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: workout.id, newDate, today: viewingDeviceTodayStr }),
+                body: JSON.stringify({ id: workout.id, newDate, today: clientTodayStr }),
             });
             if (!res.ok) throw new Error();
         } catch {
@@ -807,17 +870,18 @@ export default function CalendarScreen({ navigation, route }) {
                                 dateStr={dateStr}
                                 currentMonth={currentMonth}
                                 workouts={workoutsByDate[dateStr] ?? []}
-                                isToday={dateStr === viewingDeviceTodayStr}
+                                isToday={dateStr === clientTodayStr}
+                                isPast={dateStr < clientTodayStr}
                                 isCoach={isCoach}
                                 onWorkoutPress={handleWorkoutPress}
                                 onWorkoutLongPress={setActionWorkout}
-                                onEmptyDayLongPress={setAddDayTarget}
+                                onAddWorkoutPress={setAddDayTarget}
                             />
                         ))}
                     </View>
 
                     <Legend />
-                    {isCoach && <Text style={styles.coachHint}>Long-press any empty day to add a workout</Text>}
+                    {isCoach && <Text style={styles.coachHint}>Long-press any upcoming day to add a workout</Text>}
                     <View style={{ height: 60 }} />
                 </ScrollView>
 
@@ -831,11 +895,12 @@ export default function CalendarScreen({ navigation, route }) {
                                 key={dateStr}
                                 dateStr={dateStr}
                                 workouts={workoutsByDate[dateStr] ?? []}
-                                isToday={dateStr === viewingDeviceTodayStr}
+                                isToday={dateStr === clientTodayStr}
+                                isPast={dateStr < clientTodayStr}
                                 isCoach={isCoach}
                                 onWorkoutPress={handleWorkoutPress}
                                 onWorkoutLongPress={setActionWorkout}
-                                onEmptyDayLongPress={setAddDayTarget}
+                                onAddWorkoutPress={setAddDayTarget}
                             />
                         ))}
                     </View>
@@ -844,13 +909,13 @@ export default function CalendarScreen({ navigation, route }) {
                     <WeekWorkoutList
                         weekGrid={weekGrid}
                         workoutsByDate={workoutsByDate}
-                        todayStr={viewingDeviceTodayStr}
+                        todayStr={clientTodayStr}
                         onWorkoutPress={handleWorkoutPress}
                         onWorkoutLongPress={setActionWorkout}
                     />
 
                     <Legend />
-                    {isCoach && <Text style={styles.coachHint}>Long-press any day column to add a workout</Text>}
+                    {isCoach && <Text style={styles.coachHint}>Long-press any upcoming day to add a workout</Text>}
                     <View style={{ height: 60 }} />
                 </ScrollView>
             )}
@@ -904,7 +969,7 @@ export default function CalendarScreen({ navigation, route }) {
             {moveWorkout && (
                 <DatePickerModal
                     title="Move workout to…"
-                    minDate={viewingDeviceTodayStr}
+                    minDate={clientTodayStr}
                     onClose={() => setMoveWorkout(null)}
                     onConfirm={handleMoveConfirm}
                 />
@@ -1123,17 +1188,37 @@ const styles = StyleSheet.create({
     miniCalHeader:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
     miniNavBtn:         { minWidth: 44, minHeight: 44, justifyContent: 'center', alignItems: 'center' },
     miniCalMonthLabel:  { color: '#fae9e9', fontWeight: '600', fontSize: 15 },
-    miniCalGrid:        { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 20 },
-    miniCalDayLabel:    { width: `${100 / 7}%`, textAlign: 'center', color: '#aaaaaa', fontSize: 11, marginBottom: 4 },
-    miniCalCell:        { width: `${100 / 7}%`, aspectRatio: 1, justifyContent: 'center', alignItems: 'center', borderRadius: 100 },
-    miniCalCellOtherMonth:  { opacity: 0.25 },
-    miniCalCellSelected:    { backgroundColor: '#fba8a0' },
-    miniCalCellDisabled:    { opacity: 0.2 },
-    miniCalCellText:        { color: '#fae9e9', fontSize: 13 },
-    miniCalCellToday:       { color: '#fba8a0', fontWeight: 'bold' },
-    miniCalCellSelectedText:{ color: '#000', fontWeight: 'bold' },
-    miniCalCellDisabledText:{ color: '#555' },
-    miniCalCellOtherMonthText: { color: '#555' },
+
+    // Row-based grid — no flexWrap, no percentage widths.
+    // Each row is a flex row; each cell wrapper takes equal space via flex:1.
+    // This eliminates the floating-point accumulation bug that caused Su/Sa stacking.
+    miniCalRow:         { flexDirection: 'row', marginBottom: 2 },
+    miniCalCellWrap:    { flex: 1, alignItems: 'center' },
+
+    // Day-of-week label inside the cell wrapper
+    // AA: #aaaaaa on #111 = 5.5:1 ✓
+    miniCalDayLabel:    { fontSize: 11, fontWeight: '600', color: '#aaaaaa', textAlign: 'center', paddingVertical: 4 },
+
+    // The tappable date cell — square, centred, touch target padded by wrapper
+    miniCalCell:        { width: 34, height: 34, justifyContent: 'center', alignItems: 'center', borderRadius: 17 },
+    miniCalCellSelected:{ backgroundColor: '#fba8a0' },
+
+    // AAA: #fae9e9 on #111 ≈ 16.8:1 ✓  (normal selectable date)
+    miniCalCellText:    { fontSize: 13, color: '#fae9e9', textAlign: 'center' },
+    // Today ring: rose text, bold — readable and distinct without a heavy background
+    miniCalCellToday:   { color: '#fba8a0', fontWeight: '700' },
+    // Selected: black on rose — AA large ✓
+    miniCalCellSelectedText: { color: '#000', fontWeight: '700' },
+
+    // PAST / BLOCKED dates (minDate guard — e.g. for Move, can't pick days before today)
+    // Visibly faded but legible enough to read the number; clearly unavailable.
+    // Colour: #444 on #111 ≈ 1.9:1 — intentionally low contrast to signal unavailability.
+    // Screen readers get accessibilityState disabled:true so they're skipped.
+    miniCalCellPast:    { color: '#444' },
+
+    // OTHER-MONTH dates (before the 1st or after the last of the current month)
+    // Even fainter — just structural padding, not selectable.
+    miniCalCellOtherMonth: { color: '#2e2e2e' },
 });
 
 export { CALENDAR_VIEW_KEY };

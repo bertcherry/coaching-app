@@ -42,30 +42,43 @@ function json(data, status = 200) {
 // ── Route handlers ────────────────────────────────────────────────────────────
 
 export async function handleLogin(request, env) {
-  const { email, password } = await request.json();
-  if (!email || !password) return json({ error: 'Missing fields' }, 400);
-
-  const client = await env.DB.prepare(
-    `SELECT email, fname, lname, isCoach, pw, unitDefault FROM clients WHERE email = ?`
-  ).bind(email.toLowerCase()).first();
-
-  if (!client) return json({ error: 'Invalid credentials' }, 401);
-
-  const valid = await verifyPassword(password, client.pw);
-  if (!valid) return json({ error: 'Invalid credentials' }, 401);
-
-  const accessToken = await signAccessToken({
-    sub: client.email,
-    email: client.email,
-    fname: client.fname,
-    lname: client.lname,
-    isCoach: client.isCoach === 1,
-    unitDefault: client.unitDefault,
-  }, env);
-
-  const refreshToken = await signRefreshToken(client.email, env);
-
-  return json({ accessToken, refreshToken });
+    const body = await request.json();
+    const { email, password, timezone } = body;
+    if (!email || !password) return json({ error: 'Missing fields' }, 400);
+ 
+    const client = await env.DB.prepare(
+        `SELECT email, fname, lname, isCoach, pw, unitDefault FROM clients WHERE email = ?`
+    ).bind(email.toLowerCase()).first();
+ 
+    if (!client) return json({ error: 'Invalid credentials' }, 401);
+ 
+    const valid = await verifyPassword(password, client.pw);
+    if (!valid) return json({ error: 'Invalid credentials' }, 401);
+ 
+    // Persist timezone if provided and valid — silently ignore invalid values
+    if (timezone && typeof timezone === 'string' && timezone.length < 64) {
+        try {
+            // Quick sanity check: Intl will throw on invalid IANA tz strings
+            Intl.DateTimeFormat('en-CA', { timeZone: timezone }).format(new Date());
+            await env.DB.prepare(
+                'UPDATE clients SET timezone = ? WHERE email = ?'
+            ).bind(timezone, email.toLowerCase()).run();
+        } catch {
+            // Invalid timezone string — ignore, keep existing stored value
+        }
+    }
+ 
+    const accessToken = await signAccessToken({
+        sub: client.email,
+        email: client.email,
+        fname: client.fname,
+        lname: client.lname,
+        isCoach: client.isCoach === 1,
+        unitDefault: client.unitDefault,
+    }, env);
+ 
+    const refreshToken = await signRefreshToken(client.email, env);
+    return json({ accessToken, refreshToken });
 }
 
 export async function handleRegister(request, env) {
