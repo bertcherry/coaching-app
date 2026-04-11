@@ -1,4 +1,7 @@
 /**
+ * schedule.js
+ * Location: worker/src/schedule.js
+ *
  * TIMEZONE DESIGN — how dates work in Cherry Coaching
  * ─────────────────────────────────────────────────────
  *
@@ -20,17 +23,34 @@
  * the coach's current time, which may differ from the client's. This is
  * acceptable: the authoritative missed-marking happens when the client
  * themselves fetches their own calendar.
- *
- * EXAMPLE:
- *   Coach in Seattle (UTC-7) views client's calendar on April 10 at 11pm.
- *   ?tz=America/Los_Angeles → today = "2026-04-10" → workouts before Apr 10 = missed
- *
- *   Client in Sydney (UTC+10) fetches same calendar April 11 at 9am.
- *   ?tz=Australia/Sydney → today = "2026-04-11" → same result within their day
- *
- * This is the correct schedule handler to drop into worker/src/worker.js.
- * Replace the existing handleGetSchedule function with this one.
  */
+
+import { jwtVerify } from 'jose';
+
+// ─── Local helpers ────────────────────────────────────────────────────────────
+// These are duplicated from worker.js because each Worker module is its own
+// scope — functions defined in worker.js are not available here at runtime.
+
+function json(data, status = 200) {
+    return new Response(JSON.stringify(data), {
+        status,
+        headers: { 'Content-Type': 'application/json' },
+    });
+}
+
+async function requireAuth(request, env) {
+    const token = (request.headers.get('Authorization') || '').replace('Bearer ', '').trim();
+    if (!token) throw json({ error: 'Unauthorized' }, 401);
+    try {
+        const secret = new TextEncoder().encode(env.JWT_SECRET);
+        const { payload } = await jwtVerify(token, secret);
+        return payload;
+    } catch {
+        throw json({ error: 'Unauthorized' }, 401);
+    }
+}
+
+// ─── todayForTimezone ─────────────────────────────────────────────────────────
 
 /**
  * Returns today's calendar date (YYYY-MM-DD) for a given IANA timezone string.
@@ -50,6 +70,8 @@ export function todayForTimezone(tz) {
         return new Date().toISOString().split('T')[0];
     }
 }
+
+// ─── GET /schedule ────────────────────────────────────────────────────────────
 
 /**
  * GET /schedule?clientEmail=&month=YYYY-MM&tz=IANA_timezone
@@ -100,15 +122,11 @@ export async function handleGetSchedule(request, env) {
     // Compute today in the provided timezone
     const todayStr = todayForTimezone(tz);
 
-    // Mark any "scheduled" workout before today as "missed"
-    // We do this in a single batch to avoid N+1 DB calls
+    // Mark any "scheduled" workout before today as "missed".
+    // Batch update to avoid N+1 DB calls.
     const toMiss = results.filter(w => w.status === 'scheduled' && w.scheduledDate < todayStr);
 
     if (toMiss.length > 0) {
-        // Batch update: SQLite doesn't support multi-row UPDATE with different ids,
-        // so we use individual prepared statements inside a transaction-like loop.
-        // D1 doesn't have explicit transactions via the REST API, but each .run()
-        // is atomic. For a small monthly set this is fine.
         const missPromises = toMiss.map(w =>
             env.DB.prepare(
                 `UPDATE scheduled_workouts SET status = 'missed' WHERE id = ? AND status = 'scheduled'`
@@ -116,7 +134,7 @@ export async function handleGetSchedule(request, env) {
         );
         await Promise.all(missPromises);
 
-        // Patch the in-memory results so the response is immediately consistent
+        // Patch in-memory results so the response is immediately consistent
         for (const w of results) {
             if (toMiss.some(m => m.id === w.id)) {
                 w.status = 'missed';

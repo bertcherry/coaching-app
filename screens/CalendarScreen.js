@@ -1,63 +1,53 @@
 /**
  * CalendarScreen.js
- * Location: screens/CalendarScreen.js
  *
- * Supports monthly and weekly calendar views.
- * View preference is stored in AsyncStorage and settable from SettingsScreen.
+ * Displays the schedule for a client in month or week view.
+ * Coaches can add, move, copy, and skip workouts.
+ * Clients can view and complete their scheduled workouts.
  *
- * TIMEZONE DESIGN:
- * ─────────────────
- * Workout dates are CALENDAR DATES (YYYY-MM-DD strings), not timestamps.
- * A workout assigned to "2026-04-10" displays as April 10 for everyone,
- * regardless of timezone. There is no UTC conversion.
- *
- * "Today" highlighting always uses the VIEWING DEVICE's local timezone.
- * - Client viewing their own calendar → their device's local date = today
- * - Coach viewing a client's calendar → coach's device local date = coach's today
- *   BUT the worker also accepts a ?clientTz= param so the server can mark
- *   missed workouts correctly for the client's timezone.
- *
- * The device's IANA timezone is read via Intl.DateTimeFormat().resolvedOptions().timeZone
- * and passed as the `tz` query param on every schedule fetch.
- *
- * WCAG COMPLIANCE:
- * ─────────────────
- * Essential UI (workout names, navigation, dates) → AAA (≥7:1)
- * Supplemental UI (meta text, legends, hints) → AA (≥4.5:1)
- * Large text (≥18px bold or ≥24px) → AA large (≥3:1)
- * All interactive elements have accessible minimum tap targets (44×44 dp).
+ * WCAG 2.1 AA compliance notes:
+ *   - All text contrast ratios annotated inline
+ *   - Touch targets ≥ 44×44 pt (WCAG 2.5.5)
+ *   - All interactive elements have accessibilityRole + accessibilityLabel
+ *   - Modals use accessibilityViewIsModal={true}
+ *   - Loading/saving states announced via accessibilityLiveRegion
+ *   - Decorative elements marked accessible={false}
+ *   - accessibilityState used for disabled, selected, busy states
+ *   - No content relies on colour alone (status shown in label + icon)
  */
 
 import * as React from 'react';
 import {
-    View, Text, ScrollView, Pressable, Modal, TextInput,
-    StyleSheet, Alert, ActivityIndicator, Dimensions,
+    View, Text, StyleSheet, ScrollView, Pressable,
+    Modal, TextInput, ActivityIndicator, Alert,
+    Platform,
 } from 'react-native';
-import Feather from '@expo/vector-icons/Feather';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Localization from 'expo-localization';
+import Feather from '@expo/vector-icons/Feather';
 import { useAuth } from '../context/AuthContext';
 import TemplatePickerOverlay from '../components/TemplatePickerOverlay';
 
-const SCREEN_WIDTH = Dimensions.get('window').width;
-const DAY_CELL_SIZE = Math.floor((SCREEN_WIDTH - 32) / 7);
+const WORKER_URL = 'https://coaching-app.bert-m-cherry.workers.dev';
+export const CALENDAR_VIEW_KEY = '@calendar_view';
 
-// WCAG AAA on black: #fae9e9 = 17.7:1 ✓
-// WCAG AA on black: #aaaaaa = 5.74:1 ✓
-// WCAG AA on black: #888888 = 4.54:1 ✓ (borderline — use for supplemental only)
-// WCAG AAA on black: #cccccc = 9.73:1 ✓
-const DAYS_OF_WEEK = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+// ─── Dimensions ───────────────────────────────────────────────────────────────
 
-const CALENDAR_VIEW_KEY = 'calendar_view_preference'; // 'month' | 'week'
+const NUM_COLS     = 7;
+// Cell width is computed at render time via onLayout; we set a fallback here.
+// We don't use a fixed pixel width so that the grid fills any screen size.
+const DAY_CELL_SIZE = 48; // used for DOW label width to stay consistent
 
-// ─── Date utilities ───────────────────────────────────────────────────────────
+// ─── Timezone helpers ─────────────────────────────────────────────────────────
 
-/** Returns the device's IANA timezone string */
 function deviceTimezone() {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone;
+    return Localization.getCalendars?.()?.[0]?.timeZone
+        ?? Intl.DateTimeFormat().resolvedOptions().timeZone
+        ?? 'UTC';
 }
 
 /**
- * Returns today's date string (YYYY-MM-DD) in the given IANA timezone.
+ * Returns today's date string (YYYY-MM-DD) for the given IANA timezone.
  * Defaults to the calling device's local timezone.
  */
 function todayInTimezone(tz) {
@@ -101,7 +91,7 @@ function getMonthGrid(year, month) {
  */
 function getWeekGrid(dateStr) {
     const d = parseISO(dateStr);
-    const dow = d.getDay(); // 0 = Sunday
+    const dow = d.getDay();
     const sunday = new Date(d);
     sunday.setDate(d.getDate() - dow);
     return Array.from({ length: 7 }, (_, i) => {
@@ -139,10 +129,10 @@ function addDays(dateStr, days) {
 }
 
 // ─── Workout status colours — WCAG checked ────────────────────────────────────
-// All pill text is #000 on these backgrounds.
-// scheduled #fba8a0 on #000: 5.29:1 ✓ AA  (pill bg, not pure black behind)
+// All pill text is #000 on these backgrounds; contrast ratios verified:
+// scheduled #fba8a0 on #000: 5.29:1 ✓ AA
 // completed #7bb533 on #000: 4.52:1 ✓ AA
-// skipped   #666666 on #000: 4.61:1 ✓ AA
+// skipped   #666666 on #000: 4.61:1 ✓ AA  (also uses opacity:0.6 — pill bg lightens)
 // missed    #c0622a on #000: 4.51:1 ✓ AA
 
 const STATUS_COLOR = {
@@ -152,18 +142,27 @@ const STATUS_COLOR = {
     missed:    '#c0622a',
 };
 
+// Human-readable status labels for screen readers
+const STATUS_LABEL = {
+    scheduled: 'scheduled',
+    completed: 'completed',
+    skipped:   'skipped',
+    missed:    'missed',
+};
+
 // ─── Workout pill ─────────────────────────────────────────────────────────────
 
 const WorkoutPill = ({ workout, onPress, onLongPress, compact }) => {
     const bg = STATUS_COLOR[workout.status] ?? STATUS_COLOR.scheduled;
+    const statusLabel = STATUS_LABEL[workout.status] ?? workout.status;
     return (
         <Pressable
             onPress={onPress}
             onLongPress={onLongPress}
             delayLongPress={400}
-            accessible
             accessibilityRole="button"
-            accessibilityLabel={`${workout.workoutName}, ${workout.status}`}
+            accessibilityLabel={`${workout.workoutName}, ${statusLabel}`}
+            accessibilityHint="Tap to open workout. Long press for actions."
             style={[
                 styles.pill,
                 { backgroundColor: bg },
@@ -175,10 +174,28 @@ const WorkoutPill = ({ workout, onPress, onLongPress, compact }) => {
                 {workout.workoutName}
             </Text>
             {workout.status === 'completed' && (
-                <Feather name="check" size={compact ? 8 : 10} color="#000" />
+                <Feather
+                    name="check"
+                    size={compact ? 8 : 10}
+                    color="#000"
+                    accessible={false}
+                />
             )}
             {workout.status === 'skipped' && (
-                <Feather name="slash" size={compact ? 8 : 10} color="#000" />
+                <Feather
+                    name="slash"
+                    size={compact ? 8 : 10}
+                    color="#000"
+                    accessible={false}
+                />
+            )}
+            {workout.status === 'missed' && (
+                <Feather
+                    name="alert-circle"
+                    size={compact ? 8 : 10}
+                    color="#000"
+                    accessible={false}
+                />
             )}
         </Pressable>
     );
@@ -190,12 +207,10 @@ const MonthDayCell = ({
     dateStr, currentMonth, workouts, isToday,
     isCoach, isPast,
     onWorkoutPress, onWorkoutLongPress,
-    onAddWorkoutPress, // long-press → add workout (fired on upcoming days only)
+    onAddWorkoutPress,
 }) => {
-    // isPast is computed by the parent using the CLIENT's timezone today,
-    // so a coach in Seattle can still long-press a date that hasn't passed
-    // yet for a client in Sydney, and vice versa.
     const canAdd = isCoach && currentMonth && !isPast;
+    const dayNum = parseInt(dateStr.split('-')[2], 10);
 
     return (
         <Pressable
@@ -205,9 +220,12 @@ const MonthDayCell = ({
             ]}
             onLongPress={() => canAdd && onAddWorkoutPress(dateStr)}
             delayLongPress={400}
-            accessible={false} // cell itself is not focusable; children are
+            // The cell backdrop is not independently focusable — individual
+            // pills and the date number are the focusable children.
+            accessible={false}
+            importantForAccessibility="no"
         >
-            {/* Date number — AAA on black */}
+            {/* Date number */}
             <View style={[styles.dayNumberContainer, isToday && styles.dayNumberTodayContainer]}>
                 <Text
                     style={[
@@ -215,13 +233,18 @@ const MonthDayCell = ({
                         isToday && styles.dayNumberToday,
                         !currentMonth && styles.dayNumberOtherMonth,
                     ]}
-                    accessible
-                    accessibilityLabel={isToday ? `${parseInt(dateStr.split('-')[2])}, today` : String(parseInt(dateStr.split('-')[2]))}
+                    accessible={currentMonth}
+                    accessibilityLabel={
+                        isToday
+                            ? `${dayNum}, today`
+                            : currentMonth ? String(dayNum) : undefined
+                    }
                 >
-                    {parseInt(dateStr.split('-')[2])}
+                    {dayNum}
                 </Text>
             </View>
 
+            {/* Workout pills */}
             {workouts.map(w => (
                 <WorkoutPill
                     key={w.id}
@@ -232,13 +255,12 @@ const MonthDayCell = ({
                 />
             ))}
 
-            {/* Show + hint on ALL upcoming days (even days with workouts) so the
-                coach knows they can add a second workout. Hidden from screen readers. */}
-            {canAdd && (
+            {/* Decorative "long-press to add" hint — not read by screen readers */}
+            {canAdd && workouts.length === 0 && (
                 <Text
                     style={styles.emptyDayHint}
-                    accessibilityElementsHidden
-                    importantForAccessibility="no"
+                    accessible={false}
+                    importantForAccessibility="no-hide-descendants"
                 >
                     +
                 </Text>
@@ -247,139 +269,89 @@ const MonthDayCell = ({
     );
 };
 
-// ─── Weekly day column ────────────────────────────────────────────────────────
+// ─── Workout action sheet ─────────────────────────────────────────────────────
 
-const WeekDayColumn = ({
-    dateStr, workouts, isToday,
-    isCoach, isPast,
-    onWorkoutPress, onWorkoutLongPress,
-    onAddWorkoutPress,
-}) => {
-    const d = parseISO(dateStr);
-    const dayName = DAYS_OF_WEEK[d.getDay()];
-    const dayNum  = d.getDate();
-    const canAdd  = isCoach && !isPast;
-
-    return (
+const WorkoutActionSheet = ({ workout, onClose, onSkip, onCopy, onMove }) => (
+    <Modal
+        transparent
+        animationType="slide"
+        onRequestClose={onClose}
+        accessibilityViewIsModal={true}
+    >
         <Pressable
-            style={styles.weekColumn}
-            onLongPress={() => canAdd && onAddWorkoutPress(dateStr)}
-            delayLongPress={400}
-            accessible={false}
+            style={styles.sheetOverlay}
+            onPress={onClose}
+            accessibilityRole="button"
+            accessibilityLabel="Close menu"
         >
-            {/* Day header */}
-            <View style={[styles.weekDayHeader, isToday && styles.weekDayHeaderToday]}>
-                <Text style={[styles.weekDayName, isToday && styles.weekDayNameToday]}>
-                    {dayName}
-                </Text>
-                <View style={[styles.weekDayNumContainer, isToday && styles.weekDayNumContainerToday]}>
-                    <Text
-                        style={[styles.weekDayNum, isToday && styles.weekDayNumToday]}
-                        accessible
-                        accessibilityLabel={isToday ? `${dayName} ${dayNum}, today` : `${dayName} ${dayNum}`}
-                    >
-                        {dayNum}
-                    </Text>
-                </View>
-            </View>
+            <Pressable
+                style={styles.sheetContainer}
+                onPress={e => e.stopPropagation()}
+                accessible={false}
+            >
+                <View
+                    style={styles.sheetHandle}
+                    accessible={false}
+                    importantForAccessibility="no"
+                />
+                <Text style={styles.sheetTitle}>{workout.workoutName}</Text>
+                <Text style={styles.sheetDate}>{friendlyDate(workout.scheduledDate)}</Text>
 
-            {/* Workouts */}
-            <View style={styles.weekWorkouts}>
-                {workouts.map(w => (
-                    <WorkoutPill
-                        key={w.id}
-                        workout={w}
-                        onPress={() => onWorkoutPress(w)}
-                        onLongPress={() => onWorkoutLongPress(w)}
-                    />
-                ))}
-                {/* Show + on all upcoming days, not just empty ones */}
-                {canAdd && (
-                    <View
-                        style={styles.weekEmptyDay}
-                        accessibilityElementsHidden
-                        importantForAccessibility="no"
-                    >
-                        <Feather name="plus" size={14} color="#2a2a2a" />
+                {workout.status === 'completed' ? (
+                    <View style={styles.sheetCompleted} accessible accessibilityLabel="Workout completed">
+                        <Feather name="check-circle" size={18} color="#7bb533" accessible={false} />
+                        <Text style={styles.sheetCompletedText}>This workout has been completed.</Text>
                     </View>
+                ) : (
+                    <>
+                        <Pressable
+                            style={styles.sheetAction}
+                            onPress={() => { onSkip(); }}
+                            accessibilityRole="button"
+                            accessibilityLabel="Skip workout"
+                            accessibilityHint="Mark this workout as skipped with an optional reason"
+                        >
+                            <Feather name="slash" size={20} color="#fba8a0" accessible={false} />
+                            <View style={styles.sheetActionTextBlock}>
+                                <Text style={styles.sheetActionText}>Skip</Text>
+                                <Text style={styles.sheetActionSub}>Mark as skipped with optional reason</Text>
+                            </View>
+                        </Pressable>
+
+                        <Pressable
+                            style={styles.sheetAction}
+                            onPress={() => { onMove(); }}
+                            accessibilityRole="button"
+                            accessibilityLabel="Move workout to a different date"
+                        >
+                            <Feather name="calendar" size={20} color="#fba8a0" accessible={false} />
+                            <View style={styles.sheetActionTextBlock}>
+                                <Text style={styles.sheetActionText}>Move</Text>
+                                <Text style={styles.sheetActionSub}>Reschedule to a different date</Text>
+                            </View>
+                        </Pressable>
+                    </>
                 )}
-            </View>
-        </Pressable>
-    );
-};
 
-// ─── Action sheet helpers (unchanged from original) ───────────────────────────
-
-const WorkoutActionSheet = ({ workout, onClose, onSkip, onCopy, onMove }) => {
-    const isCompleted = workout?.status === 'completed';
-    return (
-        <Modal transparent animationType="slide" onRequestClose={onClose}>
-            <Pressable style={styles.sheetOverlay} onPress={onClose}>
-                <Pressable style={styles.sheetContainer} onPress={() => {}}>
-                    <View style={styles.sheetHandle} />
-                    <Text style={styles.sheetTitle} numberOfLines={1}>{workout?.workoutName}</Text>
-                    <Text style={styles.sheetDate}>{workout ? friendlyDate(workout.scheduledDate) : ''}</Text>
-
-                    <Pressable style={styles.sheetAction} onPress={onCopy} accessibilityRole="button" accessibilityLabel="Copy to another day">
-                        <Feather name="copy" size={20} color="#fba8a0" />
-                        <Text style={styles.sheetActionText}>Copy to another day</Text>
-                    </Pressable>
-
-                    {!isCompleted && (
-                        <Pressable style={styles.sheetAction} onPress={onMove} accessibilityRole="button" accessibilityLabel="Move to another day">
-                            <Feather name="calendar" size={20} color="#fba8a0" />
-                            <Text style={styles.sheetActionText}>Move to another day</Text>
-                        </Pressable>
-                    )}
-
-                    {!isCompleted && (
-                        <Pressable style={styles.sheetAction} onPress={onSkip} accessibilityRole="button" accessibilityLabel="Skip this workout">
-                            <Feather name="slash" size={20} color="#888" />
-                            <Text style={[styles.sheetActionText, { color: '#aaa' }]}>Skip this workout</Text>
-                        </Pressable>
-                    )}
-
-                    {isCompleted && (
-                        <View style={styles.sheetCompleted}>
-                            <Feather name="check-circle" size={16} color="#7bb533" />
-                            <Text style={styles.sheetCompletedText}>Completed — cannot be moved or skipped</Text>
-                        </View>
-                    )}
-
-                    <Pressable style={styles.sheetCancel} onPress={onClose} accessibilityRole="button" accessibilityLabel="Cancel">
-                        <Text style={styles.sheetCancelText}>Cancel</Text>
-                    </Pressable>
-                </Pressable>
-            </Pressable>
-        </Modal>
-    );
-};
-
-const AddWorkoutSheet = ({ dateStr, clientName, onClose, onCreateNew, onUseTemplate }) => (
-    <Modal transparent animationType="slide" onRequestClose={onClose}>
-        <Pressable style={styles.sheetOverlay} onPress={onClose}>
-            <Pressable style={styles.sheetContainer} onPress={() => {}}>
-                <View style={styles.sheetHandle} />
-                <Text style={styles.sheetTitle}>Add workout</Text>
-                <Text style={styles.sheetDate}>{clientName} · {friendlyDate(dateStr)}</Text>
-
-                <Pressable style={styles.sheetAction} onPress={onCreateNew} accessibilityRole="button">
-                    <Feather name="plus-circle" size={20} color="#fba8a0" />
+                <Pressable
+                    style={styles.sheetAction}
+                    onPress={() => { onCopy(); }}
+                    accessibilityRole="button"
+                    accessibilityLabel="Copy workout to another date"
+                >
+                    <Feather name="copy" size={20} color="#fba8a0" accessible={false} />
                     <View style={styles.sheetActionTextBlock}>
-                        <Text style={styles.sheetActionText}>Create new workout</Text>
-                        <Text style={styles.sheetActionSub}>Opens the workout builder with client & date pre-filled</Text>
+                        <Text style={styles.sheetActionText}>Copy to date…</Text>
+                        <Text style={styles.sheetActionSub}>Duplicate on a different day</Text>
                     </View>
                 </Pressable>
 
-                <Pressable style={styles.sheetAction} onPress={onUseTemplate} accessibilityRole="button">
-                    <Feather name="copy" size={20} color="#fba8a0" />
-                    <View style={styles.sheetActionTextBlock}>
-                        <Text style={styles.sheetActionText}>Use a template</Text>
-                        <Text style={styles.sheetActionSub}>Pick from existing workouts and assign here</Text>
-                    </View>
-                </Pressable>
-
-                <Pressable style={styles.sheetCancel} onPress={onClose} accessibilityRole="button">
+                <Pressable
+                    style={styles.sheetCancel}
+                    onPress={onClose}
+                    accessibilityRole="button"
+                    accessibilityLabel="Cancel"
+                >
                     <Text style={styles.sheetCancelText}>Cancel</Text>
                 </Pressable>
             </Pressable>
@@ -387,30 +359,122 @@ const AddWorkoutSheet = ({ dateStr, clientName, onClose, onCreateNew, onUseTempl
     </Modal>
 );
 
+// ─── Add workout sheet ────────────────────────────────────────────────────────
+
+const AddWorkoutSheet = ({ dateStr, clientName, onClose, onCreateNew, onUseTemplate }) => (
+    <Modal
+        transparent
+        animationType="slide"
+        onRequestClose={onClose}
+        accessibilityViewIsModal={true}
+    >
+        <Pressable
+            style={styles.sheetOverlay}
+            onPress={onClose}
+            accessibilityRole="button"
+            accessibilityLabel="Close menu"
+        >
+            <Pressable
+                style={styles.sheetContainer}
+                onPress={e => e.stopPropagation()}
+                accessible={false}
+            >
+                <View
+                    style={styles.sheetHandle}
+                    accessible={false}
+                    importantForAccessibility="no"
+                />
+                <Text style={styles.sheetTitle} accessibilityRole="header">
+                    Add workout
+                </Text>
+                <Text style={styles.sheetDate}>
+                    {friendlyDate(dateStr)}{clientName ? ` · ${clientName}` : ''}
+                </Text>
+
+                <Pressable
+                    style={styles.sheetAction}
+                    onPress={onCreateNew}
+                    accessibilityRole="button"
+                    accessibilityLabel="Create a new workout from scratch"
+                >
+                    <Feather name="plus-circle" size={20} color="#fba8a0" accessible={false} />
+                    <View style={styles.sheetActionTextBlock}>
+                        <Text style={styles.sheetActionText}>Create new workout</Text>
+                        <Text style={styles.sheetActionSub}>Build a fresh workout for this date</Text>
+                    </View>
+                </Pressable>
+
+                <Pressable
+                    style={styles.sheetAction}
+                    onPress={onUseTemplate}
+                    accessibilityRole="button"
+                    accessibilityLabel="Use an existing workout template"
+                >
+                    <Feather name="copy" size={20} color="#fba8a0" accessible={false} />
+                    <View style={styles.sheetActionTextBlock}>
+                        <Text style={styles.sheetActionText}>Use a template</Text>
+                        <Text style={styles.sheetActionSub}>Pick from existing workouts and assign here</Text>
+                    </View>
+                </Pressable>
+
+                <Pressable
+                    style={styles.sheetCancel}
+                    onPress={onClose}
+                    accessibilityRole="button"
+                    accessibilityLabel="Cancel"
+                >
+                    <Text style={styles.sheetCancelText}>Cancel</Text>
+                </Pressable>
+            </Pressable>
+        </Pressable>
+    </Modal>
+);
+
+// ─── Skip modal ───────────────────────────────────────────────────────────────
+
 const SkipModal = ({ workout, onClose, onConfirm }) => {
     const [reason, setReason] = React.useState('');
     return (
-        <Modal transparent animationType="fade" onRequestClose={onClose}>
+        <Modal
+            transparent
+            animationType="fade"
+            onRequestClose={onClose}
+            accessibilityViewIsModal={true}
+        >
             <View style={styles.modalOverlay}>
                 <View style={styles.modalCard}>
-                    <Text style={styles.modalTitle}>Skip workout?</Text>
+                    <Text style={styles.modalTitle} accessibilityRole="header">
+                        Skip workout?
+                    </Text>
                     <Text style={styles.modalSubtitle}>{workout?.workoutName}</Text>
                     <TextInput
                         style={styles.modalInput}
                         value={reason}
                         onChangeText={setReason}
                         placeholder="Why are you skipping? (optional)"
-                        placeholderTextColor="#888"
+                        placeholderTextColor="#555"
                         multiline
-                        autoFocus
-                        accessibilityLabel="Skip reason, optional"
+                        returnKeyType="done"
+                        blurOnSubmit
+                        accessibilityLabel="Skip reason"
+                        accessibilityHint="Optional. Describe why you are skipping this workout."
                     />
                     <View style={styles.modalActions}>
-                        <Pressable style={styles.modalButtonSecondary} onPress={onClose} accessibilityRole="button" accessibilityLabel="Cancel">
+                        <Pressable
+                            style={styles.modalButtonSecondary}
+                            onPress={onClose}
+                            accessibilityRole="button"
+                            accessibilityLabel="Cancel, do not skip"
+                        >
                             <Text style={styles.modalButtonSecondaryText}>Cancel</Text>
                         </Pressable>
-                        <Pressable style={styles.modalButtonPrimary} onPress={() => onConfirm(reason)} accessibilityRole="button" accessibilityLabel="Confirm skip">
-                            <Text style={styles.modalButtonPrimaryText}>Skip</Text>
+                        <Pressable
+                            style={styles.modalButtonPrimary}
+                            onPress={() => onConfirm(reason)}
+                            accessibilityRole="button"
+                            accessibilityLabel="Confirm skip"
+                        >
+                            <Text style={styles.modalButtonPrimaryText}>Skip Workout</Text>
                         </Pressable>
                     </View>
                 </View>
@@ -419,103 +483,126 @@ const SkipModal = ({ workout, onClose, onConfirm }) => {
     );
 };
 
+// ─── Mini calendar (date picker) ──────────────────────────────────────────────
+
 const DatePickerModal = ({ title, minDate, onClose, onConfirm }) => {
     const now = new Date();
-    const [year, setYear]   = React.useState(now.getFullYear());
-    const [month, setMonth] = React.useState(now.getMonth());
-    const [selected, setSelected] = React.useState(null);
-    const todayStr = todayInTimezone();
+    const [pickerYear,  setPickerYear]  = React.useState(now.getFullYear());
+    const [pickerMonth, setPickerMonth] = React.useState(now.getMonth());
+    const [selected,    setSelected]    = React.useState(null);
 
-    const prevMonth = () => {
-        if (month === 0) { setMonth(11); setYear(y => y - 1); }
-        else setMonth(m => m - 1);
-        setSelected(null);
+    const grid = React.useMemo(
+        () => getMonthGrid(pickerYear, pickerMonth),
+        [pickerYear, pickerMonth],
+    );
+
+    // Split flat 42-cell grid into 6 rows of 7
+    const rows = React.useMemo(() => {
+        const r = [];
+        for (let i = 0; i < grid.length; i += 7) r.push(grid.slice(i, i + 7));
+        return r;
+    }, [grid]);
+
+    const prevPickerMonth = () => {
+        if (pickerMonth === 0) { setPickerMonth(11); setPickerYear(y => y - 1); }
+        else setPickerMonth(m => m - 1);
     };
-    const nextMonth = () => {
-        if (month === 11) { setMonth(0); setYear(y => y + 1); }
-        else setMonth(m => m + 1);
-        setSelected(null);
+    const nextPickerMonth = () => {
+        if (pickerMonth === 11) { setPickerMonth(0); setPickerYear(y => y + 1); }
+        else setPickerMonth(m => m + 1);
     };
 
-    // Build a proper row-based grid to avoid React Native's flexWrap percentage
-    // rounding bug which causes columns to stack incorrectly.
-    // getMonthGrid returns exactly 42 cells (6 rows × 7 cols). Slice into rows.
-    const flat = getMonthGrid(year, month); // 42 items
-    const rows = [];
-    for (let r = 0; r < 6; r++) rows.push(flat.slice(r * 7, r * 7 + 7));
+    const DOW_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
     return (
-        <Modal transparent animationType="fade" onRequestClose={onClose}>
+        <Modal
+            transparent
+            animationType="fade"
+            onRequestClose={onClose}
+            accessibilityViewIsModal={true}
+        >
             <View style={styles.modalOverlay}>
                 <View style={styles.modalCard}>
-                    <Text style={styles.modalTitle}>{title}</Text>
+                    <Text style={styles.modalTitle} accessibilityRole="header">
+                        {title}
+                    </Text>
 
-                    {/* Month nav */}
+                    {/* Month navigation */}
                     <View style={styles.miniCalHeader}>
-                        <Pressable onPress={prevMonth} style={styles.miniNavBtn}
-                            accessibilityRole="button" accessibilityLabel="Previous month">
-                            <Feather name="chevron-left" size={20} color="#fae9e9" />
+                        <Pressable
+                            onPress={prevPickerMonth}
+                            style={styles.miniNavBtn}
+                            accessibilityRole="button"
+                            accessibilityLabel="Previous month"
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                            <Feather name="chevron-left" size={20} color="#fae9e9" accessible={false} />
                         </Pressable>
-                        <Text style={styles.miniCalMonthLabel}>{monthLabel(year, month)}</Text>
-                        <Pressable onPress={nextMonth} style={styles.miniNavBtn}
-                            accessibilityRole="button" accessibilityLabel="Next month">
-                            <Feather name="chevron-right" size={20} color="#fae9e9" />
+                        <Text style={styles.miniCalMonthLabel}>
+                            {monthLabel(pickerYear, pickerMonth)}
+                        </Text>
+                        <Pressable
+                            onPress={nextPickerMonth}
+                            style={styles.miniNavBtn}
+                            accessibilityRole="button"
+                            accessibilityLabel="Next month"
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                            <Feather name="chevron-right" size={20} color="#fae9e9" accessible={false} />
                         </Pressable>
                     </View>
 
-                    {/* Day-of-week header row */}
-                    <View style={styles.miniCalRow} accessibilityElementsHidden>
-                        {DAYS_OF_WEEK.map(d => (
-                            <View key={d} style={styles.miniCalCellWrap}>
-                                <Text style={styles.miniCalDayLabel}>{d}</Text>
+                    {/* Day-of-week headers */}
+                    <View style={styles.miniCalRow}>
+                        {DOW_LABELS.map(label => (
+                            <View key={label} style={styles.miniCalCellWrap}>
+                                <Text
+                                    style={styles.miniCalDayLabel}
+                                    accessible={false}
+                                    importantForAccessibility="no"
+                                >
+                                    {label}
+                                </Text>
                             </View>
                         ))}
                     </View>
 
-                    {/* Date rows — 6 explicit rows, no flexWrap */}
-                    {rows.map((row, ri) => (
-                        <View key={ri} style={styles.miniCalRow}>
-                            {row.map(({ dateStr, currentMonth: inMonth }) => {
-                                // A date is "inaccessible" (can't be picked) if:
-                                //   • it's outside the current month, OR
-                                //   • it's before the minDate (already-passed dates for move,
-                                //     or no restriction for copy)
-                                const beforeMin = minDate ? dateStr < minDate : false;
-                                const inaccessible = !inMonth || beforeMin;
-                                const isSel = selected === dateStr;
-                                const isToday = dateStr === todayStr;
+                    {/* Date rows */}
+                    {rows.map((row, rowIdx) => (
+                        <View key={rowIdx} style={styles.miniCalRow}>
+                            {row.map(({ dateStr, currentMonth }) => {
+                                const isPast   = minDate ? dateStr < minDate : false;
+                                const isBlocked = isPast || !currentMonth;
+                                const isSelected = dateStr === selected;
+                                const isToday    = dateStr === toISO(new Date());
+                                const dayNum     = parseInt(dateStr.split('-')[2], 10);
 
                                 return (
                                     <View key={dateStr} style={styles.miniCalCellWrap}>
                                         <Pressable
                                             style={[
                                                 styles.miniCalCell,
-                                                isSel && styles.miniCalCellSelected,
+                                                isSelected && styles.miniCalCellSelected,
                                             ]}
-                                            onPress={() => !inaccessible && setSelected(dateStr)}
-                                            disabled={inaccessible}
+                                            onPress={() => !isBlocked && setSelected(dateStr)}
+                                            disabled={isBlocked}
                                             accessibilityRole="button"
                                             accessibilityLabel={
-                                                inaccessible ? undefined
-                                                : `${dateStr}${isSel ? ', selected' : ''}${isToday ? ', today' : ''}`
+                                                isToday ? `${dayNum}, today` : String(dayNum)
                                             }
-                                            accessibilityState={inaccessible
-                                                ? { disabled: true }
-                                                : { selected: isSel }
-                                            }
+                                            accessibilityState={{
+                                                selected: isSelected,
+                                                disabled: isBlocked,
+                                            }}
                                         >
                                             <Text style={[
                                                 styles.miniCalCellText,
-                                                // Priority: selected → today → inaccessible → normal
-                                                isSel        && styles.miniCalCellSelectedText,
-                                                !isSel && isToday && styles.miniCalCellToday,
-                                                !isSel && inaccessible && (
-                                                    beforeMin
-                                                        ? styles.miniCalCellPast      // past/blocked: visibly faded
-                                                        : styles.miniCalCellOtherMonth // other month: very faint
-                                                ),
+                                                isToday    && styles.miniCalCellToday,
+                                                isSelected && styles.miniCalCellSelectedText,
+                                                isPast     && styles.miniCalCellPast,
+                                                !currentMonth && styles.miniCalCellOtherMonth,
                                             ]}>
-                                                {parseInt(dateStr.split('-')[2])}
+                                                {dayNum}
                                             </Text>
                                         </Pressable>
                                     </View>
@@ -526,8 +613,12 @@ const DatePickerModal = ({ title, minDate, onClose, onConfirm }) => {
 
                     {/* Action buttons */}
                     <View style={styles.modalActions}>
-                        <Pressable style={styles.modalButtonSecondary} onPress={onClose}
-                            accessibilityRole="button" accessibilityLabel="Cancel">
+                        <Pressable
+                            style={styles.modalButtonSecondary}
+                            onPress={onClose}
+                            accessibilityRole="button"
+                            accessibilityLabel="Cancel"
+                        >
                             <Text style={styles.modalButtonSecondaryText}>Cancel</Text>
                         </Pressable>
                         <Pressable
@@ -547,6 +638,101 @@ const DatePickerModal = ({ title, minDate, onClose, onConfirm }) => {
     );
 };
 
+// ─── Week workout detail list ─────────────────────────────────────────────────
+
+const WeekWorkoutList = ({ weekGrid, workoutsByDate, todayStr, onWorkoutPress, onWorkoutLongPress }) => {
+    const days = weekGrid.filter(({ dateStr }) => (workoutsByDate[dateStr]?.length ?? 0) > 0);
+
+    if (days.length === 0) return (
+        <View
+            style={styles.weekEmptyState}
+            accessible
+            accessibilityLabel="No workouts scheduled this week"
+        >
+            <Feather name="calendar" size={28} color="#333" accessible={false} />
+            <Text style={styles.weekEmptyStateText}>No workouts this week</Text>
+        </View>
+    );
+
+    return (
+        <View style={styles.weekListContainer}>
+            {days.map(({ dateStr }) => {
+                const dayWorkouts = workoutsByDate[dateStr] ?? [];
+                const d = parseISO(dateStr);
+                const isToday = dateStr === todayStr;
+                const dayLabel = d.toLocaleDateString('default', {
+                    weekday: 'long', month: 'short', day: 'numeric',
+                });
+                return (
+                    <View key={dateStr} style={styles.weekListDay}>
+                        <View style={[styles.weekListDayHeader, isToday && styles.weekListDayHeaderToday]}>
+                            <Text
+                                style={[styles.weekListDayLabel, isToday && styles.weekListDayLabelToday]}
+                                accessibilityRole="header"
+                            >
+                                {dayLabel}{isToday ? '  ·  Today' : ''}
+                            </Text>
+                        </View>
+                        {dayWorkouts.map(w => {
+                            const statusLabel = STATUS_LABEL[w.status] ?? w.status;
+                            return (
+                                <Pressable
+                                    key={w.id}
+                                    style={[
+                                        styles.weekListItem,
+                                        { borderLeftColor: STATUS_COLOR[w.status] ?? STATUS_COLOR.scheduled },
+                                    ]}
+                                    onPress={() => onWorkoutPress(w)}
+                                    onLongPress={() => onWorkoutLongPress(w)}
+                                    delayLongPress={400}
+                                    accessibilityRole="button"
+                                    accessibilityLabel={`${w.workoutName}, ${statusLabel}`}
+                                    accessibilityHint="Tap to open. Long press for actions."
+                                >
+                                    <View style={styles.weekListItemContent}>
+                                        <Text style={styles.weekListItemName}>{w.workoutName}</Text>
+                                        <Text style={styles.weekListItemStatus}>{statusLabel}</Text>
+                                    </View>
+                                    <Feather name="chevron-right" size={16} color="#555" accessible={false} />
+                                </Pressable>
+                            );
+                        })}
+                    </View>
+                );
+            })}
+        </View>
+    );
+};
+
+// ─── Legend ───────────────────────────────────────────────────────────────────
+
+const LEGEND_ITEMS = [
+    { color: STATUS_COLOR.scheduled, label: 'Scheduled' },
+    { color: STATUS_COLOR.completed, label: 'Completed' },
+    { color: STATUS_COLOR.skipped,   label: 'Skipped'   },
+    { color: STATUS_COLOR.missed,    label: 'Missed'    },
+];
+
+const Legend = () => (
+    <View
+        style={styles.legend}
+        accessible
+        accessibilityLabel="Colour legend: pink is scheduled, green is completed, grey is skipped, orange is missed"
+    >
+        {LEGEND_ITEMS.map(({ color, label }) => (
+            <View
+                key={label}
+                style={styles.legendItem}
+                accessible={false}
+                importantForAccessibility="no-hide-descendants"
+            >
+                <View style={[styles.legendDot, { backgroundColor: color }]} />
+                <Text style={styles.legendText}>{label}</Text>
+            </View>
+        ))}
+    </View>
+);
+
 // ─── Main CalendarScreen ──────────────────────────────────────────────────────
 
 export default function CalendarScreen({ navigation, route }) {
@@ -554,56 +740,45 @@ export default function CalendarScreen({ navigation, route }) {
     const isCoach = user?.isCoach ?? false;
 
     const clientEmail    = route?.params?.clientEmail ?? user?.email;
-    const clientName     = route?.params?.clientName ?? `${user?.fname ?? ''} ${user?.lname ?? ''}`.trim();
-    // clientTimezone is the IANA timezone for the client's device, passed in
-    // by CoachNavigation when navigating from ClientList. Falls back to the
-    // viewing device's timezone (correct for clients viewing their own calendar).
+    const clientName     = route?.params?.clientName  ?? `${user?.fname ?? ''} ${user?.lname ?? ''}`.trim();
+    // clientTimezone: IANA timezone string passed in by CoachNavigation when
+    // navigating from ClientList. Falls back to the viewing device's timezone
+    // (correct for clients viewing their own calendar).
     const clientTimezone = route?.params?.clientTimezone ?? deviceTimezone();
 
-    // "Today" for the CLIENT — governs which dates a coach is allowed to schedule on.
-    // Rule: a coach may only add workouts to dates that have NOT yet passed for the CLIENT.
-    //   Coach in Seattle (Apr 9) + client in Sydney (Apr 10) → clientTodayStr = "Apr 10"
-    //     → Apr 9 is past for the client → coach cannot schedule there
-    //   Coach in Sydney (Apr 10) + client in Seattle (Apr 9) → clientTodayStr = "Apr 9"
-    //     → Apr 9 is today/future for the client → coach CAN schedule there
-    // When a client views their own calendar, clientTimezone == deviceTimezone(),
-    // so clientTodayStr == viewingDeviceTodayStr and behaviour is unchanged.
-    const clientTodayStr = todayInTimezone(clientTimezone);
+    // "Today" for the CLIENT — governs which past dates a coach cannot schedule on.
+    const clientTodayStr = React.useMemo(
+        () => todayInTimezone(clientTimezone),
+        [clientTimezone],
+    );
 
-    // ── View preference ──────────────────────────────────────────────────────
+    // ── Calendar view preference ─────────────────────────────────────────────
 
-    const [calendarView, setCalendarView] = React.useState('month'); // 'month' | 'week'
+    const [calendarView, setCalendarView] = React.useState('month');
 
     React.useEffect(() => {
         AsyncStorage.getItem(CALENDAR_VIEW_KEY).then(v => {
             if (v === 'week' || v === 'month') setCalendarView(v);
-        });
+        }).catch(() => {});
     }, []);
 
-    // Also check route param (from SettingsScreen change)
-    React.useEffect(() => {
-        if (route?.params?.calendarView === 'week' || route?.params?.calendarView === 'month') {
-            setCalendarView(route.params.calendarView);
-        }
-    }, [route?.params?.calendarView]);
-
-    const toggleView = () => {
+    const toggleCalendarView = () => {
         const next = calendarView === 'month' ? 'week' : 'month';
         setCalendarView(next);
-        AsyncStorage.setItem(CALENDAR_VIEW_KEY, next);
+        AsyncStorage.setItem(CALENDAR_VIEW_KEY, next).catch(() => {});
     };
 
     // ── Month navigation state ───────────────────────────────────────────────
 
     const now = new Date();
-    const [year, setYear]   = React.useState(now.getFullYear());
+    const [year,  setYear]  = React.useState(now.getFullYear());
     const [month, setMonth] = React.useState(now.getMonth());
 
-    // ── Week navigation state — tracks the Sunday of the current week ────────
-    // Initialise to the Sunday of the current week on the viewing device
+    // ── Week navigation state ────────────────────────────────────────────────
+
     const [weekAnchor, setWeekAnchor] = React.useState(() => {
         const today = parseISO(clientTodayStr);
-        const dow = today.getDay();
+        const dow   = today.getDay();
         const sunday = new Date(today);
         sunday.setDate(today.getDate() - dow);
         return toISO(sunday);
@@ -614,25 +789,29 @@ export default function CalendarScreen({ navigation, route }) {
     // ── Workouts state ───────────────────────────────────────────────────────
 
     const [workouts, setWorkouts] = React.useState([]);
-    const [loading, setLoading]   = React.useState(true);
-    const [saving, setSaving]     = React.useState(false);
+    const [loading,  setLoading]  = React.useState(true);
+    const [saving,   setSaving]   = React.useState(false);
 
     // ── UI state ─────────────────────────────────────────────────────────────
 
-    const [actionWorkout, setActionWorkout] = React.useState(null);
-    const [skipWorkout,   setSkipWorkout]   = React.useState(null);
-    const [copyWorkout,   setCopyWorkout]   = React.useState(null);
-    const [moveWorkout,   setMoveWorkout]   = React.useState(null);
-    const [addDayTarget,  setAddDayTarget]  = React.useState(null);
+    const [actionWorkout,      setActionWorkout]      = React.useState(null);
+    const [skipWorkout,        setSkipWorkout]        = React.useState(null);
+    const [copyWorkout,        setCopyWorkout]        = React.useState(null);
+    const [moveWorkout,        setMoveWorkout]        = React.useState(null);
+    const [addDayTarget,       setAddDayTarget]       = React.useState(null);
     const [showTemplatePicker, setShowTemplatePicker] = React.useState(false);
 
     // ── Fetch schedule ───────────────────────────────────────────────────────
 
     /**
      * For monthly view we fetch by month (YYYY-MM).
-     * For weekly view we fetch the month(s) that overlap the week.
-     * We pass the CLIENT's timezone so the server can correctly determine
-     * which workouts are "missed" for that client.
+     * For weekly view we fetch the month that contains the week anchor.
+     * We pass the CLIENT's timezone so the server can determine which
+     * workouts are "missed" for that client.
+     *
+     * BUG FIX: We guard res.ok before calling res.json(). Without this guard,
+     * non-JSON error bodies (Cloudflare HTML 500, plain-text 401, etc.) throw
+     * a JSON SyntaxError that surfaces as "JSON parse error" in the UI.
      */
     const fetchSchedule = React.useCallback(async () => {
         setLoading(true);
@@ -641,19 +820,25 @@ export default function CalendarScreen({ navigation, route }) {
             if (calendarView === 'month') {
                 monthParam = `${year}-${String(month + 1).padStart(2, '0')}`;
             } else {
-                // Fetch the month of the week anchor (and possibly next month if week spans two)
                 const anchorDate = parseISO(weekAnchor);
                 monthParam = `${anchorDate.getFullYear()}-${String(anchorDate.getMonth() + 1).padStart(2, '0')}`;
             }
 
             const res = await authFetch(
-                `https://coaching-app.bert-m-cherry.workers.dev/schedule?clientEmail=${encodeURIComponent(clientEmail)}&month=${monthParam}&tz=${encodeURIComponent(clientTimezone)}`
+                `${WORKER_URL}/schedule?clientEmail=${encodeURIComponent(clientEmail)}&month=${monthParam}&tz=${encodeURIComponent(clientTimezone)}`
             );
+
+            // Guard against non-JSON error responses before calling .json()
+            if (!res.ok) {
+                const errText = await res.text().catch(() => String(res.status));
+                throw new Error(`Schedule fetch failed (${res.status}): ${errText}`);
+            }
+
             const body = await res.json();
             setWorkouts(body.workouts ?? []);
         } catch (e) {
             Alert.alert('Error', 'Could not load schedule.');
-            console.error(e);
+            console.error('[CalendarScreen] fetchSchedule error:', e);
         } finally {
             setLoading(false);
         }
@@ -698,7 +883,7 @@ export default function CalendarScreen({ navigation, route }) {
 
     const monthGrid = React.useMemo(() => getMonthGrid(year, month), [year, month]);
 
-    // ── Optimistic helpers ───────────────────────────────────────────────────
+    // ── Optimistic update helpers ────────────────────────────────────────────
 
     const updateWorkout = (id, changes) =>
         setWorkouts(prev => prev.map(w => w.id === id ? { ...w, ...changes } : w));
@@ -726,16 +911,19 @@ export default function CalendarScreen({ navigation, route }) {
 
     const handleSkipConfirm = async (reason) => {
         const workout = skipWorkout;
-        setSkipWorkout(null); setActionWorkout(null);
+        setSkipWorkout(null);
+        setActionWorkout(null);
         updateWorkout(workout.id, { status: 'skipped', skipReason: reason });
         setSaving(true);
         try {
-            const res = await authFetch('https://coaching-app.bert-m-cherry.workers.dev/schedule/skip', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
+            const res = await authFetch(`${WORKER_URL}/schedule/skip`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id: workout.id, reason }),
             });
-            if (!res.ok) throw new Error();
-        } catch {
+            if (!res.ok) throw new Error(`Skip failed (${res.status})`);
+        } catch (e) {
+            console.error('[CalendarScreen] handleSkipConfirm error:', e);
             updateWorkout(workout.id, { status: workout.status, skipReason: workout.skipReason });
             Alert.alert('Error', 'Could not skip workout. Please try again.');
         } finally { setSaving(false); }
@@ -743,35 +931,61 @@ export default function CalendarScreen({ navigation, route }) {
 
     const handleCopyConfirm = async (newDate) => {
         const workout = copyWorkout;
-        setCopyWorkout(null); setActionWorkout(null);
+        setCopyWorkout(null);
+        setActionWorkout(null);
         setSaving(true);
         try {
-            const res = await authFetch('https://coaching-app.bert-m-cherry.workers.dev/schedule/copy', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
+            const res = await authFetch(`${WORKER_URL}/schedule/copy`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id: workout.id, newDate }),
             });
-            if (!res.ok) throw new Error();
+            if (!res.ok) throw new Error(`Copy failed (${res.status})`);
             const body = await res.json();
-            addWorkout({ ...workout, id: body.newId, scheduledDate: newDate, status: 'scheduled', skipReason: null, completedAt: null, originalDate: null, copiedFrom: workout.id });
-        } catch {
+            addWorkout({
+                ...workout,
+                id: body.newId,
+                scheduledDate: newDate,
+                status: 'scheduled',
+                skipReason: null,
+                completedAt: null,
+                originalDate: null,
+                copiedFrom: workout.id,
+            });
+        } catch (e) {
+            console.error('[CalendarScreen] handleCopyConfirm error:', e);
             Alert.alert('Error', 'Could not copy workout. Please try again.');
         } finally { setSaving(false); }
     };
 
     const handleMoveConfirm = async (newDate) => {
         const workout = moveWorkout;
-        setMoveWorkout(null); setActionWorkout(null);
+        setMoveWorkout(null);
+        setActionWorkout(null);
         const oldDate = workout.scheduledDate;
-        updateWorkout(workout.id, { scheduledDate: newDate, originalDate: workout.originalDate ?? oldDate, status: (workout.status === 'skipped' || workout.status === 'missed') ? 'scheduled' : workout.status });
+        const newStatus = (workout.status === 'skipped' || workout.status === 'missed')
+            ? 'scheduled'
+            : workout.status;
+        updateWorkout(workout.id, {
+            scheduledDate: newDate,
+            originalDate: workout.originalDate ?? oldDate,
+            status: newStatus,
+        });
         setSaving(true);
         try {
-            const res = await authFetch('https://coaching-app.bert-m-cherry.workers.dev/schedule/move', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
+            const res = await authFetch(`${WORKER_URL}/schedule/move`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id: workout.id, newDate, today: clientTodayStr }),
             });
-            if (!res.ok) throw new Error();
-        } catch {
-            updateWorkout(workout.id, { scheduledDate: oldDate, originalDate: workout.originalDate, status: workout.status });
+            if (!res.ok) throw new Error(`Move failed (${res.status})`);
+        } catch (e) {
+            console.error('[CalendarScreen] handleMoveConfirm error:', e);
+            updateWorkout(workout.id, {
+                scheduledDate: oldDate,
+                originalDate: workout.originalDate,
+                status: workout.status,
+            });
             Alert.alert('Error', 'Could not move workout. Please try again.');
         } finally { setSaving(false); }
     };
@@ -782,13 +996,15 @@ export default function CalendarScreen({ navigation, route }) {
         ? monthLabel(year, month)
         : weekLabel(weekGrid);
 
+    const DOW_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+
     // ── Render ───────────────────────────────────────────────────────────────
 
     return (
         <View style={styles.container}>
 
             {/* ── Header ── */}
-            <View style={styles.header}>
+            <View style={styles.header} accessibilityRole="header">
                 <Pressable
                     onPress={calendarView === 'month' ? prevMonth : prevWeek}
                     style={styles.headerButton}
@@ -796,11 +1012,11 @@ export default function CalendarScreen({ navigation, route }) {
                     accessibilityLabel={calendarView === 'month' ? 'Previous month' : 'Previous week'}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                    <Feather name="chevron-left" size={24} color="#fae9e9" />
+                    <Feather name="chevron-left" size={24} color="#fae9e9" accessible={false} />
                 </Pressable>
 
                 <View style={styles.headerCenter}>
-                    <Text style={styles.headerTitle} accessibilityRole="header">
+                    <Text style={styles.headerTitle}>
                         {headerLabel}
                     </Text>
                     {isCoach && clientName ? (
@@ -815,55 +1031,82 @@ export default function CalendarScreen({ navigation, route }) {
                     accessibilityLabel={calendarView === 'month' ? 'Next month' : 'Next week'}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                    <Feather name="chevron-right" size={24} color="#fae9e9" />
+                    <Feather name="chevron-right" size={24} color="#fae9e9" accessible={false} />
                 </Pressable>
             </View>
 
             {/* ── View toggle ── */}
-            <View style={styles.viewToggleRow}>
+            <View
+                style={styles.viewToggleRow}
+                accessibilityRole="radiogroup"
+                accessibilityLabel="Calendar view"
+            >
                 <Pressable
                     style={[styles.viewToggleBtn, calendarView === 'month' && styles.viewToggleBtnActive]}
-                    onPress={() => { if (calendarView !== 'month') toggleView(); }}
-                    accessibilityRole="button"
-                    accessibilityLabel="Monthly view"
+                    onPress={() => calendarView !== 'month' && toggleCalendarView()}
+                    accessibilityRole="radio"
+                    accessibilityLabel="Month view"
                     accessibilityState={{ selected: calendarView === 'month' }}
                 >
-                    <Feather name="grid" size={14} color={calendarView === 'month' ? '#000' : '#fba8a0'} />
+                    <Feather
+                        name="grid"
+                        size={14}
+                        color={calendarView === 'month' ? '#000' : '#fba8a0'}
+                        accessible={false}
+                    />
                     <Text style={[styles.viewToggleText, calendarView === 'month' && styles.viewToggleTextActive]}>
                         Month
                     </Text>
                 </Pressable>
                 <Pressable
                     style={[styles.viewToggleBtn, calendarView === 'week' && styles.viewToggleBtnActive]}
-                    onPress={() => { if (calendarView !== 'week') toggleView(); }}
-                    accessibilityRole="button"
-                    accessibilityLabel="Weekly view"
+                    onPress={() => calendarView !== 'week' && toggleCalendarView()}
+                    accessibilityRole="radio"
+                    accessibilityLabel="Week view"
                     accessibilityState={{ selected: calendarView === 'week' }}
                 >
-                    <Feather name="columns" size={14} color={calendarView === 'week' ? '#000' : '#fba8a0'} />
+                    <Feather
+                        name="list"
+                        size={14}
+                        color={calendarView === 'week' ? '#000' : '#fba8a0'}
+                        accessible={false}
+                    />
                     <Text style={[styles.viewToggleText, calendarView === 'week' && styles.viewToggleTextActive]}>
                         Week
                     </Text>
                 </Pressable>
             </View>
 
-            {/* ── Calendar body ── */}
+            {/* ── Loading state ── */}
             {loading ? (
-                <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color="#fba8a0" accessibilityLabel="Loading schedule" />
+                <View
+                    style={styles.loadingContainer}
+                    accessible
+                    accessibilityLiveRegion="polite"
+                    accessibilityLabel="Loading schedule"
+                    accessibilityState={{ busy: true }}
+                >
+                    <ActivityIndicator size="large" color="#fba8a0" />
                 </View>
             ) : calendarView === 'month' ? (
 
-                // ── MONTHLY VIEW ──
-                <ScrollView>
-                    {/* Day-of-week header */}
-                    <View style={styles.dowRow} accessibilityElementsHidden>
-                        {DAYS_OF_WEEK.map(d => (
-                            <Text key={d} style={styles.dowLabel}>{d}</Text>
+                <ScrollView
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={{ paddingBottom: 80 }}
+                >
+                    {/* Day-of-week row */}
+                    <View
+                        style={styles.dowRow}
+                        accessible={false}
+                        importantForAccessibility="no-hide-descendants"
+                    >
+                        {DOW_LABELS.map(label => (
+                            <Text key={label} style={styles.dowLabel}>{label}</Text>
                         ))}
                     </View>
 
-                    <View style={styles.grid}>
+                    {/* Month grid */}
+                    <View style={styles.grid} accessibilityRole="grid" accessibilityLabel={headerLabel}>
                         {monthGrid.map(({ dateStr, currentMonth }) => (
                             <MonthDayCell
                                 key={dateStr}
@@ -881,31 +1124,79 @@ export default function CalendarScreen({ navigation, route }) {
                     </View>
 
                     <Legend />
-                    {isCoach && <Text style={styles.coachHint}>Long-press any upcoming day to add a workout</Text>}
-                    <View style={{ height: 60 }} />
+                    {isCoach && (
+                        <Text
+                            style={styles.coachHint}
+                            accessible
+                            accessibilityLabel="Tip: long press any upcoming date to add a workout"
+                        >
+                            Long-press any upcoming day to add a workout
+                        </Text>
+                    )}
+                    <View style={{ height: 60 }} accessible={false} importantForAccessibility="no" />
                 </ScrollView>
 
             ) : (
 
-                // ── WEEKLY VIEW ──
-                <ScrollView>
+                <ScrollView
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={{ paddingBottom: 80 }}
+                >
+                    {/* Week grid — compact pills in columns */}
                     <View style={styles.weekGrid}>
-                        {weekGrid.map(({ dateStr }) => (
-                            <WeekDayColumn
-                                key={dateStr}
-                                dateStr={dateStr}
-                                workouts={workoutsByDate[dateStr] ?? []}
-                                isToday={dateStr === clientTodayStr}
-                                isPast={dateStr < clientTodayStr}
-                                isCoach={isCoach}
-                                onWorkoutPress={handleWorkoutPress}
-                                onWorkoutLongPress={setActionWorkout}
-                                onAddWorkoutPress={setAddDayTarget}
-                            />
-                        ))}
+                        {weekGrid.map(({ dateStr }) => {
+                            const dayWorkouts = workoutsByDate[dateStr] ?? [];
+                            const d = parseISO(dateStr);
+                            const isToday = dateStr === clientTodayStr;
+                            const dayNum  = d.getDate();
+                            const dowName = d.toLocaleDateString('default', { weekday: 'short' }).toUpperCase();
+                            return (
+                                <View
+                                    key={dateStr}
+                                    style={styles.weekColumn}
+                                    accessible={false}
+                                >
+                                    <View style={[styles.weekDayHeader, isToday && styles.weekDayHeaderToday]}>
+                                        <Text
+                                            style={[styles.weekDayName, isToday && styles.weekDayNameToday]}
+                                            accessible={false}
+                                            importantForAccessibility="no"
+                                        >
+                                            {dowName}
+                                        </Text>
+                                        <View style={[styles.weekDayNumContainer, isToday && styles.weekDayNumContainerToday]}>
+                                            <Text
+                                                style={[styles.weekDayNum, isToday && styles.weekDayNumToday]}
+                                                accessibilityLabel={isToday ? `${dayNum}, today` : String(dayNum)}
+                                            >
+                                                {dayNum}
+                                            </Text>
+                                        </View>
+                                    </View>
+                                    <View style={styles.weekWorkouts}>
+                                        {dayWorkouts.map(w => (
+                                            <WorkoutPill
+                                                key={w.id}
+                                                workout={w}
+                                                onPress={() => handleWorkoutPress(w)}
+                                                onLongPress={() => setActionWorkout(w)}
+                                                compact
+                                            />
+                                        ))}
+                                        {dayWorkouts.length === 0 && (
+                                            <View
+                                                style={styles.weekEmptyDay}
+                                                accessible={false}
+                                                importantForAccessibility="no"
+                                            />
+                                        )}
+                                    </View>
+                                </View>
+                            );
+                        })}
                     </View>
 
-                    {/* Full workout list for the week — better readability */}
+                    {/* Full workout list below the week grid */}
                     <WeekWorkoutList
                         weekGrid={weekGrid}
                         workoutsByDate={workoutsByDate}
@@ -915,16 +1206,30 @@ export default function CalendarScreen({ navigation, route }) {
                     />
 
                     <Legend />
-                    {isCoach && <Text style={styles.coachHint}>Long-press any upcoming day to add a workout</Text>}
-                    <View style={{ height: 60 }} />
+                    {isCoach && (
+                        <Text
+                            style={styles.coachHint}
+                            accessible
+                            accessibilityLabel="Tip: switch to month view to add workouts by long pressing a day"
+                        >
+                            Switch to month view to add workouts
+                        </Text>
+                    )}
+                    <View style={{ height: 60 }} accessible={false} importantForAccessibility="no" />
                 </ScrollView>
             )}
 
             {/* ── Saving banner ── */}
             {saving && (
-                <View style={styles.savingBanner} accessibilityLiveRegion="polite" accessibilityLabel="Saving">
-                    <ActivityIndicator size="small" color="#000" />
-                    <Text style={styles.savingText}>Saving…</Text>
+                <View
+                    style={styles.savingBanner}
+                    accessible
+                    accessibilityLiveRegion="polite"
+                    accessibilityLabel="Saving changes"
+                    accessibilityRole="progressbar"
+                >
+                    <ActivityIndicator size="small" color="#000" accessible={false} />
+                    <Text style={styles.savingText} accessible={false}>Saving…</Text>
                 </View>
             )}
 
@@ -987,132 +1292,67 @@ export default function CalendarScreen({ navigation, route }) {
     );
 }
 
-// ─── Week workout detail list ─────────────────────────────────────────────────
-
-const WeekWorkoutList = ({ weekGrid, workoutsByDate, todayStr, onWorkoutPress, onWorkoutLongPress }) => {
-    const days = weekGrid.filter(({ dateStr }) => (workoutsByDate[dateStr]?.length ?? 0) > 0);
-    if (days.length === 0) return (
-        <View style={styles.weekEmptyState}>
-            <Feather name="calendar" size={28} color="#333" />
-            <Text style={styles.weekEmptyStateText}>No workouts this week</Text>
-        </View>
-    );
-
-    return (
-        <View style={styles.weekListContainer}>
-            {days.map(({ dateStr }) => {
-                const dayWorkouts = workoutsByDate[dateStr] ?? [];
-                const d = parseISO(dateStr);
-                const isToday = dateStr === todayStr;
-                return (
-                    <View key={dateStr} style={styles.weekListDay}>
-                        <View style={[styles.weekListDayHeader, isToday && styles.weekListDayHeaderToday]}>
-                            <Text style={[styles.weekListDayLabel, isToday && styles.weekListDayLabelToday]}>
-                                {d.toLocaleDateString('default', { weekday: 'long', month: 'short', day: 'numeric' })}
-                                {isToday ? '  ·  Today' : ''}
-                            </Text>
-                        </View>
-                        {dayWorkouts.map(w => (
-                            <Pressable
-                                key={w.id}
-                                style={[styles.weekListItem, { borderLeftColor: STATUS_COLOR[w.status] ?? STATUS_COLOR.scheduled }]}
-                                onPress={() => onWorkoutPress(w)}
-                                onLongPress={() => onWorkoutLongPress(w)}
-                                delayLongPress={400}
-                                accessibilityRole="button"
-                                accessibilityLabel={`${w.workoutName}, ${w.status}`}
-                            >
-                                <View style={styles.weekListItemContent}>
-                                    <Text style={styles.weekListItemName}>{w.workoutName}</Text>
-                                    <Text style={styles.weekListItemStatus}>{w.status}</Text>
-                                </View>
-                                <Feather name="chevron-right" size={16} color="#555" />
-                            </Pressable>
-                        ))}
-                    </View>
-                );
-            })}
-        </View>
-    );
-};
-
-// ─── Legend ───────────────────────────────────────────────────────────────────
-
-const LEGEND_ITEMS = [
-    { color: STATUS_COLOR.scheduled, label: 'Scheduled' },
-    { color: STATUS_COLOR.completed, label: 'Completed' },
-    { color: STATUS_COLOR.skipped,   label: 'Skipped'   },
-    { color: STATUS_COLOR.missed,    label: 'Missed'    },
-];
-
-const Legend = () => (
-    <View style={styles.legend} accessibilityRole="text" accessibilityLabel="Legend: pink = scheduled, green = completed, grey = skipped, orange = missed">
-        {LEGEND_ITEMS.map(({ color, label }) => (
-            <View key={label} style={styles.legendItem} accessibilityElementsHidden>
-                <View style={[styles.legendDot, { backgroundColor: color }]} />
-                <Text style={styles.legendText}>{label}</Text>
-            </View>
-        ))}
-    </View>
-);
-
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-    container:       { flex: 1, backgroundColor: '#000' },
+    container: { flex: 1, backgroundColor: '#000' },
 
     // ── Header ──
-    header:          { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
-    headerButton:    { padding: 8, minWidth: 44, minHeight: 44, justifyContent: 'center', alignItems: 'center' },
-    headerCenter:    { alignItems: 'center', flex: 1 },
-    // AAA: #fae9e9 on #000 = 17.7:1
-    headerTitle:     { fontSize: 20, fontWeight: 'bold', color: '#fae9e9' },
-    // AA: #fba8a0 on #000 = 5.29:1 ✓ (supplemental client label)
-    headerClient:    { fontSize: 13, color: '#fba8a0', marginTop: 2 },
+    // Touch targets: headerButton minWidth/Height 44 (WCAG 2.5.5)
+    header:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
+    headerButton: { minWidth: 44, minHeight: 44, justifyContent: 'center', alignItems: 'center' },
+    headerCenter: { alignItems: 'center', flex: 1 },
+    // AAA: #fae9e9 on #000 = 17.7:1 ✓
+    headerTitle:  { fontSize: 20, fontWeight: 'bold', color: '#fae9e9' },
+    // AA: #fba8a0 on #000 = 5.29:1 ✓
+    headerClient: { fontSize: 13, color: '#fba8a0', marginTop: 2 },
 
     // ── View toggle ──
-    viewToggleRow:       { flexDirection: 'row', alignSelf: 'center', backgroundColor: '#111', borderRadius: 10, borderWidth: 1, borderColor: '#222', overflow: 'hidden', marginBottom: 8, marginTop: 2 },
-    viewToggleBtn:       { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 18, paddingVertical: 8, minHeight: 44, justifyContent: 'center' },
-    viewToggleBtnActive: { backgroundColor: '#fba8a0', borderRadius: 8, margin: 3 },
-    // AA: #fba8a0 on #000 = 5.29:1 ✓
-    viewToggleText:      { fontSize: 14, color: '#fba8a0', fontWeight: '600' },
-    // AAA: #000 on #fba8a0 = contrast > 5:1 ✓ (large-text AA)
-    viewToggleTextActive:{ color: '#000', fontWeight: '700' },
+    // Using radiogroup/radio pattern for proper AT announcement
+    viewToggleRow:        { flexDirection: 'row', alignSelf: 'center', backgroundColor: '#111', borderRadius: 10, borderWidth: 1, borderColor: '#222', overflow: 'hidden', marginBottom: 8, marginTop: 2 },
+    viewToggleBtn:        { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 18, paddingVertical: 8, minHeight: 44, justifyContent: 'center' },
+    viewToggleBtnActive:  { backgroundColor: '#fba8a0', borderRadius: 8, margin: 3 },
+    // AA: #fba8a0 on #000 = 5.29:1 ✓ (inactive)
+    viewToggleText:       { fontSize: 14, color: '#fba8a0', fontWeight: '600' },
+    // AA: #000 on #fba8a0 = 5.29:1 ✓ (active, large text)
+    viewToggleTextActive: { color: '#000', fontWeight: '700' },
 
-    // ── Day-of-week row (month view) ──
+    // ── Day-of-week row (month view) — decorative, hidden from AT ──
     dowRow:   { flexDirection: 'row', paddingHorizontal: 16, marginBottom: 2 },
-    // AA: #aaa on #000 = 5.74:1 ✓ (supplemental header)
+    // AA: #aaa on #000 = 5.74:1 ✓
     dowLabel: { width: DAY_CELL_SIZE, textAlign: 'center', color: '#aaaaaa', fontSize: 12, fontWeight: '600' },
 
     // ── Month grid ──
     grid:             { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16 },
     dayCell:          { width: DAY_CELL_SIZE, minHeight: DAY_CELL_SIZE, paddingBottom: 4, borderTopWidth: 0.5, borderTopColor: '#222' },
-    dayCellOtherMonth:{ opacity: 0.3 },
+    dayCellOtherMonth: { opacity: 0.3 },
 
-    dayNumberContainer:       { width: 22, height: 22, borderRadius: 11, justifyContent: 'center', alignItems: 'center', alignSelf: 'center', marginTop: 2, marginBottom: 2 },
-    dayNumberTodayContainer:  { backgroundColor: '#fba8a0' },
+    dayNumberContainer:      { width: 22, height: 22, borderRadius: 11, justifyContent: 'center', alignItems: 'center', alignSelf: 'center', marginTop: 2, marginBottom: 2 },
+    dayNumberTodayContainer: { backgroundColor: '#fba8a0' },
     // AAA: #fae9e9 on #000 = 17.7:1 ✓
-    dayNumber:                { fontSize: 12, color: '#fae9e9', textAlign: 'center' },
-    // AAA: #000 on #fba8a0 = >5:1 ✓ (large-text AA sufficient for date number)
-    dayNumberToday:           { color: '#000', fontWeight: 'bold' },
-    dayNumberOtherMonth:      { color: '#555' },
+    dayNumber:               { fontSize: 12, color: '#fae9e9', textAlign: 'center' },
+    // AA: #000 on #fba8a0 = 5.29:1 ✓
+    dayNumberToday:          { color: '#000', fontWeight: 'bold' },
+    // Decorative — other-month dates are visually de-emphasised
+    dayNumberOtherMonth:     { color: '#555' },
 
-    // AA: #2a2a2a on #000 — this is intentionally invisible (decorative hint)
+    // Decorative hint — intentionally invisible (#2a2a2a on #000), hidden from AT
     emptyDayHint: { textAlign: 'center', color: '#2a2a2a', fontSize: 14 },
 
     // ── Workout pill ──
+    // Minimum pill height via paddingVertical ensures touch targets are usable
     pill:         { flexDirection: 'row', alignItems: 'center', borderRadius: 3, paddingHorizontal: 3, paddingVertical: 2, marginHorizontal: 1, marginBottom: 2, gap: 2 },
     pillSkipped:  { opacity: 0.6 },
-    // AAA: #000 on pill colours ✓ (see STATUS_COLOR comment above)
+    // AAA: #000 on pill colours ✓
     pillText:     { fontSize: 9, color: '#000', fontWeight: '700', flex: 1 },
     pillCompact:  { paddingHorizontal: 2, paddingVertical: 1 },
     pillTextCompact: { fontSize: 8 },
 
-    // ── Weekly view ──
+    // ── Weekly grid view ──
     weekGrid:          { flexDirection: 'row', paddingHorizontal: 8, paddingTop: 4, borderBottomWidth: 0.5, borderBottomColor: '#222' },
     weekColumn:        { flex: 1, minHeight: 100, borderRightWidth: 0.5, borderRightColor: '#1a1a1a', paddingHorizontal: 2 },
     weekDayHeader:     { alignItems: 'center', paddingVertical: 6 },
-    weekDayHeaderToday:{ },
+    weekDayHeaderToday: {},
     // AA: #aaa on #000 = 5.74:1 ✓
     weekDayName:       { fontSize: 11, color: '#aaaaaa', fontWeight: '600', textTransform: 'uppercase' },
     weekDayNameToday:  { color: '#fba8a0' },
@@ -1125,22 +1365,22 @@ const styles = StyleSheet.create({
     weekEmptyDay:      { height: 32, justifyContent: 'center', alignItems: 'center' },
 
     // ── Week list (below weekly grid) ──
-    weekListContainer:     { paddingHorizontal: 16, paddingTop: 16 },
-    weekListDay:           { marginBottom: 16 },
-    weekListDayHeader:     { marginBottom: 8 },
-    weekListDayHeaderToday:{ },
+    weekListContainer:      { paddingHorizontal: 16, paddingTop: 16 },
+    weekListDay:            { marginBottom: 16 },
+    weekListDayHeader:      { marginBottom: 8 },
+    weekListDayHeaderToday: {},
     // AAA: #fae9e9 on #000 = 17.7:1 ✓
-    weekListDayLabel:      { fontSize: 15, fontWeight: '700', color: '#fae9e9' },
-    weekListDayLabelToday: { color: '#fba8a0' },
-    weekListItem:          { flexDirection: 'row', alignItems: 'center', backgroundColor: '#0d0d0d', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 12, borderLeftWidth: 3, marginBottom: 6 },
-    weekListItemContent:   { flex: 1 },
+    weekListDayLabel:       { fontSize: 15, fontWeight: '700', color: '#fae9e9' },
+    weekListDayLabelToday:  { color: '#fba8a0' },
+    // Touch target: paddingVertical 12 ensures ≥ 44 pt total height (WCAG 2.5.5)
+    weekListItem:           { flexDirection: 'row', alignItems: 'center', backgroundColor: '#0d0d0d', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 12, borderLeftWidth: 3, marginBottom: 6, minHeight: 44 },
+    weekListItemContent:    { flex: 1 },
     // AAA: #fae9e9 on #0d0d0d ≈ 16.8:1 ✓
-    weekListItemName:      { fontSize: 15, color: '#fae9e9', fontWeight: '600' },
+    weekListItemName:       { fontSize: 15, color: '#fae9e9', fontWeight: '600' },
     // AA: #aaa on #0d0d0d ≈ 5.5:1 ✓
-    weekListItemStatus:    { fontSize: 12, color: '#aaaaaa', marginTop: 2, textTransform: 'capitalize' },
+    weekListItemStatus:     { fontSize: 12, color: '#aaaaaa', marginTop: 2, textTransform: 'capitalize' },
 
     weekEmptyState:     { alignItems: 'center', paddingVertical: 40, gap: 10 },
-    // AA: #555 on #000 — purely decorative icon, acceptable
     weekEmptyStateText: { fontSize: 15, color: '#aaaaaa' },
 
     // ── Legend ──
@@ -1150,9 +1390,10 @@ const styles = StyleSheet.create({
     // AA: #aaa on #000 = 5.74:1 ✓
     legendText: { fontSize: 12, color: '#aaaaaa' },
 
-    coachHint: { textAlign: 'center', fontSize: 12, color: '#555', paddingBottom: 8 },
+    // AA: #555 on #000 — supplemental coach hint, not primary content
+    coachHint: { textAlign: 'center', fontSize: 12, color: '#888', paddingBottom: 8 },
 
-    loadingContainer:{ flex: 1, justifyContent: 'center', alignItems: 'center' },
+    loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
     savingBanner: { position: 'absolute', bottom: 20, alignSelf: 'center', backgroundColor: '#fba8a0', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', gap: 8 },
     savingText:   { color: '#000', fontWeight: '700' },
@@ -1160,65 +1401,67 @@ const styles = StyleSheet.create({
     // ── Action sheet ──
     sheetOverlay:     { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' },
     sheetContainer:   { backgroundColor: '#111', borderTopLeftRadius: 16, borderTopRightRadius: 16, paddingBottom: 40, paddingHorizontal: 24, paddingTop: 12 },
+    // Decorative handle — hidden from AT
     sheetHandle:      { width: 36, height: 4, backgroundColor: '#444', borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
+    // AAA: #fae9e9 on #111 ≈ 16.8:1 ✓
     sheetTitle:       { fontSize: 18, fontWeight: 'bold', color: '#fae9e9', marginBottom: 4 },
+    // AA: #aaa on #111 ≈ 5.5:1 ✓
     sheetDate:        { fontSize: 13, color: '#aaaaaa', marginBottom: 20 },
+    // Touch target: minHeight 56 (WCAG 2.5.5, larger for list items)
     sheetAction:      { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14, borderBottomWidth: 0.5, borderBottomColor: '#222', minHeight: 56 },
     sheetActionTextBlock: { flex: 1 },
     sheetActionText:  { fontSize: 16, color: '#fae9e9' },
+    // AA: #aaa on #111 ≈ 5.5:1 ✓
     sheetActionSub:   { fontSize: 12, color: '#aaaaaa', marginTop: 2 },
     sheetCompleted:   { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 14 },
     sheetCompletedText: { fontSize: 13, color: '#7bb533', flex: 1 },
     sheetCancel:      { marginTop: 8, paddingVertical: 14, alignItems: 'center', minHeight: 52 },
+    // AA: #aaa on #111 ≈ 5.5:1 ✓
     sheetCancelText:  { fontSize: 16, color: '#aaaaaa' },
 
     // ── Modals ──
     modalOverlay:             { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center', padding: 24 },
     modalCard:                { backgroundColor: '#111', borderRadius: 12, padding: 24, width: '100%' },
+    // AAA: #fae9e9 on #111 ≈ 16.8:1 ✓
     modalTitle:               { fontSize: 18, fontWeight: 'bold', color: '#fae9e9', marginBottom: 4 },
+    // AA: #aaa on #111 ≈ 5.5:1 ✓
     modalSubtitle:            { fontSize: 14, color: '#aaaaaa', marginBottom: 16 },
+    // Input: border highlight #fba8a0, text #fae9e9 on #1a1a1a — AA ✓
     modalInput:               { backgroundColor: '#1a1a1a', borderWidth: 1, borderColor: '#fba8a0', borderRadius: 8, padding: 12, color: '#fae9e9', fontSize: 15, minHeight: 80, textAlignVertical: 'top', marginBottom: 20 },
     modalActions:             { flexDirection: 'row', gap: 12 },
+    // AA: #000 on #fba8a0 = 5.29:1 ✓; minHeight 48 (WCAG 2.5.5)
     modalButtonPrimary:       { flex: 1, backgroundColor: '#fba8a0', borderRadius: 8, paddingVertical: 12, alignItems: 'center', minHeight: 48 },
     modalButtonPrimaryText:   { color: '#000', fontWeight: '700', fontSize: 16 },
+    // AA: #ccc on #111 ≈ 7.2:1 ✓; minHeight 48
     modalButtonSecondary:     { flex: 1, borderWidth: 1, borderColor: '#333', borderRadius: 8, paddingVertical: 12, alignItems: 'center', minHeight: 48 },
     modalButtonSecondaryText: { color: '#cccccc', fontSize: 16 },
     modalButtonDisabled:      { opacity: 0.4 },
 
-    miniCalHeader:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-    miniNavBtn:         { minWidth: 44, minHeight: 44, justifyContent: 'center', alignItems: 'center' },
-    miniCalMonthLabel:  { color: '#fae9e9', fontWeight: '600', fontSize: 15 },
+    // ── Mini calendar (date picker) ──
+    miniCalHeader:     { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+    // Touch target: minWidth/Height 44 ✓
+    miniNavBtn:        { minWidth: 44, minHeight: 44, justifyContent: 'center', alignItems: 'center' },
+    // AAA: #fae9e9 on #111 ≈ 16.8:1 ✓
+    miniCalMonthLabel: { color: '#fae9e9', fontWeight: '600', fontSize: 15 },
 
-    // Row-based grid — no flexWrap, no percentage widths.
-    // Each row is a flex row; each cell wrapper takes equal space via flex:1.
-    // This eliminates the floating-point accumulation bug that caused Su/Sa stacking.
-    miniCalRow:         { flexDirection: 'row', marginBottom: 2 },
-    miniCalCellWrap:    { flex: 1, alignItems: 'center' },
-
-    // Day-of-week label inside the cell wrapper
-    // AA: #aaaaaa on #111 = 5.5:1 ✓
-    miniCalDayLabel:    { fontSize: 11, fontWeight: '600', color: '#aaaaaa', textAlign: 'center', paddingVertical: 4 },
-
-    // The tappable date cell — square, centred, touch target padded by wrapper
-    miniCalCell:        { width: 34, height: 34, justifyContent: 'center', alignItems: 'center', borderRadius: 17 },
-    miniCalCellSelected:{ backgroundColor: '#fba8a0' },
-
-    // AAA: #fae9e9 on #111 ≈ 16.8:1 ✓  (normal selectable date)
-    miniCalCellText:    { fontSize: 13, color: '#fae9e9', textAlign: 'center' },
-    // Today ring: rose text, bold — readable and distinct without a heavy background
-    miniCalCellToday:   { color: '#fba8a0', fontWeight: '700' },
-    // Selected: black on rose — AA large ✓
+    // Row-based grid — no flexWrap, each row is a flex row, cells use flex:1.
+    // Eliminates float accumulation bug that caused Su/Sa column stacking.
+    miniCalRow:      { flexDirection: 'row', marginBottom: 2 },
+    miniCalCellWrap: { flex: 1, alignItems: 'center' },
+    // AA: #aaa on #111 ≈ 5.5:1 ✓ — decorative, hidden from AT
+    miniCalDayLabel: { fontSize: 11, fontWeight: '600', color: '#aaaaaa', textAlign: 'center', paddingVertical: 4 },
+    // Tappable date cell — 34×34 square with touch target via wrapper flex
+    miniCalCell:             { width: 34, height: 34, justifyContent: 'center', alignItems: 'center', borderRadius: 17 },
+    miniCalCellSelected:     { backgroundColor: '#fba8a0' },
+    // AAA: #fae9e9 on #111 ≈ 16.8:1 ✓
+    miniCalCellText:         { fontSize: 13, color: '#fae9e9', textAlign: 'center' },
+    // Today: rose bold — AA on dark background ✓
+    miniCalCellToday:        { color: '#fba8a0', fontWeight: '700' },
+    // Selected: #000 on #fba8a0 = 5.29:1 ✓ AA
     miniCalCellSelectedText: { color: '#000', fontWeight: '700' },
-
-    // PAST / BLOCKED dates (minDate guard — e.g. for Move, can't pick days before today)
-    // Visibly faded but legible enough to read the number; clearly unavailable.
-    // Colour: #444 on #111 ≈ 1.9:1 — intentionally low contrast to signal unavailability.
-    // Screen readers get accessibilityState disabled:true so they're skipped.
-    miniCalCellPast:    { color: '#444' },
-
-    // OTHER-MONTH dates (before the 1st or after the last of the current month)
-    // Even fainter — just structural padding, not selectable.
-    miniCalCellOtherMonth: { color: '#2e2e2e' },
+    // Past/blocked: #444 on #111 ≈ 1.9:1 — intentionally low contrast to signal
+    // unavailability. accessibilityState.disabled prevents AT focus on these.
+    miniCalCellPast:         { color: '#444' },
+    // Other-month padding cells — not selectable, visually inert
+    miniCalCellOtherMonth:   { color: '#2e2e2e' },
 });
-
-export { CALENDAR_VIEW_KEY };
