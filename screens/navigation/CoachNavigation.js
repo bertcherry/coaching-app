@@ -8,6 +8,7 @@ import CalendarScreen from '../CalendarScreen';
 import TemplateWorkoutsScreen from '../TemplateWorkoutsScreen';
 import SettingsScreen from '../SettingsScreen';
 import AddClientScreen from '../AddClientScreen';
+import ToBeFilmedScreen from '../ToBeFilmedScreen';
 import AppDrawerContent from '../../components/AppDrawerContent';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -43,6 +44,7 @@ export default function CoachNavigation() {
                 options={{ drawerItemStyle: { display: 'none' } }}
                 initialParams={{id: 'c8d08b56-1303-41d3-ae6f-8883f2f396b7'}} />
             <Drawer.Screen name="Calendar" component={CalendarScreen} />
+            <Drawer.Screen name="To Be Filmed" component={ToBeFilmedScreen} />
             <Drawer.Screen
                 name="Settings"
                 component={SettingsScreen}
