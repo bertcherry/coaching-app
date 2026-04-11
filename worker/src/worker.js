@@ -230,6 +230,13 @@ export default {
 
         // ── Auth routes ───────────────────────────────────────────────────────
 
+        const patchRoutes = {
+            '/profile/name':     handleUpdateName,
+            '/profile/email':    handleUpdateEmail,
+            '/profile/password': handleUpdatePassword,
+            '/profile/unit':     handleUpdateUnit,
+        }
+
         const postRoutes = {
             '/auth/login':           handleLogin,
             '/auth/register':        handleRegister,
@@ -245,10 +252,6 @@ export default {
             '/schedule/complete':    handleScheduleComplete,
             '/history/batch':        handleHistoryBatch,
             '/workouts/save':        handleSaveWorkout,
-            '/profile/name':         handleUpdateName,
-            '/profile/email':        handleUpdateEmail,
-            '/profile/password':     handleUpdatePassword,
-            '/profile/unit':         handleUpdateUnit,
         };
 
         const getRoutes = {
@@ -258,7 +261,10 @@ export default {
             '/history/exercise-summary':    handleExerciseSummary,
         };
 
-        if (method === 'POST' || method === 'PATCH' && postRoutes[pathname]) {
+        if (method === 'PATCH' && patchRoutes[pathname]) {
+            return patchRoutes[pathname](request, env);
+        }
+        if (method === 'POST'  && postRoutes[pathname]) {
             return postRoutes[pathname](request, env);
         }
         if (method === 'GET' && getRoutes[pathname]) {
