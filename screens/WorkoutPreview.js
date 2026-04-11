@@ -6,6 +6,7 @@ import {
 import Feather from '@expo/vector-icons/Feather';
 import { Video, ResizeMode } from 'expo-av';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { enqueueRecord, syncQueue } from '../utils/WorkoutSync';
 import SetRow from '../components/SetRow';
 import WorkoutPreviewItem from '../components/WorkoutPreviewItem';
@@ -24,6 +25,8 @@ const FINISH_MESSAGES = [
 // ─── Workout Finished confirmation overlay ────────────────────────────────────
 
 const FinishOverlay = ({ visible, onDismiss, onConfirm }) => {
+    const { theme } = useTheme();
+    const styles = makeStyles(theme);
     const message = React.useMemo(
         () => FINISH_MESSAGES[Math.floor(Math.random() * FINISH_MESSAGES.length)],
         [visible],
@@ -68,6 +71,8 @@ function formatPrescription(item) {
 }
 
 const Item = ({ workoutId, clientId, unitDefault, onSetSaved, ...item }) => {
+    const { theme } = useTheme();
+    const styles = makeStyles(theme);
     const [video, setVideo] = React.useState({});
     const [showLogs, setShowLogs] = React.useState(false);
     const [showVideo, setShowVideo] = React.useState(false);
@@ -123,10 +128,10 @@ const Item = ({ workoutId, clientId, unitDefault, onSetSaved, ...item }) => {
                     : <Text style={styles.bodyText}>{item.countType}: {item.count}</Text>
                 }
                 <Pressable style={styles.iconButton} onPress={() => setShowVideo(!showVideo)}>
-                    <Feather name="film" size={16} color={showVideo ? '#fba8a0' : '#fae9e9'} />
+                    <Feather name="film" size={16} color={showVideo ? theme.accent : theme.textPrimary} />
                 </Pressable>
                 <Pressable style={styles.iconButton} onPress={() => setShowLogs(!showLogs)}>
-                    <Feather name="clipboard" size={16} color={showLogs ? '#fba8a0' : '#fae9e9'} />
+                    <Feather name="clipboard" size={16} color={showLogs ? theme.accent : theme.textPrimary} />
                 </Pressable>
             </View>
 
@@ -163,6 +168,8 @@ const Item = ({ workoutId, clientId, unitDefault, onSetSaved, ...item }) => {
 export default function WorkoutPreview({ route, navigation }) {
     const { id, scheduledWorkoutId } = route.params;
     const { user, accessToken, authFetch } = useAuth();
+    const { theme } = useTheme();
+    const styles = makeStyles(theme);
 
     const [workoutData, setWorkoutData] = React.useState(undefined);
     const [showFinishOverlay, setShowFinishOverlay] = React.useState(false);
@@ -248,7 +255,7 @@ export default function WorkoutPreview({ route, navigation }) {
         <View style={styles.footerContainer}>
             {workoutStatus === 'completed' ? (
                 <View style={styles.completedBadge}>
-                    <Feather name="check-circle" size={18} color="#7bb533" />
+                    <Feather name="check-circle" size={18} color={theme.success} />
                     <Text style={styles.completedText}>Workout completed</Text>
                 </View>
             ) : (
@@ -273,6 +280,7 @@ export default function WorkoutPreview({ route, navigation }) {
                 ListFooterComponent={renderFooter}
                 keyboardDismissMode="on-drag"
                 contentContainerStyle={{ paddingBottom: 40 }}
+                indicatorStyle={theme.mode === 'dark' ? 'white' : 'black'}
             />
 
             <FinishOverlay
@@ -286,237 +294,239 @@ export default function WorkoutPreview({ route, navigation }) {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: 'black',
-    },
-    headingText: {
-        padding: 40,
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: '#fae9e9',
-        textAlign: 'center',
-    },
-    itemContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-    },
-    bodyText: {
-        padding: 20,
-        fontSize: 16,
-        color: '#fae9e9',
-        flexWrap: 'wrap',
-    },
-    exerciseText: {
-        padding: 20,
-        fontSize: 16,
-        color: '#fae9e9',
-        flexWrap: 'wrap',
-        flex: 1,
-    },
-    iconButton: {
-        padding: 10,
-        height: 40,
-        justifyContent: 'center',
-        alignSelf: 'center',
-        borderColor: '#fae9e9',
-        borderWidth: 1,
-        borderRadius: 8,
-        marginHorizontal: 2,
-    },
+function makeStyles(theme) {
+    return StyleSheet.create({
+        container: {
+            flex: 1,
+            backgroundColor: theme.background,
+        },
+        headingText: {
+            padding: 40,
+            fontSize: 20,
+            fontWeight: 'bold',
+            color: theme.textPrimary,
+            textAlign: 'center',
+        },
+        itemContainer: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+        },
+        bodyText: {
+            padding: 20,
+            fontSize: 16,
+            color: theme.textPrimary,
+            flexWrap: 'wrap',
+        },
+        exerciseText: {
+            padding: 20,
+            fontSize: 16,
+            color: theme.textPrimary,
+            flexWrap: 'wrap',
+            flex: 1,
+        },
+        iconButton: {
+            padding: 10,
+            height: 40,
+            justifyContent: 'center',
+            alignSelf: 'center',
+            borderColor: theme.textPrimary,
+            borderWidth: 1,
+            borderRadius: 8,
+            marginHorizontal: 2,
+        },
 
-    // ── Set logging ──
-    logsContainer: {
-        backgroundColor: '#0d0d0d',
-        marginHorizontal: 8,
-        marginBottom: 8,
-        borderRadius: 8,
-        padding: 10,
-        borderWidth: 0.5,
-        borderColor: '#222',
-    },
-    setsHeader: {
-        fontSize: 12,
-        color: '#888',
-        fontWeight: '600',
-        textTransform: 'uppercase',
-        letterSpacing: 0.6,
-        paddingBottom: 8,
-    },
-    setRow: {
-        borderTopWidth: 0.5,
-        borderTopColor: '#222',
-        paddingTop: 8,
-        paddingBottom: 4,
-        marginBottom: 4,
-    },
-    setLabel: {
-        fontSize: 12,
-        color: '#fba8a0',
-        fontWeight: '700',
-        marginBottom: 6,
-    },
-    setInputs: {
-        flexDirection: 'row',
-        gap: 8,
-        marginBottom: 6,
-    },
-    setInputGroup: {
-        flex: 1,
-        alignItems: 'center',
-    },
-    setInputLabel: {
-        fontSize: 10,
-        color: '#666',
-        marginBottom: 3,
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
-    },
-    setInput: {
-        width: '100%',
-        height: 36,
-        borderWidth: 1,
-        borderColor: '#333',
-        borderRadius: 6,
-        backgroundColor: '#1a1a1a',
-        color: '#fae9e9',
-        textAlign: 'center',
-        fontSize: 15,
-    },
-    setInputSaved: {
-        borderColor: '#7bb533',
-    },
-    setNoteInput: {
-        borderWidth: 1,
-        borderColor: '#333',
-        borderRadius: 6,
-        backgroundColor: '#1a1a1a',
-        color: '#fae9e9',
-        padding: 8,
-        fontSize: 13,
-        minHeight: 34,
-    },
-    savedBadge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 3,
-        marginTop: 4,
-    },
-    savedBadgeText: {
-        fontSize: 10,
-        color: '#7bb533',
-    },
+        // ── Set logging ──
+        logsContainer: {
+            backgroundColor: theme.surface,
+            marginHorizontal: 8,
+            marginBottom: 8,
+            borderRadius: 8,
+            padding: 10,
+            borderWidth: 0.5,
+            borderColor: theme.surfaceBorder,
+        },
+        setsHeader: {
+            fontSize: 12,
+            color: theme.textSecondary,
+            fontWeight: '600',
+            textTransform: 'uppercase',
+            letterSpacing: 0.6,
+            paddingBottom: 8,
+        },
+        setRow: {
+            borderTopWidth: 0.5,
+            borderTopColor: theme.surfaceBorder,
+            paddingTop: 8,
+            paddingBottom: 4,
+            marginBottom: 4,
+        },
+        setLabel: {
+            fontSize: 12,
+            color: theme.accent,
+            fontWeight: '700',
+            marginBottom: 6,
+        },
+        setInputs: {
+            flexDirection: 'row',
+            gap: 8,
+            marginBottom: 6,
+        },
+        setInputGroup: {
+            flex: 1,
+            alignItems: 'center',
+        },
+        setInputLabel: {
+            fontSize: 10,
+            color: theme.textTertiary,
+            marginBottom: 3,
+            textTransform: 'uppercase',
+            letterSpacing: 0.5,
+        },
+        setInput: {
+            width: '100%',
+            height: 36,
+            borderWidth: 1,
+            borderColor: theme.surfaceBorder,
+            borderRadius: 6,
+            backgroundColor: theme.surfaceElevated,
+            color: theme.inputText,
+            textAlign: 'center',
+            fontSize: 15,
+        },
+        setInputSaved: {
+            borderColor: theme.success,
+        },
+        setNoteInput: {
+            borderWidth: 1,
+            borderColor: theme.surfaceBorder,
+            borderRadius: 6,
+            backgroundColor: theme.surfaceElevated,
+            color: theme.inputText,
+            padding: 8,
+            fontSize: 13,
+            minHeight: 34,
+        },
+        savedBadge: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 3,
+            marginTop: 4,
+        },
+        savedBadgeText: {
+            fontSize: 10,
+            color: theme.success,
+        },
 
-    // ── Footer ──
-    footerContainer: {
-        padding: 20,
-        paddingBottom: 40,
-    },
-    finishButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 10,
-        backgroundColor: '#7bb533',
-        borderRadius: 12,
-        paddingVertical: 16,
-    },
-    finishButtonText: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: '#000',
-    },
-    completedBadge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 8,
-        paddingVertical: 16,
-        borderWidth: 1,
-        borderColor: '#7bb533',
-        borderRadius: 12,
-    },
-    completedText: {
-        fontSize: 16,
-        color: '#7bb533',
-        fontWeight: '600',
-    },
+        // ── Footer ──
+        footerContainer: {
+            padding: 20,
+            paddingBottom: 40,
+        },
+        finishButton: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 10,
+            backgroundColor: theme.success,
+            borderRadius: 12,
+            paddingVertical: 16,
+        },
+        finishButtonText: {
+            fontSize: 18,
+            fontWeight: '700',
+            color: '#000',
+        },
+        completedBadge: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            paddingVertical: 16,
+            borderWidth: 1,
+            borderColor: theme.success,
+            borderRadius: 12,
+        },
+        completedText: {
+            fontSize: 16,
+            color: theme.success,
+            fontWeight: '600',
+        },
 
-    // ── Finish overlay ──
-    overlayBackdrop: {
-        flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.75)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 32,
-    },
-    overlayCard: {
-        backgroundColor: '#111',
-        borderRadius: 16,
-        padding: 28,
-        width: '100%',
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: '#7bb533',
-    },
-    overlayEmoji: {
-        fontSize: 52,
-        marginBottom: 12,
-    },
-    overlayMessage: {
-        fontSize: 22,
-        fontWeight: 'bold',
-        color: '#fae9e9',
-        textAlign: 'center',
-        marginBottom: 8,
-    },
-    overlaySubtext: {
-        fontSize: 14,
-        color: '#888',
-        textAlign: 'center',
-        marginBottom: 28,
-    },
-    overlayActions: {
-        flexDirection: 'row',
-        gap: 12,
-        width: '100%',
-    },
-    overlayButtonPrimary: {
-        flex: 1,
-        backgroundColor: '#7bb533',
-        borderRadius: 10,
-        paddingVertical: 14,
-        alignItems: 'center',
-    },
-    overlayButtonPrimaryText: {
-        color: '#000',
-        fontWeight: '700',
-        fontSize: 15,
-    },
-    overlayButtonSecondary: {
-        flex: 1,
-        borderWidth: 1,
-        borderColor: '#333',
-        borderRadius: 10,
-        paddingVertical: 14,
-        alignItems: 'center',
-    },
-    overlayButtonSecondaryText: {
-        color: '#888',
-        fontSize: 15,
-    },
+        // ── Finish overlay ──
+        overlayBackdrop: {
+            flex: 1,
+            backgroundColor: theme.overlay,
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: 32,
+        },
+        overlayCard: {
+            backgroundColor: theme.surface,
+            borderRadius: 16,
+            padding: 28,
+            width: '100%',
+            alignItems: 'center',
+            borderWidth: 1,
+            borderColor: theme.success,
+        },
+        overlayEmoji: {
+            fontSize: 52,
+            marginBottom: 12,
+        },
+        overlayMessage: {
+            fontSize: 22,
+            fontWeight: 'bold',
+            color: theme.textPrimary,
+            textAlign: 'center',
+            marginBottom: 8,
+        },
+        overlaySubtext: {
+            fontSize: 14,
+            color: theme.textSecondary,
+            textAlign: 'center',
+            marginBottom: 28,
+        },
+        overlayActions: {
+            flexDirection: 'row',
+            gap: 12,
+            width: '100%',
+        },
+        overlayButtonPrimary: {
+            flex: 1,
+            backgroundColor: theme.success,
+            borderRadius: 10,
+            paddingVertical: 14,
+            alignItems: 'center',
+        },
+        overlayButtonPrimaryText: {
+            color: '#000',
+            fontWeight: '700',
+            fontSize: 15,
+        },
+        overlayButtonSecondary: {
+            flex: 1,
+            borderWidth: 1,
+            borderColor: theme.surfaceBorder,
+            borderRadius: 10,
+            paddingVertical: 14,
+            alignItems: 'center',
+        },
+        overlayButtonSecondaryText: {
+            color: theme.textSecondary,
+            fontSize: 15,
+        },
 
-    // ── Video ──
-    videoContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        backgroundColor: 'black',
-    },
-    video: {
-        alignSelf: 'center',
-        width: 320,
-        height: 200,
-    },
-});
+        // ── Video ──
+        videoContainer: {
+            flex: 1,
+            justifyContent: 'center',
+            backgroundColor: theme.background,
+        },
+        video: {
+            alignSelf: 'center',
+            width: 320,
+            height: 200,
+        },
+    });
+}

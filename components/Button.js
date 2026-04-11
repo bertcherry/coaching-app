@@ -1,20 +1,26 @@
 import * as React from 'react';
 import { Pressable, Text, StyleSheet } from 'react-native';
+import { useTheme } from '../context/ThemeContext';
 
 const CustomButton = ({ onPress, text, type="PRIMARY", bgColor, fgColor}) => {
+    const { theme } = useTheme();
+
     return (
         <Pressable style={[
-            styles.container, 
-            styles[`container_${type}`],
+            styles.container,
+            type === 'PRIMARY' && { backgroundColor: theme.accent },
+            type === 'SECONDARY' && { borderColor: theme.accent, borderWidth: 2 },
             bgColor ? {backgroundColor: bgColor} : {}
         ]} onPress={onPress}>
             <Text style={[
-                styles.text, 
-                styles[`text_${type}`],
+                styles.text,
+                type === 'PRIMARY' && { color: '#000' },
+                type === 'SECONDARY' && { color: theme.accent },
+                type === 'TERTIARY' && { color: theme.textSecondary },
                 fgColor ? {color: fgColor} : {}
             ]}>{text}</Text>
         </Pressable>
-    )
+    );
 }
 
 const styles = StyleSheet.create({
@@ -24,25 +30,10 @@ const styles = StyleSheet.create({
         marginVertical: 8,
         borderRadius: 8,
     },
-    container_PRIMARY: {
-        backgroundColor: '#fba8a0',
-    },
-    container_SECONDARY: {
-        borderColor: '#fba8a0',
-        borderWidth: 2,
-    },
-    container_TERTIARY: {},
     text: {
         fontSize: 18,
-        color: 'black',
         textAlign: 'center',
     },
-    text_SECONDARY: {
-        color: '#fba8a0',
-    },
-    text_TERTIARY: {
-        color: 'grey',
-    }
-})
+});
 
 export default CustomButton;

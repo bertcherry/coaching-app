@@ -5,12 +5,15 @@ import {
     ActivityIndicator, Alert,
 } from 'react-native';
 import Feather from '@expo/vector-icons/Feather';
+import { useTheme } from '../context/ThemeContext';
 
 const WORKER_URL = 'https://coaching-app.bert-m-cherry.workers.dev';
 
 // ─── Create Exercise modal ────────────────────────────────────────────────────
 
 const CreateExerciseModal = ({ visible, initialName, onClose, onCreated, authFetch }) => {
+    const { theme } = useTheme();
+    const styles = makeStyles(theme);
     const [name, setName]           = React.useState(initialName ?? '');
     const [description, setDesc]    = React.useState('');
     const [loading, setLoading]     = React.useState(false);
@@ -64,7 +67,7 @@ const CreateExerciseModal = ({ visible, initialName, onClose, onCreated, authFet
                     <View style={styles.createModalHeader}>
                         <Text style={styles.createModalTitle}>New Exercise</Text>
                         <Pressable onPress={onClose}>
-                            <Feather name="x" size={20} color="#888" />
+                            <Feather name="x" size={20} color={theme.textSecondary} />
                         </Pressable>
                     </View>
                     <Text style={styles.createModalSubtitle}>
@@ -78,7 +81,7 @@ const CreateExerciseModal = ({ visible, initialName, onClose, onCreated, authFet
                         value={name}
                         onChangeText={setName}
                         placeholder="e.g. Romanian Deadlift"
-                        placeholderTextColor="#555"
+                        placeholderTextColor={theme.textTertiary}
                         autoFocus
                     />
 
@@ -88,14 +91,14 @@ const CreateExerciseModal = ({ visible, initialName, onClose, onCreated, authFet
                         value={description}
                         onChangeText={setDesc}
                         placeholder="Describe how to perform the exercise, cues to focus on, common errors to avoid..."
-                        placeholderTextColor="#555"
+                        placeholderTextColor={theme.textTertiary}
                         multiline
                         numberOfLines={4}
                         textAlignVertical="top"
                     />
 
                     {loading ? (
-                        <ActivityIndicator color="#fba8a0" style={{ marginTop: 16 }} />
+                        <ActivityIndicator color={theme.accent} style={{ marginTop: 16 }} />
                     ) : (
                         <Pressable style={styles.createButton} onPress={handleCreate}>
                             <Text style={styles.createButtonText}>Add to Library</Text>
@@ -109,26 +112,30 @@ const CreateExerciseModal = ({ visible, initialName, onClose, onCreated, authFet
 
 // ─── Result row ───────────────────────────────────────────────────────────────
 
-const ResultRow = ({ item, onSelect }) => (
-    <Pressable style={styles.resultRow} onPress={() => onSelect(item)}>
-        <View style={styles.resultInfo}>
-            <Text style={styles.resultName}>{item.name}</Text>
-            {item.description ? (
-                <Text style={styles.resultDesc} numberOfLines={1}>{item.description}</Text>
-            ) : null}
-        </View>
-        <View style={[styles.videoBadge, item.hasVideo ? styles.videoBadgeYes : styles.videoBadgeNo]}>
-            <Feather
-                name={item.hasVideo ? 'film' : 'video-off'}
-                size={11}
-                color={item.hasVideo ? '#7bb533' : '#555'}
-            />
-            <Text style={[styles.videoBadgeText, item.hasVideo ? styles.videoBadgeTextYes : styles.videoBadgeTextNo]}>
-                {item.hasVideo ? 'Video' : 'No video'}
-            </Text>
-        </View>
-    </Pressable>
-);
+const ResultRow = ({ item, onSelect }) => {
+    const { theme } = useTheme();
+    const styles = makeStyles(theme);
+    return (
+        <Pressable style={styles.resultRow} onPress={() => onSelect(item)}>
+            <View style={styles.resultInfo}>
+                <Text style={styles.resultName}>{item.name}</Text>
+                {item.description ? (
+                    <Text style={styles.resultDesc} numberOfLines={1}>{item.description}</Text>
+                ) : null}
+            </View>
+            <View style={[styles.videoBadge, item.hasVideo ? styles.videoBadgeYes : styles.videoBadgeNo]}>
+                <Feather
+                    name={item.hasVideo ? 'film' : 'video-off'}
+                    size={11}
+                    color={item.hasVideo ? theme.success : theme.textTertiary}
+                />
+                <Text style={[styles.videoBadgeText, item.hasVideo ? styles.videoBadgeTextYes : styles.videoBadgeTextNo]}>
+                    {item.hasVideo ? 'Video' : 'No video'}
+                </Text>
+            </View>
+        </Pressable>
+    );
+};
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
@@ -141,6 +148,8 @@ export default function ExerciseSearch({
     isCoach,
     authFetch,
 }) {
+    const { theme } = useTheme();
+    const styles = makeStyles(theme);
     const [showModal, setShowModal]       = React.useState(false);
     const [showCreate, setShowCreate]     = React.useState(false);
     const [searchValue, setSearchValue]   = React.useState('');
@@ -185,7 +194,7 @@ export default function ExerciseSearch({
         return () => {
             isActive = false;
             clearTimeout(t);
-        }
+        };
     }, [searchValue, showModal]);
 
     const onSelectExercise = (item) => {
@@ -220,11 +229,11 @@ export default function ExerciseSearch({
             {hasSelection ? (
                 <Pressable style={styles.selectedRow} onPress={() => setShowModal(true)}>
                     <Text style={styles.selectedName}>{exercise.name}</Text>
-                    <Feather name="chevron-down" size={18} color="#fae9e9" />
+                    <Feather name="chevron-down" size={18} color={theme.inputText} />
                 </Pressable>
             ) : (
                 <Pressable style={styles.searchPlaceholder} onPress={() => setShowModal(true)}>
-                    <Feather name="search" size={15} color="#555" style={{ marginRight: 8 }} />
+                    <Feather name="search" size={15} color={theme.textTertiary} style={{ marginRight: 8 }} />
                     <Text style={styles.searchPlaceholderText}>Search exercises...</Text>
                 </Pressable>
             )}
@@ -238,24 +247,24 @@ export default function ExerciseSearch({
                     <View style={styles.modalContent}>
                         {/* Search bar */}
                         <View style={styles.searchBar}>
-                            <Feather name="search" size={16} color="#888" style={{ marginRight: 8 }} />
+                            <Feather name="search" size={16} color={theme.textSecondary} style={{ marginRight: 8 }} />
                             <TextInput
                                 style={styles.searchInput}
                                 value={searchValue}
                                 onChangeText={setSearchValue}
                                 placeholder="Search exercises..."
-                                placeholderTextColor="#555"
+                                placeholderTextColor={theme.textTertiary}
                                 autoFocus
                             />
                             <Pressable onPress={handleClose} style={styles.closeButton}>
-                                <Feather name="x" size={18} color="#888" />
+                                <Feather name="x" size={18} color={theme.textSecondary} />
                             </Pressable>
                         </View>
 
                         {/* Loading */}
                         {loading && (
                             <View style={styles.loadingRow}>
-                                <ActivityIndicator size="small" color="#fba8a0" />
+                                <ActivityIndicator size="small" color={theme.accent} />
                             </View>
                         )}
 
@@ -269,6 +278,7 @@ export default function ExerciseSearch({
                                 )}
                                 keyboardShouldPersistTaps="handled"
                                 style={styles.resultsList}
+                                indicatorStyle={theme.mode === 'dark' ? 'white' : 'black'}
                             />
                         )}
 
@@ -286,7 +296,7 @@ export default function ExerciseSearch({
                                             setShowCreate(true);
                                         }}
                                     >
-                                        <Feather name="plus-circle" size={16} color="#fba8a0" />
+                                        <Feather name="plus-circle" size={16} color={theme.accent} />
                                         <Text style={styles.createFromSearchText}>
                                             Add "{searchValue}" to library
                                         </Text>
@@ -304,7 +314,7 @@ export default function ExerciseSearch({
                                     setShowCreate(true);
                                 }}
                             >
-                                <Feather name="plus" size={15} color="#fba8a0" style={{ marginRight: 6 }} />
+                                <Feather name="plus" size={15} color={theme.accent} style={{ marginRight: 6 }} />
                                 <Text style={styles.createPromptText}>Create a new exercise</Text>
                             </Pressable>
                         )}
@@ -329,58 +339,60 @@ export default function ExerciseSearch({
     );
 }
 
-const styles = StyleSheet.create({
-    container:      { flex: 1, marginHorizontal: 10, marginTop: 8 },
-    label:          { fontSize: 11, fontWeight: '600', color: '#ccc', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4 },
+function makeStyles(theme) {
+    return StyleSheet.create({
+        container:      { flex: 1, marginHorizontal: 10, marginTop: 8 },
+        label:          { fontSize: 11, fontWeight: '600', color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4 },
 
-    selectedRow:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: '#fba8a0', backgroundColor: '#fae9e9', paddingHorizontal: 12, paddingVertical: 10 },
-    selectedName:   { fontSize: 15, color: '#000', flex: 1 },
+        selectedRow:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: theme.accent, backgroundColor: theme.inputBackground, paddingHorizontal: 12, paddingVertical: 10 },
+        selectedName:   { fontSize: 15, color: theme.inputText, flex: 1 },
 
-    searchPlaceholder:     { flexDirection: 'row', alignItems: 'center', backgroundColor: '#111', borderWidth: 1, borderColor: '#333', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, color: '#fae9e9' },
-    searchPlaceholderText: { color: '#ccc', fontSize: 15 },
+        searchPlaceholder:     { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.surfaceBorder, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, color: theme.textPrimary },
+        searchPlaceholderText: { color: theme.textSecondary, fontSize: 15 },
 
-    // Modal
-    modalContainer: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'flex-end' },
-    modalContent:   { backgroundColor: '#0d0d0d', borderTopLeftRadius: 16, borderTopRightRadius: 16, height: '80%'},
+        // Modal
+        modalContainer: { flex: 1, backgroundColor: theme.overlay, justifyContent: 'flex-end' },
+        modalContent:   { backgroundColor: theme.surface, borderTopLeftRadius: 16, borderTopRightRadius: 16, height: '80%' },
 
-    searchBar:   { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 0.5, borderBottomColor: '#222' },
-    searchInput: { flex: 1, color: '#fae9e9', fontSize: 16 },
-    closeButton: { padding: 4, marginLeft: 8 },
+        searchBar:   { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 0.5, borderBottomColor: theme.surfaceBorder },
+        searchInput: { flex: 1, color: theme.textPrimary, fontSize: 16 },
+        closeButton: { padding: 4, marginLeft: 8 },
 
-    loadingRow: { paddingVertical: 24, alignItems: 'center' },
+        loadingRow: { paddingVertical: 24, alignItems: 'center' },
 
-    resultsList: { flex: 1 },
-    resultRow:   { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 0.5, borderBottomColor: '#1a1a1a' },
-    resultInfo:  { flex: 1 },
-    resultName:  { fontSize: 15, color: '#fae9e9', fontWeight: '500' },
-    resultDesc:  { fontSize: 12, color: '#555', marginTop: 2 },
+        resultsList: { flex: 1 },
+        resultRow:   { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 0.5, borderBottomColor: theme.surfaceElevated },
+        resultInfo:  { flex: 1 },
+        resultName:  { fontSize: 15, color: theme.textPrimary, fontWeight: '500' },
+        resultDesc:  { fontSize: 12, color: theme.textTertiary, marginTop: 2 },
 
-    videoBadge:        { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 10, borderWidth: 1 },
-    videoBadgeYes:     { borderColor: '#7bb533', backgroundColor: 'rgba(123, 181, 51, 0.1)' },
-    videoBadgeNo:      { borderColor: '#333', backgroundColor: 'transparent' },
-    videoBadgeText:    { fontSize: 10, fontWeight: '600' },
-    videoBadgeTextYes: { color: '#7bb533' },
-    videoBadgeTextNo:  { color: '#555' },
+        videoBadge:        { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 10, borderWidth: 1 },
+        videoBadgeYes:     { borderColor: theme.success, backgroundColor: 'rgba(123, 181, 51, 0.1)' },
+        videoBadgeNo:      { borderColor: theme.surfaceBorder, backgroundColor: 'transparent' },
+        videoBadgeText:    { fontSize: 10, fontWeight: '600' },
+        videoBadgeTextYes: { color: theme.success },
+        videoBadgeTextNo:  { color: theme.textTertiary },
 
-    noResults:           { padding: 24, alignItems: 'center', gap: 16 },
-    noResultsText:       { color: '#555', fontSize: 14, textAlign: 'center' },
-    createFromSearch:    { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: '#fba8a0' },
-    createFromSearchText:{ color: '#fba8a0', fontSize: 14, fontWeight: '600' },
+        noResults:           { padding: 24, alignItems: 'center', gap: 16 },
+        noResultsText:       { color: theme.textTertiary, fontSize: 14, textAlign: 'center' },
+        createFromSearch:    { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: theme.accent },
+        createFromSearchText:{ color: theme.accent, fontSize: 14, fontWeight: '600' },
 
-    createPrompt:     { flexDirection: 'row', alignItems: 'center', padding: 20, borderTopWidth: 0.5, borderTopColor: '#222', marginTop: 8 },
-    createPromptText: { color: '#fba8a0', fontSize: 14 },
+        createPrompt:     { flexDirection: 'row', alignItems: 'center', padding: 20, borderTopWidth: 0.5, borderTopColor: theme.surfaceBorder, marginTop: 8 },
+        createPromptText: { color: theme.accent, fontSize: 14 },
 
-    // Create exercise modal
-    createModalOverlay:  { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'flex-end' },
-    createModalCard:     { backgroundColor: '#111', borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 24, paddingBottom: 40 },
-    createModalHeader:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-    createModalTitle:    { fontSize: 18, fontWeight: 'bold', color: '#fae9e9' },
-    createModalSubtitle: { fontSize: 13, color: '#555', marginBottom: 20, lineHeight: 18 },
+        // Create exercise modal
+        createModalOverlay:  { flex: 1, backgroundColor: theme.overlay, justifyContent: 'flex-end' },
+        createModalCard:     { backgroundColor: theme.surface, borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 24, paddingBottom: 40 },
+        createModalHeader:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+        createModalTitle:    { fontSize: 18, fontWeight: 'bold', color: theme.textPrimary },
+        createModalSubtitle: { fontSize: 13, color: theme.textTertiary, marginBottom: 20, lineHeight: 18 },
 
-    createLabel:    { fontSize: 13, color: '#888', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6, marginTop: 12 },
-    required:       { color: '#fba8a0' },
-    createInput:    { borderWidth: 1, borderColor: '#333', backgroundColor: '#1a1a1a', color: '#fae9e9', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 15 },
-    createInputMultiline: { minHeight: 90, textAlignVertical: 'top', paddingTop: 10 },
-    createButton:   { backgroundColor: '#fba8a0', borderRadius: 8, paddingVertical: 14, alignItems: 'center', marginTop: 24 },
-    createButtonText: { color: '#000', fontWeight: '700', fontSize: 16 },
-});
+        createLabel:    { fontSize: 13, color: theme.textSecondary, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6, marginTop: 12 },
+        required:       { color: theme.accent },
+        createInput:    { borderWidth: 1, borderColor: theme.surfaceBorder, backgroundColor: theme.surfaceElevated, color: theme.inputText, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 15 },
+        createInputMultiline: { minHeight: 90, textAlignVertical: 'top', paddingTop: 10 },
+        createButton:   { backgroundColor: theme.accent, borderRadius: 8, paddingVertical: 14, alignItems: 'center', marginTop: 24 },
+        createButtonText: { color: '#000', fontWeight: '700', fontSize: 16 },
+    });
+}

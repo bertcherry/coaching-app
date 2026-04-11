@@ -5,6 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import { ErrorMessage, Formik } from 'formik';
 import * as Yup from 'yup';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 
 const initialValues = {
     email: '',
@@ -19,6 +20,7 @@ const signInSchema = Yup.object().shape({
 export default function SignInScreen() {
     const navigation = useNavigation();
     const { signIn } = useAuth();
+    const { theme } = useTheme();
 
     const onForgotPasswordPressed = () => {
         navigation.navigate('Forgot Password');
@@ -29,8 +31,8 @@ export default function SignInScreen() {
     };
 
     return (
-        <ScrollView style={styles.container}>
-            <Text style={styles.regularText}>Sign in to continue</Text>
+        <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
+            <Text style={[styles.regularText, { color: theme.textPrimary }]}>Sign in to continue</Text>
             <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
                 <Formik
                     initialValues={initialValues}
@@ -38,7 +40,6 @@ export default function SignInScreen() {
                     onSubmit={async (values) => {
                         try {
                             await signIn(values.email, values.password);
-                            // no navigate() needed — RootNavigator re-renders automatically
                         } catch (e) {
                             Alert.alert('Sign In Failed', e.message);
                         }
@@ -51,20 +52,22 @@ export default function SignInScreen() {
                                 onChangeText={handleChange('email')}
                                 onBlur={handleBlur('email')}
                                 placeholder='email'
+                                placeholderTextColor={theme.inputPlaceholder}
                                 keyboardType='email-address'
                                 autoCapitalize='none'
-                                style={styles.input}
+                                style={[styles.input, { borderColor: theme.inputBorder, backgroundColor: theme.inputBackground, color: theme.inputText }]}
                             />
-                            <ErrorMessage name='email' render={msg => <Text style={styles.errorText}>{msg}</Text>} />
+                            <ErrorMessage name='email' render={msg => <Text style={[styles.errorText, { color: theme.accent }]}>{msg}</Text>} />
                             <TextInput
                                 value={values.password}
                                 onChangeText={handleChange('password')}
                                 onBlur={handleBlur('password')}
                                 placeholder='password'
+                                placeholderTextColor={theme.inputPlaceholder}
                                 secureTextEntry={true}
-                                style={styles.input}
+                                style={[styles.input, { borderColor: theme.inputBorder, backgroundColor: theme.inputBackground, color: theme.inputText }]}
                             />
-                            <ErrorMessage name='password' render={msg => <Text style={styles.errorText}>{msg}</Text>} />
+                            <ErrorMessage name='password' render={msg => <Text style={[styles.errorText, { color: theme.accent }]}>{msg}</Text>} />
                             <CustomButton onPress={handleSubmit} text="Sign In" />
                         </>
                     )}
@@ -79,26 +82,11 @@ export default function SignInScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: 'black',
-    },
-    headerText: {
-        padding: 40,
-        fontSize: 30,
-        color: '#fae9e9',
-        textAlign: 'center',
     },
     regularText: {
         fontSize: 24,
         padding: 20,
         marginVertical: 8,
-        color: '#fae9e9',
-        textAlign: 'center',
-    },
-    smallText: {
-        fontSize: 16,
-        padding: 8,
-        marginVertical: 8,
-        color: '#fae9e9',
         textAlign: 'center',
     },
     input: {
@@ -107,13 +95,10 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         padding: 10,
         fontSize: 16,
-        borderColor: '#fba8a0',
-        backgroundColor: '#fae9e9',
     },
     errorText: {
         fontSize: 12,
         fontStyle: 'italic',
         paddingHorizontal: 12,
-        color: '#fba8a0',
     },
 });

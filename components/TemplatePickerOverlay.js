@@ -25,48 +25,53 @@ import {
 } from 'react-native';
 import Feather from '@expo/vector-icons/Feather';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 
 // ─── Confirm step ─────────────────────────────────────────────────────────────
 
-const ConfirmStep = ({ workout, clientName, scheduledDate, onBack, onConfirm }) => (
-    <View style={styles.confirmContainer}>
-        <Pressable style={styles.backRow} onPress={onBack}>
-            <Feather name="arrow-left" size={18} color="#fba8a0" />
-            <Text style={styles.backText}>Back to search</Text>
-        </Pressable>
+const ConfirmStep = ({ workout, clientName, scheduledDate, onBack, onConfirm }) => {
+    const { theme } = useTheme();
+    const styles = makeStyles(theme);
+    return (
+        <View style={styles.confirmContainer}>
+            <Pressable style={styles.backRow} onPress={onBack}>
+                <Feather name="arrow-left" size={18} color={theme.accent} />
+                <Text style={styles.backText}>Back to search</Text>
+            </Pressable>
 
-        <Text style={styles.confirmTitle}>Confirm selection</Text>
+            <Text style={styles.confirmTitle}>Confirm selection</Text>
 
-        <View style={styles.confirmCard}>
-            <Text style={styles.confirmWorkoutName}>{workout.workoutName}</Text>
-            <Text style={styles.confirmMeta}>
-                {workout.data?.length ?? 0} section{workout.data?.length !== 1 ? 's' : ''} · {workout.data?.reduce((a, s) => a + (s.data?.length ?? 0), 0)} exercises
-            </Text>
-        </View>
-
-        <View style={styles.confirmDetails}>
-            <View style={styles.confirmDetailRow}>
-                <Feather name="user" size={14} color="#888" />
-                <Text style={styles.confirmDetailText}>{clientName}</Text>
+            <View style={styles.confirmCard}>
+                <Text style={styles.confirmWorkoutName}>{workout.workoutName}</Text>
+                <Text style={styles.confirmMeta}>
+                    {workout.data?.length ?? 0} section{workout.data?.length !== 1 ? 's' : ''} · {workout.data?.reduce((a, s) => a + (s.data?.length ?? 0), 0)} exercises
+                </Text>
             </View>
-            {scheduledDate && (
+
+            <View style={styles.confirmDetails}>
                 <View style={styles.confirmDetailRow}>
-                    <Feather name="calendar" size={14} color="#888" />
-                    <Text style={styles.confirmDetailText}>{scheduledDate}</Text>
+                    <Feather name="user" size={14} color={theme.textSecondary} />
+                    <Text style={styles.confirmDetailText}>{clientName}</Text>
                 </View>
-            )}
+                {scheduledDate && (
+                    <View style={styles.confirmDetailRow}>
+                        <Feather name="calendar" size={14} color={theme.textSecondary} />
+                        <Text style={styles.confirmDetailText}>{scheduledDate}</Text>
+                    </View>
+                )}
+            </View>
+
+            <Text style={styles.confirmNote}>
+                The workout editor will open with this template and the client pre-filled.
+                You can rename and modify anything before saving.
+            </Text>
+
+            <Pressable style={styles.confirmButton} onPress={() => onConfirm(workout)}>
+                <Text style={styles.confirmButtonText}>Open in Editor</Text>
+            </Pressable>
         </View>
-
-        <Text style={styles.confirmNote}>
-            The workout editor will open with this template and the client pre-filled.
-            You can rename and modify anything before saving.
-        </Text>
-
-        <Pressable style={styles.confirmButton} onPress={() => onConfirm(workout)}>
-            <Text style={styles.confirmButtonText}>Open in Editor</Text>
-        </Pressable>
-    </View>
-);
+    );
+};
 
 // ─── Main overlay ─────────────────────────────────────────────────────────────
 
@@ -79,6 +84,8 @@ export default function TemplatePickerOverlay({
     navigation,
 }) {
     const { authFetch } = useAuth();
+    const { theme } = useTheme();
+    const styles = makeStyles(theme);
 
     const [searchInput, setSearchInput] = React.useState('');
     const [search, setSearch] = React.useState('');
@@ -153,7 +160,7 @@ export default function TemplatePickerOverlay({
                         {sectionCount} section{sectionCount !== 1 ? 's' : ''} · {exerciseCount} exercise{exerciseCount !== 1 ? 's' : ''}
                     </Text>
                 </View>
-                <Feather name="chevron-right" size={18} color="#555" />
+                <Feather name="chevron-right" size={18} color={theme.textTertiary} />
             </Pressable>
         );
     };
@@ -188,19 +195,19 @@ export default function TemplatePickerOverlay({
                                 </Text>
                             </View>
                             <Pressable onPress={handleClose} style={styles.closeButton}>
-                                <Feather name="x" size={20} color="#888" />
+                                <Feather name="x" size={20} color={theme.textSecondary} />
                             </Pressable>
                         </View>
 
                         {/* Search */}
                         <View style={styles.searchBox}>
-                            <Feather name="search" size={15} color="#888" style={{ marginRight: 6 }} />
+                            <Feather name="search" size={15} color={theme.textSecondary} style={{ marginRight: 6 }} />
                             <TextInput
                                 style={styles.searchInput}
                                 value={searchInput}
                                 onChangeText={setSearchInput}
                                 placeholder="Search templates..."
-                                placeholderTextColor="#888"
+                                placeholderTextColor={theme.textSecondary}
                                 clearButtonMode="while-editing"
                             />
                         </View>
@@ -211,7 +218,7 @@ export default function TemplatePickerOverlay({
 
                         {loading ? (
                             <View style={styles.loadingContainer}>
-                                <ActivityIndicator size="small" color="#fba8a0" />
+                                <ActivityIndicator size="small" color={theme.accent} />
                             </View>
                         ) : (
                             <FlatList
@@ -219,6 +226,7 @@ export default function TemplatePickerOverlay({
                                 renderItem={renderTemplate}
                                 keyExtractor={item => item.id}
                                 style={styles.list}
+                                indicatorStyle={theme.mode === 'dark' ? 'white' : 'black'}
                                 ListEmptyComponent={
                                     <Text style={styles.emptyText}>
                                         {search ? `No templates matching "${search}"` : 'No templates yet'}
@@ -235,50 +243,52 @@ export default function TemplatePickerOverlay({
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
-    backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' },
+function makeStyles(theme) {
+    return StyleSheet.create({
+        backdrop: { flex: 1, backgroundColor: theme.overlay },
 
-    sheet: {
-        backgroundColor: '#111',
-        borderTopLeftRadius: 16,
-        borderTopRightRadius: 16,
-        paddingBottom: 40,
-        maxHeight: '75%',
-    },
-    handle: { width: 36, height: 4, backgroundColor: '#333', borderRadius: 2, alignSelf: 'center', marginTop: 10, marginBottom: 4 },
+        sheet: {
+            backgroundColor: theme.surface,
+            borderTopLeftRadius: 16,
+            borderTopRightRadius: 16,
+            paddingBottom: 40,
+            maxHeight: '75%',
+        },
+        handle: { width: 36, height: 4, backgroundColor: theme.surfaceBorder, borderRadius: 2, alignSelf: 'center', marginTop: 10, marginBottom: 4 },
 
-    sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12 },
-    sheetTitle: { fontSize: 18, fontWeight: 'bold', color: '#fae9e9' },
-    sheetSubtitle: { fontSize: 13, color: '#888', marginTop: 2 },
-    closeButton: { padding: 4 },
+        sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12 },
+        sheetTitle: { fontSize: 18, fontWeight: 'bold', color: theme.textPrimary },
+        sheetSubtitle: { fontSize: 13, color: theme.textSecondary, marginTop: 2 },
+        closeButton: { padding: 4 },
 
-    searchBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1a1a1a', borderRadius: 8, paddingHorizontal: 12, height: 38, marginHorizontal: 16, marginBottom: 8 },
-    searchInput: { flex: 1, color: '#fae9e9', fontSize: 15 },
+        searchBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.surfaceElevated, borderRadius: 8, paddingHorizontal: 12, height: 38, marginHorizontal: 16, marginBottom: 8 },
+        searchInput: { flex: 1, color: theme.textPrimary, fontSize: 15 },
 
-    defaultLabel: { fontSize: 11, color: '#555', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.8, paddingHorizontal: 20, paddingBottom: 4 },
+        defaultLabel: { fontSize: 11, color: theme.textTertiary, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.8, paddingHorizontal: 20, paddingBottom: 4 },
 
-    list: { flex: 1 },
+        list: { flex: 1 },
 
-    templateRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 0.5, borderBottomColor: '#1e1e1e' },
-    templateInfo: { flex: 1 },
-    templateName: { fontSize: 15, color: '#fae9e9', fontWeight: '600' },
-    templateMeta: { fontSize: 12, color: '#888', marginTop: 3 },
+        templateRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 0.5, borderBottomColor: theme.surfaceElevated },
+        templateInfo: { flex: 1 },
+        templateName: { fontSize: 15, color: theme.textPrimary, fontWeight: '600' },
+        templateMeta: { fontSize: 12, color: theme.textSecondary, marginTop: 3 },
 
-    loadingContainer: { paddingVertical: 30, alignItems: 'center' },
-    emptyText: { color: '#555', textAlign: 'center', padding: 30 },
+        loadingContainer: { paddingVertical: 30, alignItems: 'center' },
+        emptyText: { color: theme.textTertiary, textAlign: 'center', padding: 30 },
 
-    // Confirm step
-    confirmContainer: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 20 },
-    backRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 20 },
-    backText: { color: '#fba8a0', fontSize: 14 },
-    confirmTitle: { fontSize: 18, fontWeight: 'bold', color: '#fae9e9', marginBottom: 16 },
-    confirmCard: { backgroundColor: '#1a1a1a', borderRadius: 8, padding: 16, borderLeftWidth: 3, borderLeftColor: '#fba8a0', marginBottom: 16 },
-    confirmWorkoutName: { fontSize: 16, fontWeight: '600', color: '#fae9e9' },
-    confirmMeta: { fontSize: 12, color: '#888', marginTop: 4 },
-    confirmDetails: { gap: 8, marginBottom: 16 },
-    confirmDetailRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    confirmDetailText: { fontSize: 14, color: '#aaa' },
-    confirmNote: { fontSize: 13, color: '#555', lineHeight: 18, marginBottom: 24 },
-    confirmButton: { backgroundColor: '#fba8a0', borderRadius: 8, paddingVertical: 14, alignItems: 'center' },
-    confirmButtonText: { color: '#000', fontWeight: '700', fontSize: 16 },
-});
+        // Confirm step
+        confirmContainer: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 20 },
+        backRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 20 },
+        backText: { color: theme.accent, fontSize: 14 },
+        confirmTitle: { fontSize: 18, fontWeight: 'bold', color: theme.textPrimary, marginBottom: 16 },
+        confirmCard: { backgroundColor: theme.surfaceElevated, borderRadius: 8, padding: 16, borderLeftWidth: 3, borderLeftColor: theme.accent, marginBottom: 16 },
+        confirmWorkoutName: { fontSize: 16, fontWeight: '600', color: theme.textPrimary },
+        confirmMeta: { fontSize: 12, color: theme.textSecondary, marginTop: 4 },
+        confirmDetails: { gap: 8, marginBottom: 16 },
+        confirmDetailRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+        confirmDetailText: { fontSize: 14, color: theme.textSecondary },
+        confirmNote: { fontSize: 13, color: theme.textTertiary, lineHeight: 18, marginBottom: 24 },
+        confirmButton: { backgroundColor: theme.accent, borderRadius: 8, paddingVertical: 14, alignItems: 'center' },
+        confirmButtonText: { color: '#000', fontWeight: '700', fontSize: 16 },
+    });
+}

@@ -18,6 +18,7 @@ import {
 } from 'react-native';
 import Feather from '@expo/vector-icons/Feather';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 
 const WORKER_URL = 'https://coaching-app.bert-m-cherry.workers.dev';
 const PAGE_SIZE  = 20;
@@ -25,6 +26,8 @@ const PAGE_SIZE  = 20;
 // ─── Link Stream ID modal ─────────────────────────────────────────────────────
 
 const LinkStreamModal = ({ exercise, onClose, onLinked, authFetch }) => {
+    const { theme } = useTheme();
+    const styles = makeStyles(theme);
     const [streamId, setStreamId] = React.useState('');
     const [loading, setLoading]   = React.useState(false);
 
@@ -69,7 +72,7 @@ const LinkStreamModal = ({ exercise, onClose, onLinked, authFetch }) => {
                             <Text style={styles.modalSubtitle} numberOfLines={1}>{exercise.name}</Text>
                         </View>
                         <Pressable onPress={onClose}>
-                            <Feather name="x" size={20} color="#888" />
+                            <Feather name="x" size={20} color={theme.textSecondary} />
                         </Pressable>
                     </View>
 
@@ -88,14 +91,14 @@ const LinkStreamModal = ({ exercise, onClose, onLinked, authFetch }) => {
                         value={streamId}
                         onChangeText={setStreamId}
                         placeholder="e.g. a8f3b2c1d4e5f6a7b8c9d0e1f2a3b4c5"
-                        placeholderTextColor="#555"
+                        placeholderTextColor={theme.textTertiary}
                         autoCapitalize="none"
                         autoCorrect={false}
                         autoFocus
                     />
 
                     {loading ? (
-                        <ActivityIndicator color="#fba8a0" style={{ marginTop: 20 }} />
+                        <ActivityIndicator color={theme.accent} style={{ marginTop: 20 }} />
                     ) : (
                         <View style={styles.modalActions}>
                             <Pressable style={styles.cancelButton} onPress={onClose}>
@@ -115,25 +118,31 @@ const LinkStreamModal = ({ exercise, onClose, onLinked, authFetch }) => {
 
 // ─── Exercise row ─────────────────────────────────────────────────────────────
 
-const ExerciseRow = ({ exercise, onLink }) => (
-    <View style={styles.row}>
-        <View style={styles.rowContent}>
-            <Text style={styles.rowName}>{exercise.name}</Text>
-            {exercise.description ? (
-                <Text style={styles.rowDesc} numberOfLines={2}>{exercise.description}</Text>
-            ) : null}
+const ExerciseRow = ({ exercise, onLink }) => {
+    const { theme } = useTheme();
+    const styles = makeStyles(theme);
+    return (
+        <View style={styles.row}>
+            <View style={styles.rowContent}>
+                <Text style={styles.rowName}>{exercise.name}</Text>
+                {exercise.description ? (
+                    <Text style={styles.rowDesc} numberOfLines={2}>{exercise.description}</Text>
+                ) : null}
+            </View>
+            <Pressable style={styles.linkRowButton} onPress={() => onLink(exercise)}>
+                <Feather name="video" size={15} color="#000" />
+                <Text style={styles.linkRowButtonText}>Link</Text>
+            </Pressable>
         </View>
-        <Pressable style={styles.linkRowButton} onPress={() => onLink(exercise)}>
-            <Feather name="video" size={15} color="#000" />
-            <Text style={styles.linkRowButtonText}>Link</Text>
-        </Pressable>
-    </View>
-);
+    );
+};
 
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
 export default function ToBeFilmedScreen() {
     const { authFetch } = useAuth();
+    const { theme } = useTheme();
+    const styles = makeStyles(theme);
 
     const [exercises, setExercises] = React.useState([]);
     const [loading, setLoading]     = React.useState(true);
@@ -209,7 +218,7 @@ export default function ToBeFilmedScreen() {
         if (!loadingMore) return null;
         return (
             <View style={styles.footerLoader}>
-                <ActivityIndicator size="small" color="#fba8a0" />
+                <ActivityIndicator size="small" color={theme.accent} />
             </View>
         );
     };
@@ -218,7 +227,7 @@ export default function ToBeFilmedScreen() {
         if (loading) return null;
         return (
             <View style={styles.emptyContainer}>
-                <Feather name="video" size={40} color="#333" />
+                <Feather name="video" size={40} color={theme.surfaceBorder} />
                 <Text style={styles.emptyTitle}>
                     {search ? `No unfilmed exercises matching "${search}"` : 'All caught up!'}
                 </Text>
@@ -236,7 +245,7 @@ export default function ToBeFilmedScreen() {
             {/* Header */}
             <View style={styles.header}>
                 <View style={styles.headerTitleRow}>
-                    <Feather name="video-off" size={20} color="#fba8a0" />
+                    <Feather name="video-off" size={20} color={theme.accent} />
                     <Text style={styles.headerTitle}>To Be Filmed</Text>
                 </View>
                 <Text style={styles.headerSubtitle}>
@@ -246,20 +255,20 @@ export default function ToBeFilmedScreen() {
 
             {/* Search */}
             <View style={styles.searchBox}>
-                <Feather name="search" size={15} color="#888" style={{ marginRight: 8 }} />
+                <Feather name="search" size={15} color={theme.textSecondary} style={{ marginRight: 8 }} />
                 <TextInput
                     style={styles.searchInput}
                     value={searchInput}
                     onChangeText={setSearchInput}
                     placeholder="Search exercises..."
-                    placeholderTextColor="#888"
+                    placeholderTextColor={theme.textSecondary}
                     clearButtonMode="while-editing"
                 />
             </View>
 
             {/* How it works */}
             <View style={styles.infoStrip}>
-                <Feather name="info" size={13} color="#555" style={{ marginRight: 6, flexShrink: 0 }} />
+                <Feather name="info" size={13} color={theme.textTertiary} style={{ marginRight: 6, flexShrink: 0 }} />
                 <Text style={styles.infoText}>
                     Upload to Cloudflare Stream, then tap Link to connect the video ID.
                     Updating the ID never breaks existing workouts.
@@ -268,7 +277,7 @@ export default function ToBeFilmedScreen() {
 
             {loading ? (
                 <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color="#fba8a0" />
+                    <ActivityIndicator size="large" color={theme.accent} />
                 </View>
             ) : (
                 <FlatList
@@ -280,6 +289,7 @@ export default function ToBeFilmedScreen() {
                     onEndReached={loadMore}
                     onEndReachedThreshold={0.3}
                     contentContainerStyle={styles.listContent}
+                    indicatorStyle={theme.mode === 'dark' ? 'white' : 'black'}
                 />
             )}
 
@@ -295,53 +305,55 @@ export default function ToBeFilmedScreen() {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
-    container:     { flex: 1, backgroundColor: 'black' },
+function makeStyles(theme) {
+    return StyleSheet.create({
+        container:     { flex: 1, backgroundColor: theme.background },
 
-    header:        { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 8 },
-    headerTitleRow:{ flexDirection: 'row', alignItems: 'center', gap: 10 },
-    headerTitle:   { fontSize: 24, fontWeight: 'bold', color: '#fae9e9' },
-    headerSubtitle:{ fontSize: 13, color: '#888', marginTop: 4 },
+        header:        { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 8 },
+        headerTitleRow:{ flexDirection: 'row', alignItems: 'center', gap: 10 },
+        headerTitle:   { fontSize: 24, fontWeight: 'bold', color: theme.textPrimary },
+        headerSubtitle:{ fontSize: 13, color: theme.textSecondary, marginTop: 4 },
 
-    searchBox:     { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1a1a1a', borderRadius: 8, paddingHorizontal: 12, height: 38, marginHorizontal: 16, marginBottom: 8 },
-    searchInput:   { flex: 1, color: '#fae9e9', fontSize: 15 },
+        searchBox:     { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.surfaceElevated, borderRadius: 8, paddingHorizontal: 12, height: 38, marginHorizontal: 16, marginBottom: 8 },
+        searchInput:   { flex: 1, color: theme.textPrimary, fontSize: 15 },
 
-    infoStrip:     { flexDirection: 'row', alignItems: 'flex-start', backgroundColor: '#0d0d0d', borderWidth: 0.5, borderColor: '#222', borderRadius: 8, marginHorizontal: 16, marginBottom: 12, padding: 10 },
-    infoText:      { fontSize: 12, color: '#555', lineHeight: 17, flex: 1 },
+        infoStrip:     { flexDirection: 'row', alignItems: 'flex-start', backgroundColor: theme.surface, borderWidth: 0.5, borderColor: theme.surfaceBorder, borderRadius: 8, marginHorizontal: 16, marginBottom: 12, padding: 10 },
+        infoText:      { fontSize: 12, color: theme.textTertiary, lineHeight: 17, flex: 1 },
 
-    listContent:   { paddingHorizontal: 16, paddingBottom: 40 },
+        listContent:   { paddingHorizontal: 16, paddingBottom: 40 },
 
-    row:           { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 0.5, borderBottomColor: '#1a1a1a', gap: 12 },
-    rowContent:    { flex: 1 },
-    rowName:       { fontSize: 16, color: '#fae9e9', fontWeight: '600' },
-    rowDesc:       { fontSize: 12, color: '#555', marginTop: 4, lineHeight: 16 },
-    linkRowButton: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#fba8a0', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8 },
-    linkRowButtonText: { fontSize: 13, color: '#000', fontWeight: '700' },
+        row:           { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 0.5, borderBottomColor: theme.surfaceElevated, gap: 12 },
+        rowContent:    { flex: 1 },
+        rowName:       { fontSize: 16, color: theme.textPrimary, fontWeight: '600' },
+        rowDesc:       { fontSize: 12, color: theme.textTertiary, marginTop: 4, lineHeight: 16 },
+        linkRowButton: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: theme.accent, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8 },
+        linkRowButtonText: { fontSize: 13, color: '#000', fontWeight: '700' },
 
-    footerLoader:  { paddingVertical: 20, alignItems: 'center' },
-    loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+        footerLoader:  { paddingVertical: 20, alignItems: 'center' },
+        loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
-    emptyContainer:  { flex: 1, alignItems: 'center', paddingTop: 80, gap: 10 },
-    emptyTitle:      { fontSize: 16, color: '#555', textAlign: 'center', fontWeight: '600' },
-    emptySubtitle:   { fontSize: 13, color: '#333', textAlign: 'center', paddingHorizontal: 32 },
+        emptyContainer:  { flex: 1, alignItems: 'center', paddingTop: 80, gap: 10 },
+        emptyTitle:      { fontSize: 16, color: theme.textTertiary, textAlign: 'center', fontWeight: '600' },
+        emptySubtitle:   { fontSize: 13, color: theme.surfaceBorder, textAlign: 'center', paddingHorizontal: 32 },
 
-    // Modal
-    modalOverlay:  { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'flex-end' },
-    modalCard:     { backgroundColor: '#111', borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 24, paddingBottom: 40 },
-    modalHeader:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
-    modalHeaderText: { flex: 1 },
-    modalTitle:    { fontSize: 18, fontWeight: 'bold', color: '#fae9e9' },
-    modalSubtitle: { fontSize: 13, color: '#888', marginTop: 2 },
-    modalDesc:     { fontSize: 13, color: '#555', lineHeight: 18, marginBottom: 20 },
+        // Modal
+        modalOverlay:  { flex: 1, backgroundColor: theme.overlay, justifyContent: 'flex-end' },
+        modalCard:     { backgroundColor: theme.surface, borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 24, paddingBottom: 40 },
+        modalHeader:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
+        modalHeaderText: { flex: 1 },
+        modalTitle:    { fontSize: 18, fontWeight: 'bold', color: theme.textPrimary },
+        modalSubtitle: { fontSize: 13, color: theme.textSecondary, marginTop: 2 },
+        modalDesc:     { fontSize: 13, color: theme.textTertiary, lineHeight: 18, marginBottom: 20 },
 
-    fieldLabel:    { fontSize: 12, color: '#888', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 },
-    required:      { color: '#fba8a0' },
-    fieldHint:     { fontSize: 12, color: '#444', lineHeight: 17, marginBottom: 10 },
-    streamInput:   { borderWidth: 1, borderColor: '#333', backgroundColor: '#1a1a1a', color: '#fae9e9', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
+        fieldLabel:    { fontSize: 12, color: theme.textSecondary, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 },
+        required:      { color: theme.accent },
+        fieldHint:     { fontSize: 12, color: theme.textTertiary, lineHeight: 17, marginBottom: 10 },
+        streamInput:   { borderWidth: 1, borderColor: theme.surfaceBorder, backgroundColor: theme.surfaceElevated, color: theme.inputText, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
 
-    modalActions:  { flexDirection: 'row', gap: 12, marginTop: 20 },
-    cancelButton:  { flex: 1, borderWidth: 1, borderColor: '#333', borderRadius: 8, paddingVertical: 12, alignItems: 'center' },
-    cancelButtonText: { color: '#888', fontSize: 15 },
-    linkButton:    { flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, backgroundColor: '#fba8a0', borderRadius: 8, paddingVertical: 12 },
-    linkButtonText:{ color: '#000', fontWeight: '700', fontSize: 15 },
-});
+        modalActions:  { flexDirection: 'row', gap: 12, marginTop: 20 },
+        cancelButton:  { flex: 1, borderWidth: 1, borderColor: theme.surfaceBorder, borderRadius: 8, paddingVertical: 12, alignItems: 'center' },
+        cancelButtonText: { color: theme.textSecondary, fontSize: 15 },
+        linkButton:    { flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, backgroundColor: theme.accent, borderRadius: 8, paddingVertical: 12 },
+        linkButtonText:{ color: '#000', fontWeight: '700', fontSize: 15 },
+    });
+}

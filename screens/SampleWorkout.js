@@ -1,9 +1,10 @@
 import * as React from 'react';
 import { View, Text, SectionList, TextInput, KeyboardAvoidingView, StyleSheet, Platform, Pressable } from 'react-native';
+import { useTheme } from '../context/ThemeContext';
 
 const sampleWorkoutData = [
     {
-        title: 'Warm Up - perform 1 set', 
+        title: 'Warm Up - perform 1 set',
         data: [
             { id: '2b8accccef2ba6b84b5b1bdb67847a41', reps: '8' },
             { id: '30c1f03c1e37b5d24d57c053f309f8d1', reps: '30s' },
@@ -36,13 +37,13 @@ const sampleWorkoutData = [
     },
 ];
 
-const Item = ({ id, reps }) => {
+const Item = ({ id, reps, theme }) => {
     const [video, setVideo] = React.useState({});
     const [weight, onChangeWeight] = React.useState('');
     const [rpe, onChangeRpe] = React.useState('');
     const [notes, onChangeNotes] = React.useState('');
     const [showNotes, setShowNotes] = React.useState(false);
-    
+
     React.useEffect(() => {
         const getVideo = async () => {
             try {
@@ -60,70 +61,71 @@ const Item = ({ id, reps }) => {
     if (!Object.keys(video).length) return (
         <>
             <View style={styles.itemContainer}>
-                <Text style={styles.bodyText}>Loading...</Text>
-                <Text style={styles.bodyText}>Reps or Time: {reps}</Text>
+                <Text style={[styles.bodyText, { color: theme.textPrimary }]}>Loading...</Text>
+                <Text style={[styles.bodyText, { color: theme.textPrimary }]}>Reps or Time: {reps}</Text>
             </View>
         </>
-        
     );
 
     return (
         <>
             <View style={styles.itemContainer}>
-                <Text style={styles.exerciseText}>{video.name}</Text>
-                <Text style={styles.bodyText}>Reps/Time: {reps}</Text>
-                <Pressable style={styles.button} onPress={() => {setShowNotes(!showNotes)}}>
-                    <Text style={styles.buttonText}>{showNotes ? 'v' : '>'}</Text>
+                <Text style={[styles.exerciseText, { color: theme.textPrimary }]}>{video.name}</Text>
+                <Text style={[styles.bodyText, { color: theme.textPrimary }]}>Reps/Time: {reps}</Text>
+                <Pressable style={[styles.button, { borderColor: theme.surfaceBorder }]} onPress={() => {setShowNotes(!showNotes)}}>
+                    <Text style={[styles.buttonText, { color: theme.textPrimary }]}>{showNotes ? 'v' : '>'}</Text>
                 </Pressable>
             </View>
             {showNotes && (
             <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
                 <View style={styles.itemContainer}>
-                    <TextInput 
+                    <TextInput
                         value={weight}
                         onChangeText={onChangeWeight}
                         placeholder={'Weight'}
-                        style={styles.input}
+                        placeholderTextColor={theme.inputPlaceholder}
+                        style={[styles.input, { borderColor: theme.inputBorder, backgroundColor: theme.inputBackground, color: theme.inputText }]}
                         keyboardType={'numeric'}
                         clearButtonMode='while-editing'
-                        //use onBlur to store the data to the user
                     />
-                    <TextInput 
+                    <TextInput
                         value={rpe}
                         onChangeText={onChangeRpe}
                         placeholder={'RPE'}
-                        style={styles.input}
+                        placeholderTextColor={theme.inputPlaceholder}
+                        style={[styles.input, { borderColor: theme.inputBorder, backgroundColor: theme.inputBackground, color: theme.inputText }]}
                         keyboardType={'numeric'}
                         clearButtonMode='while-editing'
-                        //use onBlur to store the data to the user
                     />
                 </View>
-                <TextInput 
+                <TextInput
                     value={notes}
                     onChangeText={onChangeNotes}
                     placeholder={'Notes'}
-                    style={styles.notesInput}
+                    placeholderTextColor={theme.inputPlaceholder}
+                    style={[styles.notesInput, { borderColor: theme.inputBorder, backgroundColor: theme.inputBackground, color: theme.inputText }]}
                     multiline={true}
-                    //use onBlur to store the data to the user
                 />
             </KeyboardAvoidingView>
             )}
-        </> 
+        </>
     );
 }
 
 export default function SampleWorkout() {
-    const renderItem = ({ item }) => <Item id={item.id} reps={item.reps} />;
+    const { theme } = useTheme();
+
+    const renderItem = ({ item }) => <Item id={item.id} reps={item.reps} theme={theme} />;
 
     const renderSectionHeader = ({ section: { title } }) => (
         <View>
-            <Text style={styles.headingText}>{title}</Text>
+            <Text style={[styles.headingText, { color: theme.textPrimary }]}>{title}</Text>
         </View>
-    )
+    );
 
     return (
-        <View style={styles.container}>
-            <SectionList 
+        <View style={[styles.container, { backgroundColor: theme.background }]}>
+            <SectionList
                 sections={sampleWorkoutData}
                 keyExtractor={(item) => item.id}
                 renderItem={renderItem}
@@ -137,30 +139,26 @@ export default function SampleWorkout() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: 'black',
         justifyContent: 'space-between',
-      },
+    },
     itemContainer: {
         flexDirection: 'row',
         justifyContent: 'space-between'
     },
     headingText: {
-        padding: 40, 
-        fontSize: 20, 
-        fontWeight: 'bold', 
-        color: '#fae9e9', 
+        padding: 40,
+        fontSize: 20,
+        fontWeight: 'bold',
         textAlign: 'center',
     },
     bodyText: {
-        padding: 20, 
-        fontSize: 16, 
-        color: '#fae9e9', 
+        padding: 20,
+        fontSize: 16,
         flexWrap: 'wrap'
     },
     exerciseText: {
-        padding: 20, 
-        fontSize: 16, 
-        color: '#fae9e9', 
+        padding: 20,
+        fontSize: 16,
         flexWrap: 'wrap',
         flex: 1
     },
@@ -168,13 +166,10 @@ const styles = StyleSheet.create({
         padding: 10,
         height: 40,
         alignSelf: 'center',
-        borderColor: '#fae9e9',
         borderWidth: 1,
         borderRadius: 8,
     },
-    buttonText: {
-        color: '#fae9e9',
-    },
+    buttonText: {},
     input: {
         flex: 1,
         height: 40,
@@ -182,16 +177,12 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         padding: 10,
         fontSize: 16,
-        borderColor: '#fba8a0',
-        backgroundColor: '#fae9e9'
     },
     notesInput: {
         height: 100,
         margin: 12,
-        borderWidth: 1, 
-        padding: 10, 
-        fontSize: 16, 
-        borderColor: '#fba8a0',
-        backgroundColor: '#fae9e9'
+        borderWidth: 1,
+        padding: 10,
+        fontSize: 16,
     }
 })

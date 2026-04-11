@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Pressable, KeyboardAvoidingView, Platform } fro
 import Feather from '@expo/vector-icons/Feather';
 import { Video, ResizeMode } from 'expo-av';
 import SetRow from './SetRow';
+import { useTheme } from '../context/ThemeContext';
 
 const WORKER_URL = 'https://coaching-app.bert-m-cherry.workers.dev';
 
@@ -39,6 +40,8 @@ export default function WorkoutPreviewItem({
     recommendedRpe, recommendedWeight,
     coachNotes,
 }) {
+    const { theme } = useTheme();
+    const styles = makeStyles(theme);
     const [demo,      setDemo]      = React.useState(null);
     const [loading,   setLoading]   = React.useState(true);
     const [showLogs,  setShowLogs]  = React.useState(false);
@@ -107,12 +110,12 @@ export default function WorkoutPreviewItem({
                 <View style={styles.actionButtons}>
                     {hasVideo && (
                         <Pressable style={[styles.iconButton, showVideo && styles.iconButtonActive]} onPress={() => setShowVideo(v => !v)}>
-                            <Feather name="film" size={15} color={showVideo ? '#fba8a0' : '#fae9e9'} />
+                            <Feather name="film" size={15} color={showVideo ? theme.accent : theme.textPrimary} />
                         </Pressable>
                     )}
-                    {!hasVideo && <View style={styles.noVideoTag}><Feather name="video-off" size={12} color="#333" /></View>}
+                    {!hasVideo && <View style={styles.noVideoTag}><Feather name="video-off" size={12} color={theme.surfaceBorder} /></View>}
                     <Pressable style={[styles.iconButton, showLogs && styles.iconButtonActive]} onPress={() => setShowLogs(v => !v)}>
-                        <Feather name="edit-3" size={15} color={showLogs ? '#fba8a0' : '#fae9e9'} />
+                        <Feather name="edit-3" size={15} color={showLogs ? theme.accent : theme.textPrimary} />
                     </Pressable>
                 </View>
             </View>
@@ -120,7 +123,7 @@ export default function WorkoutPreviewItem({
             {/* Coach notes — shown as guidance below exercise row */}
             {coachNotes ? (
                 <View style={styles.coachNotesContainer}>
-                    <Feather name="message-square" size={12} color="#fba8a0" style={{ marginRight: 6, marginTop: 1, flexShrink: 0 }} />
+                    <Feather name="message-square" size={12} color={theme.accent} style={{ marginRight: 6, marginTop: 1, flexShrink: 0 }} />
                     <Text style={styles.coachNotesText}>{coachNotes}</Text>
                 </View>
             ) : null}
@@ -136,7 +139,7 @@ export default function WorkoutPreviewItem({
                         {/* Recommendations as helper text above set rows */}
                         {(recommendedWeight || recommendedRpe) && (
                             <View style={styles.recBanner}>
-                                <Feather name="info" size={12} color="#fba8a0" style={{ marginRight: 6 }} />
+                                <Feather name="info" size={12} color={theme.accent} style={{ marginRight: 6 }} />
                                 <Text style={styles.recBannerText}>
                                     Coach rec:{recommendedWeight ? ` ${recommendedWeight} ${unitDefault ?? 'lbs'}` : ''}{recommendedRpe ? `  ·  RPE ${recommendedRpe}` : ''}
                                 </Text>
@@ -168,28 +171,30 @@ export default function WorkoutPreviewItem({
     );
 }
 
-const styles = StyleSheet.create({
-    itemContainer:   { flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 4, paddingVertical: 8 },
-    exerciseInfo:    { flex: 1 },
-    exerciseText:    { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 6, fontSize: 16, color: '#fae9e9', fontWeight: '500' },
-    pillsRow:        { flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingHorizontal: 16, paddingBottom: 4 },
-    pill:            { backgroundColor: '#1a1a1a', borderRadius: 12, paddingHorizontal: 8, paddingVertical: 3 },
-    pillText:        { fontSize: 12, color: '#ccc' },
-    loadingText:     { padding: 20, fontSize: 14, color: '#888' },
-    actionButtons:   { flexDirection: 'row', alignItems: 'center', gap: 6, paddingRight: 8, paddingTop: 4 },
-    iconButton:      { width: 34, height: 34, justifyContent: 'center', alignItems: 'center', borderColor: '#222', borderWidth: 1, borderRadius: 8 },
-    iconButtonActive:{ borderColor: '#fba8a0', backgroundColor: 'rgba(251,168,160,0.08)' },
-    noVideoTag:      { width: 34, height: 34, justifyContent: 'center', alignItems: 'center' },
+function makeStyles(theme) {
+    return StyleSheet.create({
+        itemContainer:   { flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 4, paddingVertical: 8 },
+        exerciseInfo:    { flex: 1 },
+        exerciseText:    { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 6, fontSize: 16, color: theme.textPrimary, fontWeight: '500' },
+        pillsRow:        { flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingHorizontal: 16, paddingBottom: 4 },
+        pill:            { backgroundColor: theme.surfaceElevated, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 3 },
+        pillText:        { fontSize: 12, color: theme.textSecondary },
+        loadingText:     { padding: 20, fontSize: 14, color: theme.textSecondary },
+        actionButtons:   { flexDirection: 'row', alignItems: 'center', gap: 6, paddingRight: 8, paddingTop: 4 },
+        iconButton:      { width: 34, height: 34, justifyContent: 'center', alignItems: 'center', borderColor: theme.surfaceBorder, borderWidth: 1, borderRadius: 8 },
+        iconButtonActive:{ borderColor: theme.accent, backgroundColor: theme.accentSubtle },
+        noVideoTag:      { width: 34, height: 34, justifyContent: 'center', alignItems: 'center' },
 
-    coachNotesContainer: { flexDirection: 'row', alignItems: 'flex-start', marginHorizontal: 16, marginBottom: 8, backgroundColor: 'rgba(251,168,160,0.05)', borderLeftWidth: 2, borderLeftColor: 'rgba(251,168,160,0.3)', paddingHorizontal: 10, paddingVertical: 8, borderRadius: 4 },
-    coachNotesText:      { fontSize: 13, color: '#ccc', flex: 1, lineHeight: 18, fontStyle: 'italic' },
+        coachNotesContainer: { flexDirection: 'row', alignItems: 'flex-start', marginHorizontal: 16, marginBottom: 8, backgroundColor: theme.accentSubtle, borderLeftWidth: 2, borderLeftColor: theme.accent, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 4 },
+        coachNotesText:      { fontSize: 13, color: theme.textSecondary, flex: 1, lineHeight: 18, fontStyle: 'italic' },
 
-    videoContainer: { flex: 1, justifyContent: 'center', backgroundColor: 'black' },
-    video:          { alignSelf: 'center', width: 320, height: 200 },
+        videoContainer: { flex: 1, justifyContent: 'center', backgroundColor: theme.background },
+        video:          { alignSelf: 'center', width: 320, height: 200 },
 
-    logsContainer: { backgroundColor: '#0d0d0d', marginHorizontal: 8, marginBottom: 8, borderRadius: 8, padding: 10, borderWidth: 0.5, borderColor: '#222' },
-    logsHeader:    { marginBottom: 8, gap: 6 },
-    setsHeader:    { fontSize: 11, color: '#bbb', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.6 },
-    recBanner:     { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(251,168,160,0.06)', borderWidth: 0.5, borderColor: 'rgba(251,168,160,0.2)', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 5 },
-    recBannerText: { fontSize: 12, color: '#fba8a0', fontStyle: 'italic' },
-});
+        logsContainer: { backgroundColor: theme.surface, marginHorizontal: 8, marginBottom: 8, borderRadius: 8, padding: 10, borderWidth: 0.5, borderColor: theme.surfaceBorder },
+        logsHeader:    { marginBottom: 8, gap: 6 },
+        setsHeader:    { fontSize: 11, color: theme.textSecondary, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.6 },
+        recBanner:     { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.accentSubtle, borderWidth: 0.5, borderColor: theme.accent, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 5 },
+        recBannerText: { fontSize: 12, color: theme.accent, fontStyle: 'italic' },
+    });
+}

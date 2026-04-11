@@ -1,10 +1,12 @@
 import * as React from 'react';
 import { View, Image, StyleSheet } from 'react-native';
+import { useTheme } from '../context/ThemeContext';
 
 export default function CoachingHeader() {
+    const { theme } = useTheme();
     return (
-        <View style={styles.container}>
-            <Image 
+        <View style={[styles.container, { backgroundColor: theme.headerBackground }]}>
+            <Image
                 style={styles.logo}
                 source={require('../img/CherryCoachingLogo.png')}
                 accessible={true}
@@ -16,9 +18,8 @@ export default function CoachingHeader() {
 
 const styles = StyleSheet.create({
     container: {
-        backgroundColor: '#fae9e9',
         flex: .15,
-        alignItems: 'center', 
+        alignItems: 'center',
         padding: 10
     },
     logo: {

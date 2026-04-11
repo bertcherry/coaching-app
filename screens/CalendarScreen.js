@@ -30,6 +30,7 @@ import Animated, {
     useSharedValue, useAnimatedStyle, withSpring, runOnJS,
 } from 'react-native-reanimated';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import TemplatePickerOverlay from '../components/TemplatePickerOverlay';
 
 const WORKER_URL = 'https://coaching-app.bert-m-cherry.workers.dev';
@@ -157,6 +158,8 @@ const STATUS_LABEL = {
 // ─── Workout pill ─────────────────────────────────────────────────────────────
 
 const WorkoutPill = ({ workout, onPress, onLongPress, compact }) => {
+    const { theme } = useTheme();
+    const styles = makeStyles(theme);
     const bg = STATUS_COLOR[workout.status] ?? STATUS_COLOR.scheduled;
     const statusLabel = STATUS_LABEL[workout.status] ?? workout.status;
     return (
@@ -215,6 +218,8 @@ const MonthWorkoutPill = ({
     workout, onPress, onLongPress, onDragStart, onDragUpdate, onDragEnd,
     compact, ghostX, ghostY,
 }) => {
+    const { theme } = useTheme();
+    const styles = makeStyles(theme);
     const bg = STATUS_COLOR[workout.status] ?? STATUS_COLOR.scheduled;
     const statusLabel = STATUS_LABEL[workout.status] ?? workout.status;
     const scale   = useSharedValue(1);
@@ -298,6 +303,8 @@ const MonthDayCell = ({
     onCellLayout, onDragStart, onDragUpdate, onDragEnd,
     ghostX, ghostY,
 }) => {
+    const { theme } = useTheme();
+    const styles = makeStyles(theme);
     const canAdd = isCoach && currentMonth && !isPast;
     const dayNum = parseInt(dateStr.split('-')[2], 10);
     const cellRef = React.useRef();
@@ -382,7 +389,10 @@ const MonthDayCell = ({
 
 // ─── Workout action sheet ─────────────────────────────────────────────────────
 
-const WorkoutActionSheet = ({ workout, onClose, onSkip, onCopy, onMove }) => (
+const WorkoutActionSheet = ({ workout, onClose, onSkip, onCopy, onMove }) => {
+    const { theme } = useTheme();
+    const styles = makeStyles(theme);
+    return (
     <Modal
         transparent
         animationType="slide"
@@ -410,7 +420,7 @@ const WorkoutActionSheet = ({ workout, onClose, onSkip, onCopy, onMove }) => (
 
                 {workout.status === 'completed' ? (
                     <View style={styles.sheetCompleted} accessible accessibilityLabel="Workout completed">
-                        <Feather name="check-circle" size={18} color="#7bb533" accessible={false} />
+                        <Feather name="check-circle" size={18} color={theme.success} accessible={false} />
                         <Text style={styles.sheetCompletedText}>This workout has been completed.</Text>
                     </View>
                 ) : (
@@ -422,7 +432,7 @@ const WorkoutActionSheet = ({ workout, onClose, onSkip, onCopy, onMove }) => (
                             accessibilityLabel="Skip workout"
                             accessibilityHint="Mark this workout as skipped with an optional reason"
                         >
-                            <Feather name="slash" size={20} color="#fba8a0" accessible={false} />
+                            <Feather name="slash" size={20} color={theme.accent} accessible={false} />
                             <View style={styles.sheetActionTextBlock}>
                                 <Text style={styles.sheetActionText}>Skip</Text>
                                 <Text style={styles.sheetActionSub}>Mark as skipped with optional reason</Text>
@@ -435,7 +445,7 @@ const WorkoutActionSheet = ({ workout, onClose, onSkip, onCopy, onMove }) => (
                             accessibilityRole="button"
                             accessibilityLabel="Move workout to a different date"
                         >
-                            <Feather name="calendar" size={20} color="#fba8a0" accessible={false} />
+                            <Feather name="calendar" size={20} color={theme.accent} accessible={false} />
                             <View style={styles.sheetActionTextBlock}>
                                 <Text style={styles.sheetActionText}>Move</Text>
                                 <Text style={styles.sheetActionSub}>Reschedule to a different date</Text>
@@ -450,7 +460,7 @@ const WorkoutActionSheet = ({ workout, onClose, onSkip, onCopy, onMove }) => (
                     accessibilityRole="button"
                     accessibilityLabel="Copy workout to another date"
                 >
-                    <Feather name="copy" size={20} color="#fba8a0" accessible={false} />
+                    <Feather name="copy" size={20} color={theme.accent} accessible={false} />
                     <View style={styles.sheetActionTextBlock}>
                         <Text style={styles.sheetActionText}>Copy to date…</Text>
                         <Text style={styles.sheetActionSub}>Duplicate on a different day</Text>
@@ -468,11 +478,15 @@ const WorkoutActionSheet = ({ workout, onClose, onSkip, onCopy, onMove }) => (
             </Pressable>
         </Pressable>
     </Modal>
-);
+    );
+};
 
 // ─── Add workout sheet ────────────────────────────────────────────────────────
 
-const AddWorkoutSheet = ({ dateStr, clientName, onClose, onCreateNew, onUseTemplate }) => (
+const AddWorkoutSheet = ({ dateStr, clientName, onClose, onCreateNew, onUseTemplate }) => {
+    const { theme } = useTheme();
+    const styles = makeStyles(theme);
+    return (
     <Modal
         transparent
         animationType="slide"
@@ -508,7 +522,7 @@ const AddWorkoutSheet = ({ dateStr, clientName, onClose, onCreateNew, onUseTempl
                     accessibilityRole="button"
                     accessibilityLabel="Create a new workout from scratch"
                 >
-                    <Feather name="plus-circle" size={20} color="#fba8a0" accessible={false} />
+                    <Feather name="plus-circle" size={20} color={theme.accent} accessible={false} />
                     <View style={styles.sheetActionTextBlock}>
                         <Text style={styles.sheetActionText}>Create new workout</Text>
                         <Text style={styles.sheetActionSub}>Build a fresh workout for this date</Text>
@@ -521,7 +535,7 @@ const AddWorkoutSheet = ({ dateStr, clientName, onClose, onCreateNew, onUseTempl
                     accessibilityRole="button"
                     accessibilityLabel="Use an existing workout template"
                 >
-                    <Feather name="copy" size={20} color="#fba8a0" accessible={false} />
+                    <Feather name="copy" size={20} color={theme.accent} accessible={false} />
                     <View style={styles.sheetActionTextBlock}>
                         <Text style={styles.sheetActionText}>Use a template</Text>
                         <Text style={styles.sheetActionSub}>Pick from existing workouts and assign here</Text>
@@ -539,11 +553,14 @@ const AddWorkoutSheet = ({ dateStr, clientName, onClose, onCreateNew, onUseTempl
             </Pressable>
         </Pressable>
     </Modal>
-);
+    );
+};
 
 // ─── Skip modal ───────────────────────────────────────────────────────────────
 
 const SkipModal = ({ workout, onClose, onConfirm }) => {
+    const { theme } = useTheme();
+    const styles = makeStyles(theme);
     const [reason, setReason] = React.useState('');
     return (
         <Modal
@@ -563,7 +580,7 @@ const SkipModal = ({ workout, onClose, onConfirm }) => {
                         value={reason}
                         onChangeText={setReason}
                         placeholder="Why are you skipping? (optional)"
-                        placeholderTextColor="#555"
+                        placeholderTextColor={theme.inputPlaceholder}
                         multiline
                         returnKeyType="done"
                         blurOnSubmit
@@ -597,6 +614,8 @@ const SkipModal = ({ workout, onClose, onConfirm }) => {
 // ─── Mini calendar (date picker) ──────────────────────────────────────────────
 
 const DatePickerModal = ({ title, minDate, sourceDate, workoutDates, onClose, onConfirm }) => {
+    const { theme } = useTheme();
+    const styles = makeStyles(theme);
     const now = new Date();
     const [pickerYear,  setPickerYear]  = React.useState(now.getFullYear());
     const [pickerMonth, setPickerMonth] = React.useState(now.getMonth());
@@ -647,7 +666,7 @@ const DatePickerModal = ({ title, minDate, sourceDate, workoutDates, onClose, on
                             accessibilityLabel="Previous month"
                             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                         >
-                            <Feather name="chevron-left" size={20} color="#fae9e9" accessible={false} />
+                            <Feather name="chevron-left" size={20} color={theme.textPrimary} accessible={false} />
                         </Pressable>
                         <Text style={styles.miniCalMonthLabel}>
                             {monthLabel(pickerYear, pickerMonth)}
@@ -659,7 +678,7 @@ const DatePickerModal = ({ title, minDate, sourceDate, workoutDates, onClose, on
                             accessibilityLabel="Next month"
                             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                         >
-                            <Feather name="chevron-right" size={20} color="#fae9e9" accessible={false} />
+                            <Feather name="chevron-right" size={20} color={theme.textPrimary} accessible={false} />
                         </Pressable>
                     </View>
 
@@ -771,6 +790,8 @@ const DatePickerModal = ({ title, minDate, sourceDate, workoutDates, onClose, on
 // ─── Week workout detail list ─────────────────────────────────────────────────
 
 const WeekWorkoutList = ({ weekGrid, workoutsByDate, todayStr, onWorkoutPress, onWorkoutLongPress }) => {
+    const { theme } = useTheme();
+    const styles = makeStyles(theme);
     const days = weekGrid.filter(({ dateStr }) => (workoutsByDate[dateStr]?.length ?? 0) > 0);
 
     if (days.length === 0) return (
@@ -779,7 +800,7 @@ const WeekWorkoutList = ({ weekGrid, workoutsByDate, todayStr, onWorkoutPress, o
             accessible
             accessibilityLabel="No workouts scheduled this week"
         >
-            <Feather name="calendar" size={28} color="#333" accessible={false} />
+            <Feather name="calendar" size={28} color={theme.surfaceBorder} accessible={false} />
             <Text style={styles.weekEmptyStateText}>No workouts this week</Text>
         </View>
     );
@@ -823,7 +844,7 @@ const WeekWorkoutList = ({ weekGrid, workoutsByDate, todayStr, onWorkoutPress, o
                                         <Text style={styles.weekListItemName}>{w.workoutName}</Text>
                                         <Text style={styles.weekListItemStatus}>{statusLabel}</Text>
                                     </View>
-                                    <Feather name="chevron-right" size={16} color="#555" accessible={false} />
+                                    <Feather name="chevron-right" size={16} color={theme.textTertiary} accessible={false} />
                                 </Pressable>
                             );
                         })}
@@ -843,7 +864,10 @@ const LEGEND_ITEMS = [
     { color: STATUS_COLOR.missed,    label: 'Missed'    },
 ];
 
-const Legend = () => (
+const Legend = () => {
+    const { theme } = useTheme();
+    const styles = makeStyles(theme);
+    return (
     <View
         style={styles.legend}
         accessible
@@ -861,13 +885,16 @@ const Legend = () => (
             </View>
         ))}
     </View>
-);
+    );
+};
 
 // ─── Drag ghost ───────────────────────────────────────────────────────────────
 // Floats above everything else while a workout pill is being dragged.
 // Positioned via Reanimated shared values (UI thread) for smooth 60 fps tracking.
 
 const DragGhost = ({ workout, ghostX, ghostY }) => {
+    const { theme } = useTheme();
+    const styles = makeStyles(theme);
     const bg = STATUS_COLOR[workout.status] ?? STATUS_COLOR.scheduled;
     const style = useAnimatedStyle(() => ({
         transform: [
@@ -891,6 +918,8 @@ const DragGhost = ({ workout, ghostX, ghostY }) => {
 
 export default function CalendarScreen({ navigation, route }) {
     const { user, authFetch } = useAuth();
+    const { theme } = useTheme();
+    const styles = makeStyles(theme);
     const isCoach = user?.isCoach ?? false;
 
     const clientEmail    = route?.params?.clientEmail ?? user?.email;
@@ -1221,7 +1250,7 @@ export default function CalendarScreen({ navigation, route }) {
                     accessibilityLabel={calendarView === 'month' ? 'Previous month' : 'Previous week'}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                    <Feather name="chevron-left" size={24} color="#fae9e9" accessible={false} />
+                    <Feather name="chevron-left" size={24} color={theme.textPrimary} accessible={false} />
                 </Pressable>
 
                 <View style={styles.headerCenter}>
@@ -1240,7 +1269,7 @@ export default function CalendarScreen({ navigation, route }) {
                     accessibilityLabel={calendarView === 'month' ? 'Next month' : 'Next week'}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                    <Feather name="chevron-right" size={24} color="#fae9e9" accessible={false} />
+                    <Feather name="chevron-right" size={24} color={theme.textPrimary} accessible={false} />
                 </Pressable>
             </View>
 
@@ -1260,7 +1289,7 @@ export default function CalendarScreen({ navigation, route }) {
                     <Feather
                         name="grid"
                         size={14}
-                        color={calendarView === 'month' ? '#000' : '#fba8a0'}
+                        color={calendarView === 'month' ? '#000' : theme.accent}
                         accessible={false}
                     />
                     <Text style={[styles.viewToggleText, calendarView === 'month' && styles.viewToggleTextActive]}>
@@ -1277,7 +1306,7 @@ export default function CalendarScreen({ navigation, route }) {
                     <Feather
                         name="list"
                         size={14}
-                        color={calendarView === 'week' ? '#000' : '#fba8a0'}
+                        color={calendarView === 'week' ? '#000' : theme.accent}
                         accessible={false}
                     />
                     <Text style={[styles.viewToggleText, calendarView === 'week' && styles.viewToggleTextActive]}>
@@ -1295,7 +1324,7 @@ export default function CalendarScreen({ navigation, route }) {
                     accessibilityLabel="Loading schedule"
                     accessibilityState={{ busy: true }}
                 >
-                    <ActivityIndicator size="large" color="#fba8a0" />
+                    <ActivityIndicator size="large" color={theme.accent} />
                 </View>
             ) : calendarView === 'month' ? (
 
@@ -1525,72 +1554,59 @@ export default function CalendarScreen({ navigation, route }) {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#000' },
+function makeStyles(theme) { return StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.background },
 
     // ── Header ──
     // Touch targets: headerButton minWidth/Height 44 (WCAG 2.5.5)
     header:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
     headerButton: { minWidth: 44, minHeight: 44, justifyContent: 'center', alignItems: 'center' },
     headerCenter: { alignItems: 'center', flex: 1 },
-    // AAA: #fae9e9 on #000 = 17.7:1 ✓
-    headerTitle:  { fontSize: 20, fontWeight: 'bold', color: '#fae9e9' },
-    // AA: #fba8a0 on #000 = 5.29:1 ✓
-    headerClient: { fontSize: 13, color: '#fba8a0', marginTop: 2 },
+    headerTitle:  { fontSize: 20, fontWeight: 'bold', color: theme.textPrimary },
+    headerClient: { fontSize: 13, color: theme.accent, marginTop: 2 },
 
     // ── View toggle ──
-    // Using radiogroup/radio pattern for proper AT announcement
-    viewToggleRow:        { flexDirection: 'row', alignSelf: 'center', backgroundColor: '#111', borderRadius: 10, borderWidth: 1, borderColor: '#222', overflow: 'hidden', marginBottom: 8, marginTop: 2 },
+    viewToggleRow:        { flexDirection: 'row', alignSelf: 'center', backgroundColor: theme.surface, borderRadius: 10, borderWidth: 1, borderColor: theme.divider, overflow: 'hidden', marginBottom: 8, marginTop: 2 },
     viewToggleBtn:        { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 18, paddingVertical: 8, minHeight: 44, justifyContent: 'center' },
-    viewToggleBtnActive:  { backgroundColor: '#fba8a0', borderRadius: 8, margin: 3 },
-    // AA: #fba8a0 on #000 = 5.29:1 ✓ (inactive)
-    viewToggleText:       { fontSize: 14, color: '#fba8a0', fontWeight: '600' },
-    // AA: #000 on #fba8a0 = 5.29:1 ✓ (active, large text)
+    viewToggleBtnActive:  { backgroundColor: theme.accent, borderRadius: 8, margin: 3 },
+    viewToggleText:       { fontSize: 14, color: theme.accent, fontWeight: '600' },
     viewToggleTextActive: { color: '#000', fontWeight: '700' },
 
     // ── Day-of-week row (month view) — decorative, hidden from AT ──
     dowRow:   { flexDirection: 'row', paddingHorizontal: 16, marginBottom: 2 },
-    // AA: #aaa on #000 = 5.74:1 ✓
-    dowLabel: { width: DAY_CELL_SIZE, textAlign: 'center', color: '#aaaaaa', fontSize: 12, fontWeight: '600' },
+    dowLabel: { width: DAY_CELL_SIZE, textAlign: 'center', color: theme.textSecondary, fontSize: 12, fontWeight: '600' },
 
     // ── Month grid ──
     grid:             { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16 },
-    dayCell:          { width: DAY_CELL_SIZE, minHeight: DAY_CELL_SIZE, paddingBottom: 4, borderTopWidth: 0.5, borderTopColor: '#222' },
+    dayCell:          { width: DAY_CELL_SIZE, minHeight: DAY_CELL_SIZE, paddingBottom: 4, borderTopWidth: 0.5, borderTopColor: theme.divider },
     dayCellOtherMonth: { opacity: 0.3 },
 
     dayNumberContainer:      { width: 22, height: 22, borderRadius: 11, justifyContent: 'center', alignItems: 'center', alignSelf: 'center', marginTop: 2, marginBottom: 2 },
-    dayNumberTodayContainer: { backgroundColor: '#fba8a0' },
-    // AAA: #fae9e9 on #000 = 17.7:1 ✓
-    dayNumber:               { fontSize: 12, color: '#fae9e9', textAlign: 'center' },
-    // AA: #000 on #fba8a0 = 5.29:1 ✓
+    dayNumberTodayContainer: { backgroundColor: theme.accent },
+    dayNumber:               { fontSize: 12, color: theme.textPrimary, textAlign: 'center' },
     dayNumberToday:          { color: '#000', fontWeight: 'bold' },
-    // Decorative — other-month dates are visually de-emphasised
-    dayNumberOtherMonth:     { color: '#555' },
+    dayNumberOtherMonth:     { color: theme.textTertiary },
 
-    // Decorative hint — intentionally invisible (#2a2a2a on #000), hidden from AT
-    emptyDayHint: { textAlign: 'center', color: '#2a2a2a', fontSize: 14 },
+    // Decorative hint — intentionally invisible on dark bg, hidden from AT
+    emptyDayHint: { textAlign: 'center', color: theme.background, fontSize: 14 },
 
     // ── Workout pill ──
-    // Minimum pill height via paddingVertical ensures touch targets are usable
     pill:         { flexDirection: 'row', alignItems: 'center', borderRadius: 3, paddingHorizontal: 3, paddingVertical: 2, marginHorizontal: 1, marginBottom: 2, gap: 2 },
     pillSkipped:  { opacity: 0.6 },
-    // AAA: #000 on pill colours ✓
     pillText:     { fontSize: 9, color: '#000', fontWeight: '700', flex: 1 },
     pillCompact:  { paddingHorizontal: 2, paddingVertical: 1 },
     pillTextCompact: { fontSize: 8 },
 
     // ── Weekly grid view ──
-    weekGrid:          { flexDirection: 'row', paddingHorizontal: 8, paddingTop: 4, borderBottomWidth: 0.5, borderBottomColor: '#222' },
-    weekColumn:        { flex: 1, minHeight: 100, borderRightWidth: 0.5, borderRightColor: '#1a1a1a', paddingHorizontal: 2 },
+    weekGrid:          { flexDirection: 'row', paddingHorizontal: 8, paddingTop: 4, borderBottomWidth: 0.5, borderBottomColor: theme.divider },
+    weekColumn:        { flex: 1, minHeight: 100, borderRightWidth: 0.5, borderRightColor: theme.surfaceElevated, paddingHorizontal: 2 },
     weekDayHeader:     { alignItems: 'center', paddingVertical: 6 },
     weekDayHeaderToday: {},
-    // AA: #aaa on #000 = 5.74:1 ✓
-    weekDayName:       { fontSize: 11, color: '#aaaaaa', fontWeight: '600', textTransform: 'uppercase' },
-    weekDayNameToday:  { color: '#fba8a0' },
+    weekDayName:       { fontSize: 11, color: theme.textSecondary, fontWeight: '600', textTransform: 'uppercase' },
+    weekDayNameToday:  { color: theme.accent },
     weekDayNumContainer:      { width: 26, height: 26, borderRadius: 13, justifyContent: 'center', alignItems: 'center', marginTop: 2 },
-    weekDayNumContainerToday: { backgroundColor: '#fba8a0' },
-    // AAA: #fae9e9 on #000 = 17.7:1 ✓
-    weekDayNum:        { fontSize: 14, fontWeight: 'bold', color: '#fae9e9' },
+    weekDayNumContainerToday: { backgroundColor: theme.accent },
+    weekDayNum:        { fontSize: 14, fontWeight: 'bold', color: theme.textPrimary },
     weekDayNumToday:   { color: '#000' },
     weekWorkouts:      { paddingTop: 4, gap: 3, paddingBottom: 8 },
     weekEmptyDay:      { height: 32, justifyContent: 'center', alignItems: 'center' },
@@ -1600,113 +1616,81 @@ const styles = StyleSheet.create({
     weekListDay:            { marginBottom: 16 },
     weekListDayHeader:      { marginBottom: 8 },
     weekListDayHeaderToday: {},
-    // AAA: #fae9e9 on #000 = 17.7:1 ✓
-    weekListDayLabel:       { fontSize: 15, fontWeight: '700', color: '#fae9e9' },
-    weekListDayLabelToday:  { color: '#fba8a0' },
-    // Touch target: paddingVertical 12 ensures ≥ 44 pt total height (WCAG 2.5.5)
-    weekListItem:           { flexDirection: 'row', alignItems: 'center', backgroundColor: '#0d0d0d', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 12, borderLeftWidth: 3, marginBottom: 6, minHeight: 44 },
+    weekListDayLabel:       { fontSize: 15, fontWeight: '700', color: theme.textPrimary },
+    weekListDayLabelToday:  { color: theme.accent },
+    weekListItem:           { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.surface, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 12, borderLeftWidth: 3, marginBottom: 6, minHeight: 44 },
     weekListItemContent:    { flex: 1 },
-    // AAA: #fae9e9 on #0d0d0d ≈ 16.8:1 ✓
-    weekListItemName:       { fontSize: 15, color: '#fae9e9', fontWeight: '600' },
-    // AA: #aaa on #0d0d0d ≈ 5.5:1 ✓
-    weekListItemStatus:     { fontSize: 12, color: '#aaaaaa', marginTop: 2, textTransform: 'capitalize' },
+    weekListItemName:       { fontSize: 15, color: theme.textPrimary, fontWeight: '600' },
+    weekListItemStatus:     { fontSize: 12, color: theme.textSecondary, marginTop: 2, textTransform: 'capitalize' },
 
     weekEmptyState:     { alignItems: 'center', paddingVertical: 40, gap: 10 },
-    weekEmptyStateText: { fontSize: 15, color: '#aaaaaa' },
+    weekEmptyStateText: { fontSize: 15, color: theme.textSecondary },
 
     // ── Legend ──
     legend:     { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, paddingVertical: 12, gap: 12 },
     legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
     legendDot:  { width: 8, height: 8, borderRadius: 4 },
-    // AA: #aaa on #000 = 5.74:1 ✓
-    legendText: { fontSize: 12, color: '#aaaaaa' },
+    legendText: { fontSize: 12, color: theme.textSecondary },
 
-    // AA: #555 on #000 — supplemental coach hint, not primary content
-    coachHint: { textAlign: 'center', fontSize: 12, color: '#888', paddingBottom: 8 },
+    coachHint: { textAlign: 'center', fontSize: 12, color: theme.textTertiary, paddingBottom: 8 },
 
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
-    savingBanner: { position: 'absolute', bottom: 20, alignSelf: 'center', backgroundColor: '#fba8a0', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', gap: 8 },
+    savingBanner: { position: 'absolute', bottom: 20, alignSelf: 'center', backgroundColor: theme.accent, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', gap: 8 },
     savingText:   { color: '#000', fontWeight: '700' },
 
     // ── Action sheet ──
-    sheetOverlay:     { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' },
-    sheetContainer:   { backgroundColor: '#111', borderTopLeftRadius: 16, borderTopRightRadius: 16, paddingBottom: 40, paddingHorizontal: 24, paddingTop: 12 },
-    // Decorative handle — hidden from AT
-    sheetHandle:      { width: 36, height: 4, backgroundColor: '#444', borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
-    // AAA: #fae9e9 on #111 ≈ 16.8:1 ✓
-    sheetTitle:       { fontSize: 18, fontWeight: 'bold', color: '#fae9e9', marginBottom: 4 },
-    // AA: #aaa on #111 ≈ 5.5:1 ✓
-    sheetDate:        { fontSize: 13, color: '#aaaaaa', marginBottom: 20 },
-    // Touch target: minHeight 56 (WCAG 2.5.5, larger for list items)
-    sheetAction:      { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14, borderBottomWidth: 0.5, borderBottomColor: '#222', minHeight: 56 },
+    sheetOverlay:     { flex: 1, justifyContent: 'flex-end', backgroundColor: theme.overlay },
+    sheetContainer:   { backgroundColor: theme.surface, borderTopLeftRadius: 16, borderTopRightRadius: 16, paddingBottom: 40, paddingHorizontal: 24, paddingTop: 12 },
+    sheetHandle:      { width: 36, height: 4, backgroundColor: theme.textTertiary, borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
+    sheetTitle:       { fontSize: 18, fontWeight: 'bold', color: theme.textPrimary, marginBottom: 4 },
+    sheetDate:        { fontSize: 13, color: theme.textSecondary, marginBottom: 20 },
+    sheetAction:      { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14, borderBottomWidth: 0.5, borderBottomColor: theme.divider, minHeight: 56 },
     sheetActionTextBlock: { flex: 1 },
-    sheetActionText:  { fontSize: 16, color: '#fae9e9' },
-    // AA: #aaa on #111 ≈ 5.5:1 ✓
-    sheetActionSub:   { fontSize: 12, color: '#aaaaaa', marginTop: 2 },
+    sheetActionText:  { fontSize: 16, color: theme.textPrimary },
+    sheetActionSub:   { fontSize: 12, color: theme.textSecondary, marginTop: 2 },
     sheetCompleted:   { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 14 },
-    sheetCompletedText: { fontSize: 13, color: '#7bb533', flex: 1 },
+    sheetCompletedText: { fontSize: 13, color: theme.success, flex: 1 },
     sheetCancel:      { marginTop: 8, paddingVertical: 14, alignItems: 'center', minHeight: 52 },
-    // AA: #aaa on #111 ≈ 5.5:1 ✓
-    sheetCancelText:  { fontSize: 16, color: '#aaaaaa' },
+    sheetCancelText:  { fontSize: 16, color: theme.textSecondary },
 
     // ── Modals ──
-    modalOverlay:             { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center', padding: 24 },
-    modalCard:                { backgroundColor: '#111', borderRadius: 12, padding: 24, width: '100%' },
-    // AAA: #fae9e9 on #111 ≈ 16.8:1 ✓
-    modalTitle:               { fontSize: 18, fontWeight: 'bold', color: '#fae9e9', marginBottom: 4 },
-    // AA: #aaa on #111 ≈ 5.5:1 ✓
-    modalSubtitle:            { fontSize: 14, color: '#aaaaaa', marginBottom: 16 },
-    // Input: border highlight #fba8a0, text #fae9e9 on #1a1a1a — AA ✓
-    modalInput:               { backgroundColor: '#1a1a1a', borderWidth: 1, borderColor: '#fba8a0', borderRadius: 8, padding: 12, color: '#fae9e9', fontSize: 15, minHeight: 80, textAlignVertical: 'top', marginBottom: 20 },
+    modalOverlay:             { flex: 1, backgroundColor: theme.overlay, justifyContent: 'center', alignItems: 'center', padding: 24 },
+    modalCard:                { backgroundColor: theme.surface, borderRadius: 12, padding: 24, width: '100%' },
+    modalTitle:               { fontSize: 18, fontWeight: 'bold', color: theme.textPrimary, marginBottom: 4 },
+    modalSubtitle:            { fontSize: 14, color: theme.textSecondary, marginBottom: 16 },
+    modalInput:               { backgroundColor: theme.surfaceElevated, borderWidth: 1, borderColor: theme.accent, borderRadius: 8, padding: 12, color: theme.textPrimary, fontSize: 15, minHeight: 80, textAlignVertical: 'top', marginBottom: 20 },
     modalActions:             { flexDirection: 'row', gap: 12 },
-    // AA: #000 on #fba8a0 = 5.29:1 ✓; minHeight 48 (WCAG 2.5.5)
-    modalButtonPrimary:       { flex: 1, backgroundColor: '#fba8a0', borderRadius: 8, paddingVertical: 12, alignItems: 'center', minHeight: 48 },
+    modalButtonPrimary:       { flex: 1, backgroundColor: theme.accent, borderRadius: 8, paddingVertical: 12, alignItems: 'center', minHeight: 48 },
     modalButtonPrimaryText:   { color: '#000', fontWeight: '700', fontSize: 16 },
-    // AA: #ccc on #111 ≈ 7.2:1 ✓; minHeight 48
-    modalButtonSecondary:     { flex: 1, borderWidth: 1, borderColor: '#333', borderRadius: 8, paddingVertical: 12, alignItems: 'center', minHeight: 48 },
-    modalButtonSecondaryText: { color: '#cccccc', fontSize: 16 },
+    modalButtonSecondary:     { flex: 1, borderWidth: 1, borderColor: theme.surfaceBorder, borderRadius: 8, paddingVertical: 12, alignItems: 'center', minHeight: 48 },
+    modalButtonSecondaryText: { color: theme.textSecondary, fontSize: 16 },
     modalButtonDisabled:      { opacity: 0.4 },
 
     // ── Mini calendar (date picker) ──
     miniCalHeader:     { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-    // Touch target: minWidth/Height 44 ✓
     miniNavBtn:        { minWidth: 44, minHeight: 44, justifyContent: 'center', alignItems: 'center' },
-    // AAA: #fae9e9 on #111 ≈ 16.8:1 ✓
-    miniCalMonthLabel: { color: '#fae9e9', fontWeight: '600', fontSize: 15 },
+    miniCalMonthLabel: { color: theme.textPrimary, fontWeight: '600', fontSize: 15 },
 
-    // Row-based grid — no flexWrap, each row is a flex row, cells use flex:1.
     miniCalRow:      { flexDirection: 'row', marginBottom: 2 },
     miniCalCellWrap: { flex: 1, alignItems: 'center' },
-    // AA: #aaa on #111 ≈ 5.5:1 ✓ — decorative, hidden from AT
-    miniCalDayLabel: { fontSize: 11, fontWeight: '600', color: '#aaaaaa', textAlign: 'center', paddingVertical: 4 },
-    // Tappable date cell — 34×34 square with touch target via wrapper flex
+    miniCalDayLabel: { fontSize: 11, fontWeight: '600', color: theme.textSecondary, textAlign: 'center', paddingVertical: 4 },
     miniCalCell:             { width: 34, height: 34, justifyContent: 'center', alignItems: 'center', borderRadius: 17 },
-    // Today: outlined pink ring — distinct from the filled pink selected state
-    miniCalCellTodayRing:    { borderWidth: 1.5, borderColor: '#fba8a0' },
-    // Source date (workout's original date): amber outlined ring
+    miniCalCellTodayRing:    { borderWidth: 1.5, borderColor: theme.accent },
     miniCalCellSourceRing:   { borderWidth: 1.5, borderColor: '#f5a623' },
-    // Selected: filled pink
-    miniCalCellSelected:     { backgroundColor: '#fba8a0' },
-    // AAA: #fae9e9 on #111 ≈ 16.8:1 ✓
-    miniCalCellText:         { fontSize: 13, color: '#fae9e9', textAlign: 'center' },
-    // Today: rose bold text — readable when not selected
-    miniCalCellToday:        { color: '#fba8a0', fontWeight: '700' },
-    // Selected: #000 on #fba8a0 = 5.29:1 ✓ AA
+    miniCalCellSelected:     { backgroundColor: theme.accent },
+    miniCalCellText:         { fontSize: 13, color: theme.textPrimary, textAlign: 'center' },
+    miniCalCellToday:        { color: theme.accent, fontWeight: '700' },
     miniCalCellSelectedText: { color: '#000', fontWeight: '700' },
-    // Past/blocked: #444 on #111 ≈ 1.9:1 — intentionally low contrast to signal unavailability
-    miniCalCellPast:         { color: '#444' },
+    // Past/blocked: intentionally low contrast to signal unavailability
+    miniCalCellPast:         { color: theme.textTertiary },
     // Other-month padding cells — not selectable, visually inert
     miniCalCellOtherMonth:   { color: '#2e2e2e' },
-    // Workout dot below the day number (scheduled workout indicator)
-    miniCalWorkoutDot:        { width: 4, height: 4, borderRadius: 2, backgroundColor: '#fba8a0', position: 'absolute', bottom: 2 },
+    miniCalWorkoutDot:        { width: 4, height: 4, borderRadius: 2, backgroundColor: theme.accent, position: 'absolute', bottom: 2 },
     miniCalWorkoutDotSelected: { backgroundColor: '#000' },
 
     // ── Drag-to-move ──
-    // Drag target cell: valid drop destination (future date, different from source)
-    dayCellDragTarget: { backgroundColor: 'rgba(251, 168, 160, 0.18)', borderTopColor: '#fba8a0' },
-    // Drag target cell: invalid drop (past date or same date)
+    dayCellDragTarget: { backgroundColor: theme.accentSubtle, borderTopColor: theme.accent },
     dayCellDragInvalid: { backgroundColor: 'rgba(255,255,255,0.04)' },
-    // Ghost pill: absolute, above all content, pointer-events none
     dragGhost: { position: 'absolute', top: 0, left: 0, zIndex: 9999, pointerEvents: 'none' },
-});
+}); }

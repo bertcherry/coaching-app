@@ -20,7 +20,8 @@ function RootNavigator() {
     return () => stopNetInfoSync();
   }, [accessToken]);
 
-  if (loading) return <ActivityIndicator style={{ flex: 1 }} color="#fba8a0" />;
+  const { theme } = useTheme();
+  if (loading) return <ActivityIndicator style={{ flex: 1 }} color={theme.accent} />;
   if (!user) return <SignInNavigation />;
   if (user.isCoach) return <CoachNavigation />;
   return <ClientNavigation />;

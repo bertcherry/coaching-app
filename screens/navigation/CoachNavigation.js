@@ -7,6 +7,7 @@ import ClientList from '../ClientList';
 import CalendarScreen from '../CalendarScreen';
 import TemplateWorkoutsScreen from '../TemplateWorkoutsScreen';
 import SettingsScreen from '../SettingsScreen';
+import AddClientScreen from '../AddClientScreen';
 import AppDrawerContent from '../../components/AppDrawerContent';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -32,6 +33,11 @@ export default function CoachNavigation() {
             <Drawer.Screen name='Sample Workout' component={SampleWorkout} />
             <Drawer.Screen name='Create Workout' component={CreateWorkout} />
             <Drawer.Screen name='Client List' component={ClientList} />
+            <Drawer.Screen
+                name="Add Client"
+                component={AddClientScreen}
+                options={{ drawerItemStyle: { display: 'none' } }}
+            />
             <Drawer.Screen name="Template Workouts" component={TemplateWorkoutsScreen} />
             <Drawer.Screen name='Workout Preview' component={WorkoutPreview}
                 options={{ drawerItemStyle: { display: 'none' } }}
