@@ -741,7 +741,7 @@ export default function WorkoutActiveScreen({ route, navigation }) {
                                     value={weightUnit === 'other' ? otherLoad : weight}
                                     onChangeText={weightUnit === 'other' ? setOtherLoad : setWeight}
                                     placeholder="—"
-                                    placeholderTextColor={theme.textTertiary}
+                                    placeholderTextColor={theme.textSecondary}
                                     keyboardType={weightUnit === 'other' ? 'default' : 'decimal-pad'}
                                     returnKeyType="next"
                                 />
@@ -755,7 +755,7 @@ export default function WorkoutActiveScreen({ route, navigation }) {
                                     value={count}
                                     onChangeText={setCount}
                                     placeholder="—"
-                                    placeholderTextColor={theme.textTertiary}
+                                    placeholderTextColor={theme.textSecondary}
                                     keyboardType="number-pad"
                                     returnKeyType="next"
                                 />
@@ -767,7 +767,7 @@ export default function WorkoutActiveScreen({ route, navigation }) {
                                     value={rpe}
                                     onChangeText={setRpe}
                                     placeholder="—"
-                                    placeholderTextColor={theme.textTertiary}
+                                    placeholderTextColor={theme.textSecondary}
                                     keyboardType="decimal-pad"
                                     returnKeyType="done"
                                 />
@@ -779,7 +779,7 @@ export default function WorkoutActiveScreen({ route, navigation }) {
                             value={note}
                             onChangeText={setNote}
                             placeholder="Note (optional)"
-                            placeholderTextColor={theme.textTertiary}
+                            placeholderTextColor={theme.textSecondary}
                             multiline
                         />
                     </View>
@@ -810,7 +810,7 @@ export default function WorkoutActiveScreen({ route, navigation }) {
                             value={note}
                             onChangeText={setNote}
                             placeholder="Add a note for this set…"
-                            placeholderTextColor={theme.textTertiary}
+                            placeholderTextColor={theme.textSecondary}
                             multiline
                         />
                     </View>
@@ -889,8 +889,8 @@ function makeStyles(theme) {
         inputRow: { flexDirection: 'row', gap: 10, marginBottom: 12 },
         inputGroup: { flex: 1, alignItems: 'center' },
         inputLabel: { fontSize: 10, color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4, textAlign: 'center' },
-        input: { width: '100%', height: 44, borderWidth: 1, borderColor: theme.surfaceBorder, borderRadius: 8, backgroundColor: theme.surfaceElevated, color: theme.inputText, textAlign: 'center', fontSize: 16 },
-        noteInput: { borderWidth: 1, borderColor: theme.surfaceBorder, borderRadius: 8, backgroundColor: theme.surfaceElevated, color: theme.inputText, padding: 10, fontSize: 14, minHeight: 44 },
+        input: { width: '100%', height: 44, borderWidth: 1, borderColor: theme.surfaceBorder, borderRadius: 8, backgroundColor: theme.surfaceElevated, color: theme.textPrimary, textAlign: 'center', fontSize: 16 },
+        noteInput: { borderWidth: 1, borderColor: theme.surfaceBorder, borderRadius: 8, backgroundColor: theme.surfaceElevated, color: theme.textPrimary, padding: 10, fontSize: 14, minHeight: 44 },
 
         // ── Actions ──
         actionsRow: { flexDirection: 'row', gap: 12 },

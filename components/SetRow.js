@@ -214,7 +214,7 @@ export default function SetRow({
                         }
                         onBlur={handleBlurSave}
                         placeholder="—"
-                        placeholderTextColor={theme.textTertiary}
+                        placeholderTextColor={theme.textSecondary}
                         keyboardType={weightUnit === 'other' ? 'default' : 'decimal-pad'}
                         returnKeyType="next"
                         editable={!saved}
@@ -231,7 +231,7 @@ export default function SetRow({
                         onChangeText={setCount}
                         onBlur={handleBlurSave}
                         placeholder="—"
-                        placeholderTextColor={theme.textTertiary}
+                        placeholderTextColor={theme.textSecondary}
                         keyboardType="number-pad"
                         returnKeyType="next"
                         editable={!saved}
@@ -246,7 +246,7 @@ export default function SetRow({
                         onChangeText={(v) => { setRpe(v); if (rpeError) validateRpe(v); }}
                         onBlur={handleBlurSave}
                         placeholder="—"
-                        placeholderTextColor={theme.textTertiary}
+                        placeholderTextColor={theme.textSecondary}
                         keyboardType="decimal-pad"
                         returnKeyType="done"
                         editable={!saved}
@@ -261,7 +261,7 @@ export default function SetRow({
                 onChangeText={setNote}
                 onBlur={handleBlurSave}
                 placeholder="Note (optional)"
-                placeholderTextColor="#666"
+                placeholderTextColor={theme.textSecondary}
                 multiline
                 editable={!saved}
             />
@@ -300,14 +300,14 @@ function makeStyles(theme) {
         setInputs: { flexDirection: 'row', gap: 8, marginBottom: 6 },
         setInputGroup: { flex: 1, alignItems: 'center' },
         setInputLabel: { fontSize: 10, color: theme.textSecondary, marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5, textAlign: 'center' },
-        setInput:      { width: '100%', height: 38, borderWidth: 1, borderColor: theme.surfaceBorder, borderRadius: 6, backgroundColor: theme.surfaceElevated, color: theme.inputText, textAlign: 'center', fontSize: 15 },
+        setInput:      { width: '100%', height: 38, borderWidth: 1, borderColor: theme.surfaceBorder, borderRadius: 6, backgroundColor: theme.surfaceElevated, color: theme.textPrimary, textAlign: 'center', fontSize: 15 },
         setInputOther: { fontSize: 12 },
         setInputSaved: { borderColor: theme.success },
         setInputPrefilled: { borderColor: theme.accent, borderStyle: 'dashed' },
         setInputError: { borderColor: theme.accent },
         inputError:    { fontSize: 10, color: theme.accent, marginTop: 2, textAlign: 'center' },
 
-        setNoteInput: { borderWidth: 1, borderColor: theme.surfaceBorder, borderRadius: 6, backgroundColor: theme.surfaceElevated, color: theme.inputText, padding: 8, fontSize: 13, minHeight: 34 },
+        setNoteInput: { borderWidth: 1, borderColor: theme.surfaceBorder, borderRadius: 6, backgroundColor: theme.surfaceElevated, color: theme.textPrimary, padding: 8, fontSize: 13, minHeight: 34 },
         savedBadge:   { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 4 },
         savedBadgeText: { fontSize: 10, color: theme.success },
     });
