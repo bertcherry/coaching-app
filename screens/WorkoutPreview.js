@@ -251,6 +251,14 @@ export default function WorkoutPreview({ route, navigation }) {
         </View>
     );
 
+    const handleStartWorkout = () => {
+        navigation.navigate('Workout Active', {
+            workoutData,
+            workoutId: id,
+            scheduledWorkoutId,
+        });
+    };
+
     const renderFooter = () => (
         <View style={styles.footerContainer}>
             {workoutStatus === 'completed' ? (
@@ -259,13 +267,19 @@ export default function WorkoutPreview({ route, navigation }) {
                     <Text style={styles.completedText}>Workout completed</Text>
                 </View>
             ) : (
-                <Pressable
-                    style={styles.finishButton}
-                    onPress={() => setShowFinishOverlay(true)}
-                >
-                    <Feather name="check-circle" size={20} color="#000" />
-                    <Text style={styles.finishButtonText}>Workout Finished</Text>
-                </Pressable>
+                <>
+                    <Pressable style={styles.startButton} onPress={handleStartWorkout}>
+                        <Feather name="play" size={20} color="#000" />
+                        <Text style={styles.startButtonText}>Start Workout</Text>
+                    </Pressable>
+                    <Pressable
+                        style={styles.finishButton}
+                        onPress={() => setShowFinishOverlay(true)}
+                    >
+                        <Feather name="check-circle" size={20} color="#000" />
+                        <Text style={styles.finishButtonText}>Workout Finished</Text>
+                    </Pressable>
+                </>
             )}
         </View>
     );
@@ -422,6 +436,21 @@ function makeStyles(theme) {
         footerContainer: {
             padding: 20,
             paddingBottom: 40,
+            gap: 12,
+        },
+        startButton: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 10,
+            backgroundColor: theme.accent,
+            borderRadius: 12,
+            paddingVertical: 16,
+        },
+        startButtonText: {
+            fontSize: 18,
+            fontWeight: '700',
+            color: '#000',
         },
         finishButton: {
             flexDirection: 'row',

@@ -24,7 +24,7 @@
 			"database_name": "videos",
 			"database_id": "e4f459c8-cfc2-4ba0-8f67-1d7bea98d088",
 			"remote": true,
-		}
+		},
 	],
 	"env": {
 		"staging": {
@@ -32,7 +32,13 @@
 				{
 					"binding": "DB",
 					"database_name": "coaching-app-dev",
-					"database_id": "a8398565-17ff-480b-92c3-5f3621add332"
+					"database_id": "b4fa2a64-5869-48c0-9aab-0f1b2546bbe0"
+				},
+				{
+					"binding": "demosDB",
+					"database_name": "videos",
+					"database_id": "e4f459c8-cfc2-4ba0-8f67-1d7bea98d088",
+					"remote": true,
 				}
 			],
 		}

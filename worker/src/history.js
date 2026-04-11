@@ -65,11 +65,11 @@ export async function handleExerciseSummary(request, env) {
         if (!client) return json({ error: 'Client not found' }, 404);
     }
 
-    // Most recent set logged for this exercise
+    // Most recent set logged for this exercise (exclude skipped sets for recommendations)
     const lastSet = await env.DB.prepare(`
         SELECT weight, weightUnit, reps, rpe, note, dateTime
         FROM history
-        WHERE clientId = ? AND exerciseId = ?
+        WHERE clientId = ? AND exerciseId = ? AND (skipped IS NULL OR skipped = 0)
         ORDER BY dateTime DESC
         LIMIT 1
     `).bind(clientEmail, exerciseId).first();
@@ -110,7 +110,7 @@ export async function handleHistoryBatch(request, env) {
     for (const r of records) {
         if (r.clientId !== caller.email) { failed.push(r.id); continue; }
         try {
-            await env.DB.prepare(`INSERT INTO history (id, dateTime, clientId, workoutId, exerciseId, set, weight, weightUnit, reps, rpe, note, syncedAt, countType, prescribed, prescribedMax, unit) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (id) DO NOTHING`).bind(r.id, r.dateTime, r.clientId, r.workoutId, r.exerciseId, r.set, r.weight ?? null, r.weightUnit ?? 'lbs', r.reps ?? null, r.rpe ?? null, r.note ?? null, syncedAt, r.countType ?? null, r.prescribed ?? null, r.prescribedMax ?? null, r.unit ?? null).run();
+            await env.DB.prepare(`INSERT INTO history (id, dateTime, clientId, workoutId, exerciseId, set, weight, weightUnit, reps, rpe, note, syncedAt, countType, prescribed, prescribedMax, unit, skipped) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (id) DO NOTHING`).bind(r.id, r.dateTime, r.clientId, r.workoutId, r.exerciseId, r.set, r.weight ?? null, r.weightUnit ?? 'lbs', r.reps ?? null, r.rpe ?? null, r.note ?? null, syncedAt, r.countType ?? null, r.prescribed ?? null, r.prescribedMax ?? null, r.unit ?? null, r.skipped ? 1 : 0).run();
             succeeded.push(r.id);
         } catch (err) {
             console.error(`Failed to insert history record ${r.id}:`, err);

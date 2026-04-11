@@ -1,0 +1,922 @@
+/**
+ * WorkoutActiveScreen.js
+ *
+ * Full-screen, set-by-set active workout flow.
+ *
+ * Progression rules:
+ *  - Non-circuit section: run all sets of exercise A, then all sets of B, etc.
+ *  - Circuit section: A1 → B1 → C1 → A2 → B2 → C2 … cycling only exercises
+ *    that still have sets remaining (so if A has 2 sets but B has 3: A1→B1→A2→B2→B3).
+ *  - Timed section: shows work timer (countMin..countMax seconds) then a rest
+ *    screen (repRest between exercises, setRest between sets of the same exercise).
+ *    Timer starts only when the user taps Start. In auto mode it advances itself;
+ *    in manual mode it stops and waits for the user to tap Next.
+ *
+ * Skip rules:
+ *  - Skipping marks all remaining sets for that exercise as handled.
+ *  - Required sets (setNum ≤ setsMin) → enqueue history record with skipped=true + note.
+ *  - Optional sets (setNum > setsMin) → not recorded.
+ *  - Skipped exercises are excluded from weight-recommendation history on the server.
+ */
+
+import * as React from 'react';
+import {
+    View, Text, TextInput, Pressable, StyleSheet,
+    ScrollView, Modal, KeyboardAvoidingView, Platform,
+} from 'react-native';
+import Feather from '@expo/vector-icons/Feather';
+import { Video, ResizeMode } from 'expo-av';
+import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
+import { enqueueRecord, syncQueue } from '../utils/WorkoutSync';
+import 'react-native-get-random-values';
+import { v4 as uuidv4 } from 'uuid';
+
+const WORKER_URL = 'https://coaching-app.bert-m-cherry.workers.dev';
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function resolveUnit(raw) {
+    if (raw === 'imperial') return 'lbs';
+    if (raw === 'metric')   return 'kg';
+    if (raw === 'lbs' || raw === 'kg') return raw;
+    return null;
+}
+
+function totalSetsForExercise(ex) {
+    return ex.setsMax ?? ex.setsMin ?? 1;
+}
+
+function requiredSetsForExercise(ex) {
+    return ex.setsMin ?? 1;
+}
+
+function formatTime(seconds) {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return m > 0 ? `${m}:${String(s).padStart(2, '0')}` : `${s}s`;
+}
+
+function formatPrescription(ex) {
+    const { countType, countMin, countMax, timeCapSeconds } = ex;
+    if (!countType) return null;
+    if (countType === 'AMRAP') return timeCapSeconds ? `AMRAP · ${Math.round(timeCapSeconds / 60)} min cap` : 'AMRAP';
+    const unit = countType === 'Timed' ? 'sec' : 'reps';
+    if (countMax) return `${countMin}–${countMax} ${unit}`;
+    if (countMin) return `${countMin} ${unit}`;
+    return countType;
+}
+
+/**
+ * Given the current section (circuit), find the next exercise index
+ * (after `currentIdx`) that still has sets remaining, wrapping once around.
+ * Returns null if all exercises are exhausted.
+ */
+function nextCircuitExerciseIdx(exercises, setsCompleted, currentIdx) {
+    const count = exercises.length;
+    for (let offset = 1; offset <= count; offset++) {
+        const idx = (currentIdx + offset) % count;
+        const ex = exercises[idx];
+        if ((setsCompleted[ex.id] ?? 0) < totalSetsForExercise(ex)) {
+            return idx;
+        }
+    }
+    return null; // all done
+}
+
+// ─── Finish overlay ───────────────────────────────────────────────────────────
+
+const FINISH_MESSAGES = [
+    { emoji: '💪', text: 'Nice job, friend!' },
+    { emoji: '🎉', text: "Yay, you did it!" },
+    { emoji: '✨', text: 'Way to show up for yourself today.' },
+    { emoji: '🔥', text: "You're on fire. Keep that momentum." },
+    { emoji: '🏆', text: 'Another one in the books.' },
+    { emoji: '⚡', text: 'Hard work, done. Proud of you.' },
+];
+
+const FinishOverlay = ({ visible, onDismiss, onConfirm }) => {
+    const { theme } = useTheme();
+    const styles = makeStyles(theme);
+    const message = React.useMemo(
+        () => FINISH_MESSAGES[Math.floor(Math.random() * FINISH_MESSAGES.length)],
+        [visible],
+    );
+    return (
+        <Modal transparent animationType="fade" visible={visible} onRequestClose={onDismiss}>
+            <View style={styles.overlayBackdrop}>
+                <View style={styles.overlayCard}>
+                    <Text style={styles.overlayEmoji}>{message.emoji}</Text>
+                    <Text style={styles.overlayMessage}>{message.text}</Text>
+                    <Text style={styles.overlaySubtext}>Mark this workout as finished?</Text>
+                    <View style={styles.overlayActions}>
+                        <Pressable style={styles.overlayButtonSecondary} onPress={onDismiss}>
+                            <Text style={styles.overlayButtonSecondaryText}>I'm not done</Text>
+                        </Pressable>
+                        <Pressable style={styles.overlayButtonPrimary} onPress={onConfirm}>
+                            <Text style={styles.overlayButtonPrimaryText}>Thanks! 🎊</Text>
+                        </Pressable>
+                    </View>
+                </View>
+            </View>
+        </Modal>
+    );
+};
+
+// ─── Timer component ──────────────────────────────────────────────────────────
+
+/**
+ * Displays during a timed section.
+ *
+ * Props:
+ *   phase          'work' | 'rest'
+ *   workMin        number (seconds) — min work time (show "Min reached" banner at this point)
+ *   workMax        number (seconds) — max work time (auto-advance or stop here)
+ *   restSeconds    number (seconds)
+ *   timerMode      'auto' | 'manual'
+ *   upNextName     string | null    — shown during rest phase
+ *   onAdvance      () => void       — called when timer should move to next step
+ */
+const WorkTimer = ({ phase, workMin, workMax, restSeconds, timerMode, upNextName, onAdvance, onElapsedWork }) => {
+    const { theme } = useTheme();
+    const styles = makeStyles(theme);
+
+    const targetSeconds = phase === 'work' ? workMax : restSeconds;
+    const [elapsed, setElapsed] = React.useState(0);
+    const [started, setStarted] = React.useState(false);
+    const [minReached, setMinReached] = React.useState(false);
+    const [maxReached, setMaxReached] = React.useState(false);
+
+    // Reset when phase changes
+    React.useEffect(() => {
+        setElapsed(0);
+        setStarted(false);
+        setMinReached(false);
+        setMaxReached(false);
+    }, [phase]);
+
+    React.useEffect(() => {
+        if (!started || maxReached) return;
+        const interval = setInterval(() => {
+            setElapsed(prev => {
+                const next = prev + 1;
+                if (phase === 'work' && workMin && next >= workMin) setMinReached(true);
+                if (next >= targetSeconds) {
+                    setMaxReached(true);
+                    clearInterval(interval);
+                    if (timerMode === 'auto') {
+                        if (phase === 'work') onElapsedWork?.(next);
+                        onAdvance();
+                    }
+                }
+                return next;
+            });
+        }, 1000);
+        return () => clearInterval(interval);
+    }, [started, maxReached, phase, timerMode]);
+
+    const remaining = Math.max(0, targetSeconds - elapsed);
+    const isWork = phase === 'work';
+    const hasRange = workMin && workMax && workMin !== workMax;
+
+    return (
+        <View style={styles.timerContainer}>
+            {isWork ? (
+                <>
+                    <Text style={styles.timerPhaseLabel}>WORK</Text>
+                    <Text style={styles.timerDisplay}>{formatTime(remaining)}</Text>
+                    {hasRange && minReached && !maxReached && (
+                        <View style={styles.timerBanner}>
+                            <Text style={styles.timerBannerText}>Min time reached — keep going or advance</Text>
+                        </View>
+                    )}
+                    {maxReached && (
+                        <View style={[styles.timerBanner, styles.timerBannerMax]}>
+                            <Text style={styles.timerBannerText}>Max time reached</Text>
+                        </View>
+                    )}
+                </>
+            ) : (
+                <>
+                    <Text style={styles.timerPhaseLabel}>REST</Text>
+                    <Text style={styles.timerDisplay}>{formatTime(remaining)}</Text>
+                    {upNextName && (
+                        <View style={styles.upNextContainer}>
+                            <Text style={styles.upNextLabel}>UP NEXT</Text>
+                            <Text style={styles.upNextName}>{upNextName}</Text>
+                        </View>
+                    )}
+                    {maxReached && timerMode === 'manual' && (
+                        <View style={styles.timerBanner}>
+                            <Text style={styles.timerBannerText}>Rest done — tap Next when ready</Text>
+                        </View>
+                    )}
+                </>
+            )}
+
+            {!started && (
+                <Pressable style={styles.timerStartButton} onPress={() => setStarted(true)}>
+                    <Feather name="play" size={18} color="#000" />
+                    <Text style={styles.timerStartText}>Start</Text>
+                </Pressable>
+            )}
+
+            {started && !maxReached && isWork && minReached && (
+                <Pressable style={styles.timerAdvanceButton} onPress={() => {
+                    onElapsedWork?.(elapsed);
+                    onAdvance();
+                }}>
+                    <Text style={styles.timerAdvanceText}>Done early</Text>
+                </Pressable>
+            )}
+        </View>
+    );
+};
+
+// ─── Main screen ──────────────────────────────────────────────────────────────
+
+export default function WorkoutActiveScreen({ route, navigation }) {
+    const { workoutData, workoutId, scheduledWorkoutId } = route.params;
+    const { user, accessToken, authFetch } = useAuth();
+    const { theme } = useTheme();
+    const styles = makeStyles(theme);
+
+    // ── Cursor ──────────────────────────────────────────────────────────────
+    const [sectionIdx, setSectionIdx] = React.useState(0);
+    const [exerciseIdx, setExerciseIdx] = React.useState(0);
+    const [setNum, setSetNum] = React.useState(1);
+
+    // setsCompleted[exId] = count of sets that have been finished (completed or skipped)
+    const [setsCompleted, setSetsCompleted] = React.useState({});
+
+    // ── Demo metadata (name, streamId) fetched per exercise ────────────────
+    const [demos, setDemos] = React.useState({});
+
+    // ── Set input ───────────────────────────────────────────────────────────
+    const profileUnit = resolveUnit(user?.unitDefault) ?? 'lbs';
+    const [weight,     setWeight]     = React.useState('');
+    const [count,      setCount]      = React.useState('');
+    const [rpe,        setRpe]        = React.useState('');
+    const [note,       setNote]       = React.useState('');
+    const [weightUnit, setWeightUnit] = React.useState(profileUnit);
+    const [otherLoad,  setOtherLoad]  = React.useState('');
+    const [elapsedWork, setElapsedWork] = React.useState(null); // for timed exercises
+
+    // ── Timer ───────────────────────────────────────────────────────────────
+    const [timerMode,  setTimerMode]  = React.useState('manual'); // 'auto' | 'manual'
+    const [timerPhase, setTimerPhase] = React.useState('work');   // 'work' | 'rest'
+
+    // ── Video ───────────────────────────────────────────────────────────────
+    const [showVideo, setShowVideo] = React.useState(false);
+
+    // ── Finish ──────────────────────────────────────────────────────────────
+    const [showFinishOverlay, setShowFinishOverlay] = React.useState(false);
+    const [workoutDone, setWorkoutDone] = React.useState(false);
+
+    // ── Derived current state ───────────────────────────────────────────────
+    const currentSection  = workoutData[sectionIdx];
+    const currentExercise = currentSection?.data[exerciseIdx];
+    const isCircuit       = currentSection?.circuit ?? false;
+    const isTimed         = currentSection?.timed ?? false;
+    const repRest         = currentSection?.repRest ?? 30;   // between exercises
+    const setRest         = currentSection?.setRest ?? 60;   // between sets
+
+    const totalSets   = currentExercise ? totalSetsForExercise(currentExercise) : 1;
+    const requiredSets = currentExercise ? requiredSetsForExercise(currentExercise) : 1;
+    const isOptionalSet = setNum > requiredSets;
+
+    const demo = currentExercise ? (demos[currentExercise.id] ?? null) : null;
+    const exerciseName = demo?.name ?? currentExercise?.name ?? '…';
+    const hasVideo = !!demo?.streamId;
+
+    // Pre-fetch last weight unit for current exercise
+    React.useEffect(() => {
+        if (!user?.email || !currentExercise?.id || !authFetch) return;
+        let cancelled = false;
+        (async () => {
+            try {
+                const res = await authFetch(
+                    `${WORKER_URL}/history/exercise-summary?clientEmail=${encodeURIComponent(user.email)}&exerciseId=${encodeURIComponent(currentExercise.id)}`
+                );
+                if (!res.ok || cancelled) return;
+                const data = await res.json();
+                if (cancelled) return;
+                const lastUnit = data.lastSet?.weightUnit;
+                if (!lastUnit) return;
+                const resolved = resolveUnit(lastUnit);
+                if (resolved) {
+                    setWeightUnit(resolved);
+                } else {
+                    setWeightUnit('other');
+                    setOtherLoad(lastUnit);
+                }
+            } catch { /* non-fatal */ }
+        })();
+        return () => { cancelled = true; };
+    }, [currentExercise?.id]);
+
+    // Fetch demo metadata for exercises we haven't seen yet
+    React.useEffect(() => {
+        if (!currentExercise?.id || demos[currentExercise.id] !== undefined) return;
+        let cancelled = false;
+        (async () => {
+            try {
+                const res  = await fetch(`${WORKER_URL}/demos/${currentExercise.id}`);
+                const data = res.ok ? await res.json() : { id: currentExercise.id, name: currentExercise.name, streamId: null };
+                if (!cancelled) setDemos(prev => ({ ...prev, [currentExercise.id]: data }));
+            } catch {
+                if (!cancelled) setDemos(prev => ({ ...prev, [currentExercise.id]: { id: currentExercise.id, name: currentExercise.name, streamId: null } }));
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [currentExercise?.id]);
+
+    // Also prefetch next exercise's demo while user is on current
+    React.useEffect(() => {
+        const nextEx = peekNextExercise();
+        if (!nextEx || demos[nextEx.id] !== undefined) return;
+        let cancelled = false;
+        (async () => {
+            try {
+                const res  = await fetch(`${WORKER_URL}/demos/${nextEx.id}`);
+                const data = res.ok ? await res.json() : { id: nextEx.id, name: nextEx.name, streamId: null };
+                if (!cancelled) setDemos(prev => ({ ...prev, [nextEx.id]: data }));
+            } catch {
+                if (!cancelled) setDemos(prev => ({ ...prev, [nextEx.id]: { id: nextEx.id, name: nextEx.name, streamId: null } }));
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [sectionIdx, exerciseIdx, setNum]);
+
+    // ── Workout position helpers ────────────────────────────────────────────
+
+    /** Return the exercise object that will come after current, or null if section/workout ends. */
+    function peekNextExercise() {
+        if (!currentSection) return null;
+        if (isCircuit) {
+            const nextIdx = nextCircuitExerciseIdx(currentSection.data, setsCompleted, exerciseIdx);
+            if (nextIdx === null) {
+                // section done — first exercise of next section
+                const nextSection = workoutData[sectionIdx + 1];
+                return nextSection?.data[0] ?? null;
+            }
+            return currentSection.data[nextIdx];
+        } else {
+            // non-circuit: same exercise until sets exhausted, then next exercise
+            if (setNum < totalSets) return currentExercise;
+            const nextEx = currentSection.data[exerciseIdx + 1];
+            if (nextEx) return nextEx;
+            return workoutData[sectionIdx + 1]?.data[0] ?? null;
+        }
+    }
+
+    function upNextName() {
+        const next = peekNextExercise();
+        if (!next) return null;
+        return demos[next.id]?.name ?? next.name ?? null;
+    }
+
+    // ── Record a set to history ─────────────────────────────────────────────
+
+    function recordSet({ skipped = false, actualCount = null } = {}) {
+        if (!currentExercise) return;
+        if (skipped && isOptionalSet) return; // don't record optional skips
+
+        const isTrullyTimed = currentExercise.countType === 'Timed';
+        const weightVal = weightUnit === 'other' ? otherLoad : weight;
+
+        const record = {
+            dateTime:      new Date().toISOString(),
+            clientId:      user?.email,
+            workoutId,
+            exerciseId:    currentExercise.id,
+            set:           setNum,
+            weight:        (weightUnit !== 'other' && weight) ? parseFloat(weight) : null,
+            weightUnit:    weightUnit === 'other' ? (otherLoad || null) : weightUnit,
+            reps:          (!isTrullyTimed && count && !skipped) ? parseInt(count) : null,
+            rpe:           (rpe && !skipped) ? parseFloat(rpe) : null,
+            note:          note || null,
+            countType:     currentExercise.countType ?? null,
+            prescribed:    currentExercise.countMin != null ? parseFloat(currentExercise.countMin) : null,
+            prescribedMax: currentExercise.countMax != null ? parseFloat(currentExercise.countMax) : null,
+            unit:          isTrullyTimed ? 'seconds' : 'reps',
+            skipped,
+            ...(isTrullyTimed && (actualCount ?? count) ? { reps: parseInt(actualCount ?? count) } : {}),
+        };
+
+        enqueueRecord(record);
+        if (accessToken) syncQueue(accessToken);
+    }
+
+    // ── Clear set input fields ──────────────────────────────────────────────
+
+    function resetSetInputs() {
+        setWeight('');
+        setCount('');
+        setRpe('');
+        setNote('');
+        setElapsedWork(null);
+        setShowVideo(false);
+        // weightUnit intentionally preserved
+    }
+
+    // ── Advance cursor ──────────────────────────────────────────────────────
+
+    function advanceCursor(newSetsCompleted) {
+        if (!currentSection) return;
+
+        if (isCircuit) {
+            const nextIdx = nextCircuitExerciseIdx(currentSection.data, newSetsCompleted, exerciseIdx);
+            if (nextIdx !== null) {
+                const nextEx = currentSection.data[nextIdx];
+                setExerciseIdx(nextIdx);
+                setSetNum((newSetsCompleted[nextEx.id] ?? 0) + 1);
+                if (isTimed) setTimerPhase('rest');
+            } else {
+                advanceToNextSection();
+            }
+        } else {
+            // Non-circuit: exhaust all sets of current exercise first
+            if (setNum < totalSets) {
+                const isSameExercise = true; // same exercise, next set
+                setSetNum(setNum + 1);
+                if (isTimed) setTimerPhase(isSameExercise ? 'rest' : 'rest'); // setRest between sets
+            } else {
+                const nextExIdx = exerciseIdx + 1;
+                if (nextExIdx < currentSection.data.length) {
+                    setExerciseIdx(nextExIdx);
+                    setSetNum(1);
+                    if (isTimed) setTimerPhase('rest');
+                } else {
+                    advanceToNextSection();
+                }
+            }
+        }
+    }
+
+    function advanceToNextSection() {
+        const nextSectionIdx = sectionIdx + 1;
+        if (nextSectionIdx < workoutData.length) {
+            setSectionIdx(nextSectionIdx);
+            setExerciseIdx(0);
+            setSetNum(1);
+            setSetsCompleted({});
+            setTimerPhase('work');
+        } else {
+            setShowFinishOverlay(true);
+        }
+    }
+
+    // ── Handle Next ─────────────────────────────────────────────────────────
+
+    function handleNext() {
+        recordSet({ skipped: false, actualCount: elapsedWork != null ? String(elapsedWork) : null });
+
+        const newCompleted = {
+            ...setsCompleted,
+            [currentExercise.id]: (setsCompleted[currentExercise.id] ?? 0) + 1,
+        };
+        setSetsCompleted(newCompleted);
+        resetSetInputs();
+
+        if (isTimed) {
+            setTimerPhase('rest');
+        }
+        // For non-timed, advance immediately. For timed, user will advance after rest timer.
+        if (!isTimed) {
+            advanceCursor(newCompleted);
+        } else {
+            // Store pending advance; will fire when rest timer calls onAdvance
+            pendingAdvanceRef.current = newCompleted;
+        }
+    }
+
+    const pendingAdvanceRef = React.useRef(null);
+
+    function handleTimerAdvance() {
+        if (timerPhase === 'work') {
+            // work phase ended naturally (auto) or user advanced — go to rest
+            setTimerPhase('rest');
+        } else {
+            // rest phase ended — actually advance cursor
+            const newCompleted = pendingAdvanceRef.current ?? setsCompleted;
+            pendingAdvanceRef.current = null;
+            setTimerPhase('work');
+            resetSetInputs();
+            advanceCursor(newCompleted);
+        }
+    }
+
+    // ── Handle Skip ─────────────────────────────────────────────────────────
+
+    function handleSkip() {
+        if (!currentExercise) return;
+
+        // Record each remaining required set as skipped (optional sets skipped silently)
+        const start = setNum;
+        const end   = totalSets;
+        for (let s = start; s <= end; s++) {
+            const isOpt = s > requiredSets;
+            if (!isOpt) {
+                // Record with current note for first set; blank note for subsequent
+                const noteVal = s === start ? note : null;
+                const record = {
+                    dateTime:   new Date().toISOString(),
+                    clientId:   user?.email,
+                    workoutId,
+                    exerciseId: currentExercise.id,
+                    set:        s,
+                    weight:     null, weightUnit: weightUnit === 'other' ? (otherLoad || null) : weightUnit,
+                    reps:       null, rpe: null,
+                    note:       noteVal,
+                    countType:  currentExercise.countType ?? null,
+                    prescribed: currentExercise.countMin != null ? parseFloat(currentExercise.countMin) : null,
+                    prescribedMax: currentExercise.countMax != null ? parseFloat(currentExercise.countMax) : null,
+                    unit:       currentExercise.countType === 'Timed' ? 'seconds' : 'reps',
+                    skipped:    true,
+                };
+                enqueueRecord(record);
+            }
+        }
+        if (accessToken) syncQueue(accessToken);
+
+        // Mark all sets of this exercise as done in setsCompleted
+        const newCompleted = {
+            ...setsCompleted,
+            [currentExercise.id]: totalSets,
+        };
+        setSetsCompleted(newCompleted);
+        resetSetInputs();
+        advanceCursor(newCompleted);
+    }
+
+    // ── Finish confirm ──────────────────────────────────────────────────────
+
+    async function handleFinishConfirm() {
+        setShowFinishOverlay(false);
+        setWorkoutDone(true);
+
+        if (scheduledWorkoutId) {
+            try {
+                await authFetch('https://coaching-app.bert-m-cherry.workers.dev/schedule/complete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: scheduledWorkoutId, completedAt: new Date().toISOString() }),
+                });
+            } catch (e) {
+                console.error('Could not mark workout complete:', e);
+            }
+        }
+
+        if (accessToken) syncQueue(accessToken);
+    }
+
+    // ── Completed state ─────────────────────────────────────────────────────
+
+    if (workoutDone) {
+        return (
+            <View style={[styles.container, styles.centerContent]}>
+                <Text style={styles.doneEmoji}>🎊</Text>
+                <Text style={styles.doneTitle}>Workout complete!</Text>
+                <Text style={styles.doneSubtitle}>Your sets have been saved locally and will sync shortly.</Text>
+                <Pressable style={styles.doneButton} onPress={() => navigation.goBack()}>
+                    <Text style={styles.doneButtonText}>Back to preview</Text>
+                </Pressable>
+            </View>
+        );
+    }
+
+    if (!currentExercise) {
+        return (
+            <View style={[styles.container, styles.centerContent]}>
+                <Text style={styles.headingText}>Loading workout…</Text>
+            </View>
+        );
+    }
+
+    // ── Header info ─────────────────────────────────────────────────────────
+
+    const sectionLabel = `Section ${sectionIdx + 1}${isCircuit ? ' · Circuit' : ''}${isTimed ? ' · Timed' : ''}`;
+    const totalExInSection = currentSection.data.length;
+    const setLabel = `Set ${setNum} of ${totalSets}${isOptionalSet ? ' (optional)' : ''}`;
+    const prescription = formatPrescription(currentExercise);
+
+    // ── Determine which rest time applies (between exercises vs between sets) ──
+    const isNextSameExercise = !isCircuit && setNum < totalSets;
+    const currentRestSeconds = isNextSameExercise ? setRest : repRest;
+
+    // ── Render ──────────────────────────────────────────────────────────────
+
+    return (
+        <KeyboardAvoidingView
+            style={styles.container}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+            <ScrollView
+                contentContainerStyle={styles.scrollContent}
+                keyboardDismissMode="on-drag"
+            >
+                {/* ── Header ── */}
+                <View style={styles.header}>
+                    <Text style={styles.sectionLabel}>{sectionLabel}</Text>
+                    <Text style={styles.exerciseLabel}>{exerciseIdx + 1} / {totalExInSection}</Text>
+                </View>
+
+                {/* ── Exercise title ── */}
+                <Text style={styles.exerciseName}>{exerciseName}</Text>
+
+                {/* ── Prescription pills ── */}
+                <View style={styles.pillsRow}>
+                    {prescription && (
+                        <View style={styles.pill}>
+                            <Text style={styles.pillText}>{prescription}</Text>
+                        </View>
+                    )}
+                    <View style={[styles.pill, isOptionalSet && styles.pillOptional]}>
+                        <Text style={[styles.pillText, isOptionalSet && styles.pillTextOptional]}>{setLabel}</Text>
+                    </View>
+                </View>
+
+                {/* ── Coach notes ── */}
+                {currentExercise.coachNotes ? (
+                    <View style={styles.coachNotes}>
+                        <Feather name="message-square" size={12} color={theme.accent} style={{ marginRight: 6 }} />
+                        <Text style={styles.coachNotesText}>{currentExercise.coachNotes}</Text>
+                    </View>
+                ) : null}
+
+                {/* ── Coach rec ── */}
+                {(currentExercise.recommendedWeight || currentExercise.recommendedRpe) && (
+                    <View style={styles.recBanner}>
+                        <Feather name="info" size={12} color={theme.accent} style={{ marginRight: 6 }} />
+                        <Text style={styles.recText}>
+                            Coach rec:{currentExercise.recommendedWeight ? ` ${currentExercise.recommendedWeight} ${weightUnit !== 'other' ? weightUnit : ''}` : ''}
+                            {currentExercise.recommendedRpe ? `  ·  RPE ${currentExercise.recommendedRpe}` : ''}
+                        </Text>
+                    </View>
+                )}
+
+                {/* ── Video toggle ── */}
+                {hasVideo && (
+                    <Pressable style={styles.videoToggle} onPress={() => setShowVideo(v => !v)}>
+                        <Feather name="film" size={15} color={showVideo ? theme.accent : theme.textSecondary} />
+                        <Text style={[styles.videoToggleText, showVideo && { color: theme.accent }]}>
+                            {showVideo ? 'Hide demo' : 'Show demo'}
+                        </Text>
+                    </Pressable>
+                )}
+                {showVideo && hasVideo && (
+                    <View style={styles.videoContainer}>
+                        <Video
+                            style={styles.video}
+                            source={{ uri: `https://customer-fp1q3oe31pc8sz6g.cloudflarestream.com/${demo.streamId}/manifest/video.mpd` }}
+                            useNativeControls resizeMode={ResizeMode.CONTAIN} isLooping isMuted shouldPlay
+                        />
+                    </View>
+                )}
+
+                {/* ── Timer (timed sections only) ── */}
+                {isTimed && timerPhase === 'work' && (
+                    <>
+                        <View style={styles.timerModeRow}>
+                            {['manual', 'auto'].map(m => (
+                                <Pressable
+                                    key={m}
+                                    style={[styles.modePill, timerMode === m && styles.modePillActive]}
+                                    onPress={() => setTimerMode(m)}
+                                >
+                                    <Text style={[styles.modePillText, timerMode === m && styles.modePillTextActive]}>
+                                        {m === 'manual' ? 'Manual advance' : 'Auto advance'}
+                                    </Text>
+                                </Pressable>
+                            ))}
+                        </View>
+                        <WorkTimer
+                            phase="work"
+                            workMin={currentExercise.countMin != null ? parseFloat(currentExercise.countMin) : null}
+                            workMax={currentExercise.countMax != null ? parseFloat(currentExercise.countMax) : (currentExercise.countMin != null ? parseFloat(currentExercise.countMin) : 30)}
+                            restSeconds={currentRestSeconds}
+                            timerMode={timerMode}
+                            upNextName={null}
+                            onElapsedWork={(s) => setElapsedWork(s)}
+                            onAdvance={handleTimerAdvance}
+                        />
+                    </>
+                )}
+
+                {isTimed && timerPhase === 'rest' && (
+                    <WorkTimer
+                        phase="rest"
+                        workMin={null}
+                        workMax={null}
+                        restSeconds={currentRestSeconds}
+                        timerMode={timerMode}
+                        upNextName={upNextName()}
+                        onElapsedWork={null}
+                        onAdvance={handleTimerAdvance}
+                    />
+                )}
+
+                {/* ── Set inputs (shown during work phase or non-timed) ── */}
+                {(!isTimed || timerPhase === 'work') && (
+                    <View style={styles.setInputsCard}>
+                        {/* Weight unit selector */}
+                        <View style={styles.unitRow}>
+                            {['lbs', 'kg', 'other'].map(u => (
+                                <Pressable
+                                    key={u}
+                                    style={[styles.unitPill, weightUnit === u && styles.unitPillActive]}
+                                    onPress={() => setWeightUnit(u)}
+                                >
+                                    <Text style={[styles.unitPillText, weightUnit === u && styles.unitPillTextActive]}>{u}</Text>
+                                </Pressable>
+                            ))}
+                        </View>
+
+                        <View style={styles.inputRow}>
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.inputLabel}>{weightUnit === 'other' ? 'Load' : `Wt (${weightUnit})`}</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    value={weightUnit === 'other' ? otherLoad : weight}
+                                    onChangeText={weightUnit === 'other' ? setOtherLoad : setWeight}
+                                    placeholder="—"
+                                    placeholderTextColor={theme.textTertiary}
+                                    keyboardType={weightUnit === 'other' ? 'default' : 'decimal-pad'}
+                                    returnKeyType="next"
+                                />
+                            </View>
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.inputLabel}>
+                                    {currentExercise.countType === 'Timed' ? 'Sec done' : currentExercise.countType === 'AMRAP' ? 'Reps (AMRAP)' : 'Reps done'}
+                                </Text>
+                                <TextInput
+                                    style={styles.input}
+                                    value={count}
+                                    onChangeText={setCount}
+                                    placeholder="—"
+                                    placeholderTextColor={theme.textTertiary}
+                                    keyboardType="number-pad"
+                                    returnKeyType="next"
+                                />
+                            </View>
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.inputLabel}>RPE</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    value={rpe}
+                                    onChangeText={setRpe}
+                                    placeholder="—"
+                                    placeholderTextColor={theme.textTertiary}
+                                    keyboardType="decimal-pad"
+                                    returnKeyType="done"
+                                />
+                            </View>
+                        </View>
+
+                        <TextInput
+                            style={styles.noteInput}
+                            value={note}
+                            onChangeText={setNote}
+                            placeholder="Note (optional)"
+                            placeholderTextColor={theme.textTertiary}
+                            multiline
+                        />
+                    </View>
+                )}
+
+                {/* ── Actions ── */}
+                {(!isTimed || timerPhase === 'work') && (
+                    <View style={styles.actionsRow}>
+                        <Pressable style={styles.skipButton} onPress={handleSkip}>
+                            <Text style={styles.skipButtonText}>Skip exercise</Text>
+                        </Pressable>
+                        <Pressable style={styles.nextButton} onPress={handleNext}>
+                            <Text style={styles.nextButtonText}>
+                                {setNum === totalSets && exerciseIdx === currentSection.data.length - 1 && sectionIdx === workoutData.length - 1
+                                    ? 'Finish workout'
+                                    : 'Next'}
+                            </Text>
+                            <Feather name="arrow-right" size={18} color="#000" />
+                        </Pressable>
+                    </View>
+                )}
+
+                {/* Note stays open during rest for timed sections */}
+                {isTimed && timerPhase === 'rest' && (
+                    <View style={styles.setInputsCard}>
+                        <TextInput
+                            style={styles.noteInput}
+                            value={note}
+                            onChangeText={setNote}
+                            placeholder="Add a note for this set…"
+                            placeholderTextColor={theme.textTertiary}
+                            multiline
+                        />
+                    </View>
+                )}
+            </ScrollView>
+
+            <FinishOverlay
+                visible={showFinishOverlay}
+                onDismiss={() => setShowFinishOverlay(false)}
+                onConfirm={handleFinishConfirm}
+            />
+        </KeyboardAvoidingView>
+    );
+}
+
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
+function makeStyles(theme) {
+    return StyleSheet.create({
+        container:    { flex: 1, backgroundColor: theme.background },
+        scrollContent: { padding: 20, paddingBottom: 60 },
+        centerContent: { justifyContent: 'center', alignItems: 'center' },
+
+        // ── Header ──
+        header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+        sectionLabel: { fontSize: 12, color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: 0.8, fontWeight: '600' },
+        exerciseLabel: { fontSize: 12, color: theme.textTertiary },
+
+        exerciseName: { fontSize: 26, fontWeight: '700', color: theme.textPrimary, marginBottom: 10 },
+
+        pillsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
+        pill: { backgroundColor: theme.surfaceElevated, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4 },
+        pillText: { fontSize: 13, color: theme.textSecondary },
+        pillOptional: { borderWidth: 1, borderColor: theme.surfaceBorder, backgroundColor: 'transparent' },
+        pillTextOptional: { fontStyle: 'italic', color: theme.textTertiary },
+
+        // ── Coach notes / rec ──
+        coachNotes: { flexDirection: 'row', alignItems: 'flex-start', backgroundColor: theme.accentSubtle, borderLeftWidth: 2, borderLeftColor: theme.accent, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 4, marginBottom: 10 },
+        coachNotesText: { fontSize: 13, color: theme.textSecondary, flex: 1, lineHeight: 18, fontStyle: 'italic' },
+        recBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.accentSubtle, borderWidth: 0.5, borderColor: theme.accent, borderRadius: 6, paddingHorizontal: 10, paddingVertical: 6, marginBottom: 12 },
+        recText: { fontSize: 13, color: theme.accent, fontStyle: 'italic' },
+
+        // ── Video ──
+        videoToggle: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
+        videoToggleText: { fontSize: 13, color: theme.textSecondary },
+        videoContainer: { justifyContent: 'center', backgroundColor: theme.background, marginBottom: 12 },
+        video: { alignSelf: 'center', width: '100%', height: 220, borderRadius: 8 },
+
+        // ── Timer ──
+        timerModeRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+        modePill: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: theme.surfaceBorder, backgroundColor: theme.surfaceElevated },
+        modePillActive: { borderColor: theme.accent, backgroundColor: theme.accentSubtle },
+        modePillText: { fontSize: 12, color: theme.textSecondary },
+        modePillTextActive: { color: theme.accent, fontWeight: '600' },
+        timerContainer: { alignItems: 'center', backgroundColor: theme.surface, borderRadius: 16, padding: 28, marginBottom: 16, borderWidth: 1, borderColor: theme.surfaceBorder },
+        timerPhaseLabel: { fontSize: 11, fontWeight: '700', color: theme.textTertiary, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 8 },
+        timerDisplay: { fontSize: 64, fontWeight: '200', color: theme.textPrimary, fontVariant: ['tabular-nums'] },
+        timerBanner: { marginTop: 12, backgroundColor: theme.accentSubtle, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8 },
+        timerBannerMax: { backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.success },
+        timerBannerText: { fontSize: 13, color: theme.accent, textAlign: 'center' },
+        timerStartButton: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 20, backgroundColor: theme.success, borderRadius: 10, paddingHorizontal: 28, paddingVertical: 12 },
+        timerStartText: { fontSize: 16, fontWeight: '700', color: '#000' },
+        timerAdvanceButton: { marginTop: 12, borderWidth: 1, borderColor: theme.surfaceBorder, borderRadius: 10, paddingHorizontal: 20, paddingVertical: 10 },
+        timerAdvanceText: { fontSize: 14, color: theme.textSecondary },
+        upNextContainer: { marginTop: 16, alignItems: 'center' },
+        upNextLabel: { fontSize: 10, color: theme.textTertiary, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 },
+        upNextName: { fontSize: 16, color: theme.textPrimary, fontWeight: '500' },
+
+        // ── Set inputs ──
+        setInputsCard: { backgroundColor: theme.surface, borderRadius: 12, padding: 16, marginBottom: 16, borderWidth: 0.5, borderColor: theme.surfaceBorder },
+        unitRow: { flexDirection: 'row', gap: 6, marginBottom: 12 },
+        unitPill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, borderWidth: 1, borderColor: theme.surfaceBorder, backgroundColor: theme.surfaceElevated },
+        unitPillActive: { borderColor: theme.accent, backgroundColor: theme.accentSubtle },
+        unitPillText: { fontSize: 11, color: theme.textSecondary, textTransform: 'lowercase' },
+        unitPillTextActive: { color: theme.accent, fontWeight: '600' },
+        inputRow: { flexDirection: 'row', gap: 10, marginBottom: 12 },
+        inputGroup: { flex: 1, alignItems: 'center' },
+        inputLabel: { fontSize: 10, color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4, textAlign: 'center' },
+        input: { width: '100%', height: 44, borderWidth: 1, borderColor: theme.surfaceBorder, borderRadius: 8, backgroundColor: theme.surfaceElevated, color: theme.inputText, textAlign: 'center', fontSize: 16 },
+        noteInput: { borderWidth: 1, borderColor: theme.surfaceBorder, borderRadius: 8, backgroundColor: theme.surfaceElevated, color: theme.inputText, padding: 10, fontSize: 14, minHeight: 44 },
+
+        // ── Actions ──
+        actionsRow: { flexDirection: 'row', gap: 12 },
+        skipButton: { flex: 1, borderWidth: 1, borderColor: theme.surfaceBorder, borderRadius: 12, paddingVertical: 16, alignItems: 'center' },
+        skipButtonText: { fontSize: 15, color: theme.textSecondary },
+        nextButton: { flex: 2, flexDirection: 'row', gap: 8, backgroundColor: theme.success, borderRadius: 12, paddingVertical: 16, alignItems: 'center', justifyContent: 'center' },
+        nextButtonText: { fontSize: 16, fontWeight: '700', color: '#000' },
+
+        // ── Done ──
+        headingText: { fontSize: 20, fontWeight: '700', color: theme.textPrimary },
+        doneEmoji: { fontSize: 64, marginBottom: 16 },
+        doneTitle: { fontSize: 24, fontWeight: '700', color: theme.textPrimary, marginBottom: 8 },
+        doneSubtitle: { fontSize: 14, color: theme.textSecondary, textAlign: 'center', marginHorizontal: 24, marginBottom: 32 },
+        doneButton: { backgroundColor: theme.surfaceElevated, borderRadius: 12, paddingHorizontal: 32, paddingVertical: 14, borderWidth: 1, borderColor: theme.surfaceBorder },
+        doneButtonText: { fontSize: 15, color: theme.textPrimary },
+
+        // ── Finish overlay ──
+        overlayBackdrop: { flex: 1, backgroundColor: theme.overlay, justifyContent: 'center', alignItems: 'center', padding: 32 },
+        overlayCard: { backgroundColor: theme.surface, borderRadius: 16, padding: 28, width: '100%', alignItems: 'center', borderWidth: 1, borderColor: theme.success },
+        overlayEmoji: { fontSize: 52, marginBottom: 12 },
+        overlayMessage: { fontSize: 22, fontWeight: 'bold', color: theme.textPrimary, textAlign: 'center', marginBottom: 8 },
+        overlaySubtext: { fontSize: 14, color: theme.textSecondary, textAlign: 'center', marginBottom: 28 },
+        overlayActions: { flexDirection: 'row', gap: 12, width: '100%' },
+        overlayButtonPrimary: { flex: 1, backgroundColor: theme.success, borderRadius: 10, paddingVertical: 14, alignItems: 'center' },
+        overlayButtonPrimaryText: { color: '#000', fontWeight: '700', fontSize: 15 },
+        overlayButtonSecondary: { flex: 1, borderWidth: 1, borderColor: theme.surfaceBorder, borderRadius: 10, paddingVertical: 14, alignItems: 'center' },
+        overlayButtonSecondaryText: { color: theme.textSecondary, fontSize: 15 },
+    });
+}
