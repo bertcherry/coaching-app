@@ -25,6 +25,10 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Localization from 'expo-localization';
 import Feather from '@expo/vector-icons/Feather';
+import { GestureDetector, Gesture } from 'react-native-gesture-handler';
+import Animated, {
+    useSharedValue, useAnimatedStyle, withSpring, runOnJS,
+} from 'react-native-reanimated';
 import { useAuth } from '../context/AuthContext';
 import TemplatePickerOverlay from '../components/TemplatePickerOverlay';
 
@@ -201,6 +205,87 @@ const WorkoutPill = ({ workout, onPress, onLongPress, compact }) => {
     );
 };
 
+// ─── Draggable workout pill (month view, coach only) ─────────────────────────
+// Uses RNGH gesture composition to separate:
+//   Tap (< 400 ms)          → navigate to workout
+//   Long press, no drag     → show action sheet
+//   Long press + drag       → move workout by dropping on a day cell
+
+const MonthWorkoutPill = ({
+    workout, onPress, onLongPress, onDragStart, onDragUpdate, onDragEnd,
+    compact, ghostX, ghostY,
+}) => {
+    const bg = STATUS_COLOR[workout.status] ?? STATUS_COLOR.scheduled;
+    const statusLabel = STATUS_LABEL[workout.status] ?? workout.status;
+    const scale   = useSharedValue(1);
+    const opacity = useSharedValue(1);
+
+    // Tap: fires on quick release (< 400 ms) → navigate
+    const tap = Gesture.Tap()
+        .maxDuration(399)
+        .onEnd((_, success) => { if (success) runOnJS(onPress)(); });
+
+    // Pan: activates after 400 ms long-press
+    // onEnd: small movement → long-press action sheet; large movement → drop
+    const pan = Gesture.Pan()
+        .activateAfterLongPress(400)
+        .onStart(() => {
+            scale.value   = withSpring(1.12);
+            opacity.value = withSpring(0.35);
+            runOnJS(onDragStart)(workout);
+        })
+        .onUpdate(({ absoluteX, absoluteY }) => {
+            ghostX.value = absoluteX;
+            ghostY.value = absoluteY;
+            runOnJS(onDragUpdate)(absoluteX, absoluteY);
+        })
+        .onEnd(({ translationX, translationY }) => {
+            scale.value   = withSpring(1);
+            opacity.value = withSpring(1);
+            runOnJS(onDragEnd)(Math.hypot(translationX, translationY) > 12);
+        })
+        .onFinalize(() => {
+            scale.value   = withSpring(1);
+            opacity.value = withSpring(1);
+        });
+
+    const composed   = Gesture.Race(tap, pan);
+    const animStyle  = useAnimatedStyle(() => ({
+        transform: [{ scale: scale.value }],
+        opacity:   opacity.value,
+    }));
+
+    return (
+        <GestureDetector gesture={composed}>
+            <Animated.View
+                style={[
+                    styles.pill,
+                    { backgroundColor: bg },
+                    workout.status === 'skipped' && styles.pillSkipped,
+                    compact && styles.pillCompact,
+                    animStyle,
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel={`${workout.workoutName}, ${statusLabel}`}
+                accessibilityHint="Tap to open. Long press for options, or long press and drag to move."
+            >
+                <Text style={[styles.pillText, compact && styles.pillTextCompact]} numberOfLines={1}>
+                    {workout.workoutName}
+                </Text>
+                {workout.status === 'completed' && (
+                    <Feather name="check" size={compact ? 8 : 10} color="#000" accessible={false} />
+                )}
+                {workout.status === 'skipped' && (
+                    <Feather name="slash" size={compact ? 8 : 10} color="#000" accessible={false} />
+                )}
+                {workout.status === 'missed' && (
+                    <Feather name="alert-circle" size={compact ? 8 : 10} color="#000" accessible={false} />
+                )}
+            </Animated.View>
+        </GestureDetector>
+    );
+};
+
 // ─── Monthly day cell ─────────────────────────────────────────────────────────
 
 const MonthDayCell = ({
@@ -208,20 +293,31 @@ const MonthDayCell = ({
     isCoach, isPast,
     onWorkoutPress, onWorkoutLongPress,
     onAddWorkoutPress,
+    // drag props (coach only)
+    isDragTarget, isDragTargetValid,
+    onCellLayout, onDragStart, onDragUpdate, onDragEnd,
+    ghostX, ghostY,
 }) => {
     const canAdd = isCoach && currentMonth && !isPast;
     const dayNum = parseInt(dateStr.split('-')[2], 10);
+    const cellRef = React.useRef();
 
     return (
         <Pressable
+            ref={cellRef}
             style={[
                 styles.dayCell,
                 !currentMonth && styles.dayCellOtherMonth,
+                isDragTargetValid && styles.dayCellDragTarget,
+                isDragTarget && !isDragTargetValid && styles.dayCellDragInvalid,
             ]}
             onLongPress={() => canAdd && onAddWorkoutPress(dateStr)}
             delayLongPress={400}
-            // The cell backdrop is not independently focusable — individual
-            // pills and the date number are the focusable children.
+            onLayout={() => {
+                cellRef.current?.measure((_fx, _fy, w, h, pageX, pageY) => {
+                    onCellLayout?.(dateStr, { pageX, pageY, width: w, height: h });
+                });
+            }}
             accessible={false}
             importantForAccessibility="no"
         >
@@ -245,15 +341,30 @@ const MonthDayCell = ({
             </View>
 
             {/* Workout pills */}
-            {workouts.map(w => (
-                <WorkoutPill
-                    key={w.id}
-                    workout={w}
-                    onPress={() => onWorkoutPress(w)}
-                    onLongPress={() => onWorkoutLongPress(w)}
-                    compact
-                />
-            ))}
+            {workouts.map(w =>
+                isCoach ? (
+                    <MonthWorkoutPill
+                        key={w.id}
+                        workout={w}
+                        onPress={() => onWorkoutPress(w)}
+                        onLongPress={() => onWorkoutLongPress(w)}
+                        onDragStart={onDragStart}
+                        onDragUpdate={onDragUpdate}
+                        onDragEnd={onDragEnd}
+                        ghostX={ghostX}
+                        ghostY={ghostY}
+                        compact
+                    />
+                ) : (
+                    <WorkoutPill
+                        key={w.id}
+                        workout={w}
+                        onPress={() => onWorkoutPress(w)}
+                        onLongPress={() => onWorkoutLongPress(w)}
+                        compact
+                    />
+                )
+            )}
 
             {/* Decorative "long-press to add" hint — not read by screen readers */}
             {canAdd && workouts.length === 0 && (
@@ -485,7 +596,7 @@ const SkipModal = ({ workout, onClose, onConfirm }) => {
 
 // ─── Mini calendar (date picker) ──────────────────────────────────────────────
 
-const DatePickerModal = ({ title, minDate, onClose, onConfirm }) => {
+const DatePickerModal = ({ title, minDate, sourceDate, workoutDates, onClose, onConfirm }) => {
     const now = new Date();
     const [pickerYear,  setPickerYear]  = React.useState(now.getFullYear());
     const [pickerMonth, setPickerMonth] = React.useState(now.getMonth());
@@ -571,24 +682,33 @@ const DatePickerModal = ({ title, minDate, onClose, onConfirm }) => {
                     {rows.map((row, rowIdx) => (
                         <View key={rowIdx} style={styles.miniCalRow}>
                             {row.map(({ dateStr, currentMonth }) => {
-                                const isPast   = minDate ? dateStr < minDate : false;
-                                const isBlocked = isPast || !currentMonth;
-                                const isSelected = dateStr === selected;
-                                const isToday    = dateStr === toISO(new Date());
-                                const dayNum     = parseInt(dateStr.split('-')[2], 10);
+                                const isPast      = minDate ? dateStr < minDate : false;
+                                const isBlocked   = isPast || !currentMonth;
+                                const isSelected  = dateStr === selected;
+                                const isToday     = dateStr === toISO(new Date());
+                                const isSource    = sourceDate  ? dateStr === sourceDate  : false;
+                                const hasWorkout  = workoutDates ? workoutDates.has(dateStr) : false;
+                                const dayNum      = parseInt(dateStr.split('-')[2], 10);
 
                                 return (
                                     <View key={dateStr} style={styles.miniCalCellWrap}>
                                         <Pressable
                                             style={[
                                                 styles.miniCalCell,
+                                                // Today: outlined ring (not filled) — distinct from selected
+                                                isToday    && !isSelected && styles.miniCalCellTodayRing,
+                                                // Source date: amber outlined ring
+                                                isSource   && !isSelected && styles.miniCalCellSourceRing,
+                                                // Selected: filled pink
                                                 isSelected && styles.miniCalCellSelected,
                                             ]}
                                             onPress={() => !isBlocked && setSelected(dateStr)}
                                             disabled={isBlocked}
                                             accessibilityRole="button"
                                             accessibilityLabel={
-                                                isToday ? `${dayNum}, today` : String(dayNum)
+                                                isToday  ? `${dayNum}, today` :
+                                                isSource ? `${dayNum}, original date` :
+                                                String(dayNum)
                                             }
                                             accessibilityState={{
                                                 selected: isSelected,
@@ -604,6 +724,16 @@ const DatePickerModal = ({ title, minDate, onClose, onConfirm }) => {
                                             ]}>
                                                 {dayNum}
                                             </Text>
+                                            {/* Workout dot */}
+                                            {hasWorkout && !isBlocked && (
+                                                <View
+                                                    style={[
+                                                        styles.miniCalWorkoutDot,
+                                                        isSelected && styles.miniCalWorkoutDotSelected,
+                                                    ]}
+                                                    accessible={false}
+                                                />
+                                            )}
                                         </Pressable>
                                     </View>
                                 );
@@ -733,6 +863,30 @@ const Legend = () => (
     </View>
 );
 
+// ─── Drag ghost ───────────────────────────────────────────────────────────────
+// Floats above everything else while a workout pill is being dragged.
+// Positioned via Reanimated shared values (UI thread) for smooth 60 fps tracking.
+
+const DragGhost = ({ workout, ghostX, ghostY }) => {
+    const bg = STATUS_COLOR[workout.status] ?? STATUS_COLOR.scheduled;
+    const style = useAnimatedStyle(() => ({
+        transform: [
+            { translateX: ghostX.value - 40 },
+            { translateY: ghostY.value - 14 },
+        ],
+    }));
+    return (
+        <Animated.View
+            style={[styles.dragGhost, style]}
+            pointerEvents="none"
+        >
+            <View style={[styles.pill, { backgroundColor: bg }]}>
+                <Text style={styles.pillText} numberOfLines={1}>{workout.workoutName}</Text>
+            </View>
+        </Animated.View>
+    );
+};
+
 // ─── Main CalendarScreen ──────────────────────────────────────────────────────
 
 export default function CalendarScreen({ navigation, route }) {
@@ -800,6 +954,16 @@ export default function CalendarScreen({ navigation, route }) {
     const [moveWorkout,        setMoveWorkout]        = React.useState(null);
     const [addDayTarget,       setAddDayTarget]       = React.useState(null);
     const [showTemplatePicker, setShowTemplatePicker] = React.useState(false);
+
+    // ── Drag-to-move state ───────────────────────────────────────────────────
+
+    const [draggingWorkout, setDraggingWorkout] = React.useState(null);
+    const [dragTargetDate,  setDragTargetDate]  = React.useState(null);
+    // Reanimated shared values for the ghost pill position (UI thread, no JS re-renders)
+    const ghostX = useSharedValue(0);
+    const ghostY = useSharedValue(0);
+    // Stores screen-space bounds per date cell (populated via onCellLayout)
+    const cellLayoutsRef = React.useRef({});
 
     // ── Fetch schedule ───────────────────────────────────────────────────────
 
@@ -958,8 +1122,9 @@ export default function CalendarScreen({ navigation, route }) {
         } finally { setSaving(false); }
     };
 
-    const handleMoveConfirm = async (newDate) => {
-        const workout = moveWorkout;
+    const handleMoveConfirm = async (newDate, workoutOverride = null) => {
+        const workout = workoutOverride ?? moveWorkout;
+        if (!workout) return;
         setMoveWorkout(null);
         setActionWorkout(null);
         const oldDate = workout.scheduledDate;
@@ -989,6 +1154,50 @@ export default function CalendarScreen({ navigation, route }) {
             Alert.alert('Error', 'Could not move workout. Please try again.');
         } finally { setSaving(false); }
     };
+
+    // ── Drag-to-move handlers ────────────────────────────────────────────────
+
+    const handleDragStart = (workout) => {
+        setDraggingWorkout(workout);
+        setDragTargetDate(null);
+    };
+
+    const handleDragUpdate = (absoluteX, absoluteY) => {
+        let found = null;
+        for (const [dateStr, { pageX, pageY, width, height }] of Object.entries(cellLayoutsRef.current)) {
+            if (
+                absoluteX >= pageX && absoluteX <= pageX + width &&
+                absoluteY >= pageY && absoluteY <= pageY + height
+            ) {
+                found = dateStr;
+                break;
+            }
+        }
+        setDragTargetDate(prev => prev !== found ? found : prev);
+    };
+
+    const handleDragEnd = (wasDragged) => {
+        const workout    = draggingWorkout;
+        const targetDate = dragTargetDate;
+        setDraggingWorkout(null);
+        setDragTargetDate(null);
+        if (!workout) return;
+        if (wasDragged) {
+            if (targetDate && targetDate !== workout.scheduledDate && targetDate >= clientTodayStr) {
+                handleMoveConfirm(targetDate, workout);
+            }
+            // else: dropped on invalid cell — silent no-op
+        } else {
+            // Stationary long press → show action sheet
+            setActionWorkout(workout);
+        }
+    };
+
+    // Workout date set for DatePickerModal dots
+    const workoutDateSet = React.useMemo(
+        () => new Set(workouts.map(w => w.scheduledDate)),
+        [workouts],
+    );
 
     // ── Header label ─────────────────────────────────────────────────────────
 
@@ -1107,20 +1316,33 @@ export default function CalendarScreen({ navigation, route }) {
 
                     {/* Month grid */}
                     <View style={styles.grid} accessibilityRole="grid" accessibilityLabel={headerLabel}>
-                        {monthGrid.map(({ dateStr, currentMonth }) => (
-                            <MonthDayCell
-                                key={dateStr}
-                                dateStr={dateStr}
-                                currentMonth={currentMonth}
-                                workouts={workoutsByDate[dateStr] ?? []}
-                                isToday={dateStr === clientTodayStr}
-                                isPast={dateStr < clientTodayStr}
-                                isCoach={isCoach}
-                                onWorkoutPress={handleWorkoutPress}
-                                onWorkoutLongPress={setActionWorkout}
-                                onAddWorkoutPress={setAddDayTarget}
-                            />
-                        ))}
+                        {monthGrid.map(({ dateStr, currentMonth }) => {
+                            const isValidDrop = dragTargetDate === dateStr
+                                && dateStr >= clientTodayStr
+                                && draggingWorkout?.scheduledDate !== dateStr;
+                            return (
+                                <MonthDayCell
+                                    key={dateStr}
+                                    dateStr={dateStr}
+                                    currentMonth={currentMonth}
+                                    workouts={workoutsByDate[dateStr] ?? []}
+                                    isToday={dateStr === clientTodayStr}
+                                    isPast={dateStr < clientTodayStr}
+                                    isCoach={isCoach}
+                                    onWorkoutPress={handleWorkoutPress}
+                                    onWorkoutLongPress={setActionWorkout}
+                                    onAddWorkoutPress={setAddDayTarget}
+                                    isDragTarget={dragTargetDate === dateStr}
+                                    isDragTargetValid={isValidDrop}
+                                    onCellLayout={(ds, layout) => { cellLayoutsRef.current[ds] = layout; }}
+                                    onDragStart={handleDragStart}
+                                    onDragUpdate={handleDragUpdate}
+                                    onDragEnd={handleDragEnd}
+                                    ghostX={ghostX}
+                                    ghostY={ghostY}
+                                />
+                            );
+                        })}
                     </View>
 
                     <Legend />
@@ -1265,7 +1487,9 @@ export default function CalendarScreen({ navigation, route }) {
             {copyWorkout && (
                 <DatePickerModal
                     title="Copy workout to…"
-                    minDate={null}
+                    minDate={clientTodayStr}
+                    sourceDate={copyWorkout.scheduledDate}
+                    workoutDates={workoutDateSet}
                     onClose={() => setCopyWorkout(null)}
                     onConfirm={handleCopyConfirm}
                 />
@@ -1275,6 +1499,8 @@ export default function CalendarScreen({ navigation, route }) {
                 <DatePickerModal
                     title="Move workout to…"
                     minDate={clientTodayStr}
+                    sourceDate={moveWorkout.scheduledDate}
+                    workoutDates={workoutDateSet}
                     onClose={() => setMoveWorkout(null)}
                     onConfirm={handleMoveConfirm}
                 />
@@ -1288,6 +1514,11 @@ export default function CalendarScreen({ navigation, route }) {
                 scheduledDate={addDayTarget}
                 navigation={navigation}
             />
+
+            {/* Ghost pill follows the finger while dragging */}
+            {draggingWorkout && (
+                <DragGhost workout={draggingWorkout} ghostX={ghostX} ghostY={ghostY} />
+            )}
         </View>
     );
 }
@@ -1445,23 +1676,37 @@ const styles = StyleSheet.create({
     miniCalMonthLabel: { color: '#fae9e9', fontWeight: '600', fontSize: 15 },
 
     // Row-based grid — no flexWrap, each row is a flex row, cells use flex:1.
-    // Eliminates float accumulation bug that caused Su/Sa column stacking.
     miniCalRow:      { flexDirection: 'row', marginBottom: 2 },
     miniCalCellWrap: { flex: 1, alignItems: 'center' },
     // AA: #aaa on #111 ≈ 5.5:1 ✓ — decorative, hidden from AT
     miniCalDayLabel: { fontSize: 11, fontWeight: '600', color: '#aaaaaa', textAlign: 'center', paddingVertical: 4 },
     // Tappable date cell — 34×34 square with touch target via wrapper flex
     miniCalCell:             { width: 34, height: 34, justifyContent: 'center', alignItems: 'center', borderRadius: 17 },
+    // Today: outlined pink ring — distinct from the filled pink selected state
+    miniCalCellTodayRing:    { borderWidth: 1.5, borderColor: '#fba8a0' },
+    // Source date (workout's original date): amber outlined ring
+    miniCalCellSourceRing:   { borderWidth: 1.5, borderColor: '#f5a623' },
+    // Selected: filled pink
     miniCalCellSelected:     { backgroundColor: '#fba8a0' },
     // AAA: #fae9e9 on #111 ≈ 16.8:1 ✓
     miniCalCellText:         { fontSize: 13, color: '#fae9e9', textAlign: 'center' },
-    // Today: rose bold — AA on dark background ✓
+    // Today: rose bold text — readable when not selected
     miniCalCellToday:        { color: '#fba8a0', fontWeight: '700' },
     // Selected: #000 on #fba8a0 = 5.29:1 ✓ AA
     miniCalCellSelectedText: { color: '#000', fontWeight: '700' },
-    // Past/blocked: #444 on #111 ≈ 1.9:1 — intentionally low contrast to signal
-    // unavailability. accessibilityState.disabled prevents AT focus on these.
+    // Past/blocked: #444 on #111 ≈ 1.9:1 — intentionally low contrast to signal unavailability
     miniCalCellPast:         { color: '#444' },
     // Other-month padding cells — not selectable, visually inert
     miniCalCellOtherMonth:   { color: '#2e2e2e' },
+    // Workout dot below the day number (scheduled workout indicator)
+    miniCalWorkoutDot:        { width: 4, height: 4, borderRadius: 2, backgroundColor: '#fba8a0', position: 'absolute', bottom: 2 },
+    miniCalWorkoutDotSelected: { backgroundColor: '#000' },
+
+    // ── Drag-to-move ──
+    // Drag target cell: valid drop destination (future date, different from source)
+    dayCellDragTarget: { backgroundColor: 'rgba(251, 168, 160, 0.18)', borderTopColor: '#fba8a0' },
+    // Drag target cell: invalid drop (past date or same date)
+    dayCellDragInvalid: { backgroundColor: 'rgba(255,255,255,0.04)' },
+    // Ghost pill: absolute, above all content, pointer-events none
+    dragGhost: { position: 'absolute', top: 0, left: 0, zIndex: 9999, pointerEvents: 'none' },
 });
