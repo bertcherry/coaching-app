@@ -339,7 +339,7 @@ const ExerciseCard = React.memo(({
     exercise, index, sectionIndex,
     handleChange, handleBlur, setFieldValue,
     onRemove, onDragStart, isDragging,
-    clientEmail, unitDefault, authFetch, isTimed,
+    clientEmail, unitDefault, authFetch, isTimed, isOnlyExercise,
 }) => {
     const { theme } = useTheme();
     const styles = makeStyles(theme);
@@ -388,7 +388,7 @@ const ExerciseCard = React.memo(({
                         <ExerciseSearch exercise={exercise} exerciseNameField={`${fieldBase}.name`} exerciseIdField={`${fieldBase}.id`}
                             setFieldValue={setFieldValue} handleBlur={handleBlur} isCoach={true} authFetch={authFetch} />
                     </View>
-                    <Pressable style={styles.removeButton} onPress={()=>setConfirmRemove(true)} hitSlop={8}>
+                    <Pressable style={[styles.removeButton, isOnlyExercise && styles.removeButtonDisabled]} onPress={isOnlyExercise ? undefined : ()=>setConfirmRemove(true)} hitSlop={8} disabled={isOnlyExercise}>
                         <Feather name="x" size={16} color={theme.textTertiary} />
                     </Pressable>
                 </View>
@@ -478,7 +478,7 @@ const SectionCard = ({
     section, sectionIndex,
     handleChange, handleBlur, setFieldValue, values,
     onRemoveSection, clientEmail, unitDefault, authFetch,
-    dragState, onDragStart, dropTargetSection, dropTargetIndex,
+    dragState, onDragStart, dropTargetSection, dropTargetIndex, isOnlySection,
 }) => {
     const { theme } = useTheme();
     const styles = makeStyles(theme);
@@ -506,7 +506,7 @@ const SectionCard = ({
                             <Text style={[styles.toggleChipText,section.circuit&&styles.toggleChipTextActive]}>Circuit</Text>
                         </Pressable>
                     </View>
-                    <Pressable style={styles.removeButton} onPress={()=>setConfirmRemove(true)} hitSlop={8}>
+                    <Pressable style={[styles.removeButton, isOnlySection && styles.removeButtonDisabled]} onPress={isOnlySection ? undefined : ()=>setConfirmRemove(true)} hitSlop={8} disabled={isOnlySection}>
                         <Feather name="x" size={18} color={theme.textTertiary} />
                     </Pressable>
                 </View>
@@ -539,10 +539,8 @@ const SectionCard = ({
                                     <ExerciseCard
                                         exercise={exercise} index={i} sectionIndex={sectionIndex}
                                         handleChange={handleChange} handleBlur={handleBlur} setFieldValue={setFieldValue}
-                                        onRemove={()=>{
-                                            if(section.data.length>1) removeEx(i);
-                                            else Alert.alert('Cannot remove','Each section needs at least one exercise.');
-                                        }}
+                                        onRemove={()=>removeEx(i)}
+                                        isOnlyExercise={section.data.length===1}
                                         onDragStart={onDragStart}
                                         isDragging={dragState?.fromSection===sectionIndex && dragState?.fromIndex===i}
                                         clientEmail={clientEmail} unitDefault={unitDefault} authFetch={authFetch}
@@ -747,10 +745,8 @@ export default function CreateWorkout({ navigation, route }) {
                                                     section={section} sectionIndex={si}
                                                     handleChange={handleChange} handleBlur={handleBlur}
                                                     setFieldValue={setFieldValue} values={values}
-                                                    onRemoveSection={()=>{
-                                                        if(values.data.length>1) remove(si);
-                                                        else Alert.alert('Cannot remove','Workouts must have at least one section.');
-                                                    }}
+                                                    onRemoveSection={()=>remove(si)}
+                                                    isOnlySection={values.data.length===1}
                                                     clientEmail={values.clientEmail}
                                                     unitDefault={user?.unitDefault??'lbs'}
                                                     authFetch={authFetch}
@@ -900,6 +896,7 @@ function makeStyles(theme) { return StyleSheet.create({
     exerciseIndexBadge:  { width: 22, height: 22, borderRadius: 11, backgroundColor: theme.surfaceElevated, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
     exerciseIndexText:   { fontSize: 11, color: theme.textSecondary, fontWeight: '700' },
     removeButton:        { padding: 6, borderRadius: 6, backgroundColor: theme.surfaceElevated, borderWidth: 1, borderColor: theme.surfaceBorder },
+    removeButtonDisabled:{ opacity: 0.35 },
 
     historyBanner:    { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.accentSubtle, borderWidth: 0.5, borderColor: theme.accentSubtle, borderRadius: 6, paddingHorizontal: 10, paddingVertical: 6, marginBottom: 10 },
     historyBannerText:{ fontSize: 12, color: theme.accent, flex: 1 },
