@@ -21,11 +21,39 @@ async function requireCoach(request, env) {
     }
 }
 
+// Common gym abbreviation expansions.
+// Keys are lowercase. Values are the expanded form (also used as search tokens).
+// Add more here as needed — keep concise so the list stays manageable.
+const EXERCISE_ALIASES = {
+    sldl:  'sl rdl',        // single-leg deadlift ≈ SL RDL
+    ohp:   'overhead press',
+    cgbp:  'close grip bench press',
+    sumo:  'sumo deadlift',
+    cgrow: 'close grip row',
+};
+
+/**
+ * Expand known abbreviations and return an array of lowercase search tokens.
+ * Splits on whitespace so multi-word expansions produce multiple tokens.
+ */
+function queryToTokens(q) {
+    const lower = q.toLowerCase().trim();
+    // Expand the full query if it's a known alias
+    const expanded = EXERCISE_ALIASES[lower] ?? lower;
+    // Then tokenize — each space-separated word becomes its own LIKE condition
+    return expanded.split(/\s+/).filter(Boolean);
+}
+
 /**
  * GET /demos/search?q=bench&limit=10
  * Public — used in CreateWorkout exercise search.
  * Returns id (stable), name, description, hasVideo, streamId.
  * Client uses id for workout storage; only needs streamId for video playback.
+ *
+ * Search is token-order-independent: each word in the query must appear
+ * somewhere in the name (AND conditions), so "Eccentric RDL" matches
+ * "RDL Eccentric". Known abbreviations are expanded before tokenizing
+ * so e.g. "SLDL" matches "SL RDL".
  */
 export async function handleSearchDemos(request, env) {
     const url = new URL(request.url);
@@ -34,13 +62,28 @@ export async function handleSearchDemos(request, env) {
 
     if (!q) return json({ exercises: [] });
 
+    const tokens = queryToTokens(q);
+
+    // Always include a plain substring match on the raw query so e.g. "SLDL"
+    // matches a literally-named "SLDL" exercise in addition to the expanded tokens.
+    const rawCondition      = 'name LIKE ?';
+    const rawBinding        = [`%${q}%`];
+
+    // Token conditions: each word must appear somewhere (order-independent).
+    const tokenConditions   = tokens.map(() => 'name LIKE ?').join(' AND ');
+    const tokenBindings     = tokens.map(t => `%${t}%`);
+
+    // Combine: raw substring OR all expanded tokens present
+    const whereClause = `(${rawCondition}) OR (${tokenConditions})`;
+    const bindings    = [...rawBinding, ...tokenBindings];
+
     const { results } = await env.demosDB.prepare(`
         SELECT id, name, description, hasVideo, streamId
         FROM demos
-        WHERE name LIKE ?
+        WHERE ${whereClause}
         ORDER BY name ASC
         LIMIT ?
-    `).bind(`%${q}%`, limit).all();
+    `).bind(...bindings, limit).all();
 
     return json({ exercises: results });
 }
