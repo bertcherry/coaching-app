@@ -89,7 +89,7 @@ const workoutSchema = Yup.object().shape({
     clientEmail: Yup.string().nullable(),
     clientName: Yup.string().nullable(),
     scheduledDate: Yup.string().nullable()
-        .matches(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD')
+        .matches(/^\d{4}-\d{2}(-\d{2})?$/, 'Date must be YYYY-MM-DD or YYYY-MM')
         .when('clientEmail', {
             is: (v) => !v,
             then: (s) => s.test('no-date-without-client', 'Select a client before adding a date', (v) => !v),
@@ -246,6 +246,7 @@ const DateField = ({ value, onChange, onBlur, fieldName }) => {
     const DAYS = ['Su','Mo','Tu','We','Th','Fr','Sa'];
     const toISO = (d) => d.toISOString().split('T')[0];
     const todayStr = toISO(now);
+    const thisMonthStr = todayStr.substring(0, 7);
     const getGrid = (y,m) => {
         const first=new Date(y,m,1), last=new Date(y,m+1,0), grid=[];
         for(let i=0;i<first.getDay();i++) grid.push({dateStr:toISO(new Date(y,m,1-(first.getDay()-i))),current:false});
@@ -254,16 +255,38 @@ const DateField = ({ value, onChange, onBlur, fieldName }) => {
         return grid;
     };
     const monthLabel=(y,m)=>new Date(y,m,1).toLocaleString('default',{month:'long',year:'numeric'});
+    const monthISO=(y,m)=>`${y}-${String(m+1).padStart(2,'0')}`;
     const prevM=()=>pMonth===0?(setPMonth(11),setPYear(y=>y-1)):setPMonth(m=>m-1);
     const nextM=()=>pMonth===11?(setPMonth(0),setPYear(y=>y+1)):setPMonth(m=>m+1);
     const grid=getGrid(pYear,pMonth);
+
+    // Display label for current value
+    const valueIsMonthOnly = value?.length === 7;
+    const displayValue = valueIsMonthOnly
+        ? (() => { const [y,m]=value.split('-').map(Number); return new Date(y,m-1,1).toLocaleString('default',{month:'long',year:'numeric'}); })()
+        : value;
+
+    // Whether the picker's current month is in the past (month-select disabled)
+    const pickerMonthStr = monthISO(pYear, pMonth);
+    const pickerMonthIsPast = pickerMonthStr < thisMonthStr;
+    const pickerMonthIsSelected = value === pickerMonthStr;
+
+    const handleSelectMonth = () => {
+        if (pickerMonthIsPast) return;
+        onChange(pickerMonthStr);
+        setShowPicker(false);
+        onBlur(fieldName);
+    };
+
     return (
         <View style={styles.fieldBlock}>
             <Text style={styles.fieldLabel}>Scheduled Date <Text style={styles.optionalLabel}>(optional)</Text></Text>
             {value ? (
                 <Pressable style={styles.selectButton} onPress={()=>setShowPicker(true)}>
                     <Feather name="calendar" size={15} color={theme.accent} />
-                    <Text style={styles.selectButtonText}>{value}</Text>
+                    <Text style={styles.selectButtonText}>
+                        {valueIsMonthOnly ? `${displayValue} (month only)` : displayValue}
+                    </Text>
                     <Feather name="chevron-down" size={16} color={theme.textTertiary} />
                 </Pressable>
             ) : (
@@ -279,9 +302,24 @@ const DateField = ({ value, onChange, onBlur, fieldName }) => {
                         <View style={styles.dateModalCard}>
                             <View style={styles.dateModalHeader}>
                                 <Pressable onPress={prevM} style={styles.dateNavButton}><Feather name="chevron-left" size={22} color={theme.textPrimary} /></Pressable>
-                                <Text style={styles.dateModalMonth}>{monthLabel(pYear,pMonth)}</Text>
+                                {/* Tapping the month label assigns the workout to the whole month */}
+                                <Pressable
+                                    onPress={handleSelectMonth}
+                                    disabled={pickerMonthIsPast}
+                                    style={[styles.dateMonthLabelBtn, pickerMonthIsSelected && styles.dateMonthLabelBtnSelected]}
+                                    hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
+                                >
+                                    <Text style={[
+                                        styles.dateModalMonth,
+                                        pickerMonthIsSelected && styles.dateModalMonthSelected,
+                                        pickerMonthIsPast && styles.dateModalMonthPast,
+                                    ]}>
+                                        {monthLabel(pYear,pMonth)}
+                                    </Text>
+                                </Pressable>
                                 <Pressable onPress={nextM} style={styles.dateNavButton}><Feather name="chevron-right" size={22} color={theme.textPrimary} /></Pressable>
                             </View>
+                            <Text style={styles.dateMonthHint}>Tap month to assign without a specific date</Text>
                             <View style={styles.dateGrid}>
                                 {DAYS.map(d=><Text key={d} style={styles.dateDayLabel}>{d}</Text>)}
                                 {grid.map(({dateStr,current})=>{
@@ -849,8 +887,13 @@ function makeStyles(theme) { return StyleSheet.create({
     dateModalOverlay: { flex: 1, backgroundColor: theme.overlay, justifyContent: 'center', alignItems: 'center', padding: 16 },
     dateModalCard:    { backgroundColor: theme.surface, borderRadius: 12, width: '100%', borderWidth: 1, borderColor: theme.divider },
     dateModalHeader:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16 },
-    dateNavButton:    { padding: 4 },
-    dateModalMonth:   { color: theme.textPrimary, fontWeight: '600', fontSize: 16 },
+    dateNavButton:          { padding: 4 },
+    dateMonthLabelBtn:      { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+    dateMonthLabelBtnSelected: { backgroundColor: theme.accent + '22' },
+    dateModalMonth:         { color: theme.textPrimary, fontWeight: '600', fontSize: 16 },
+    dateModalMonthSelected: { color: theme.accent },
+    dateModalMonthPast:     { color: theme.textSecondary },
+    dateMonthHint:          { fontSize: 11, color: theme.textTertiary, textAlign: 'center', marginTop: -4, marginBottom: 8 },
     dateGrid:         { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 8 },
     dateDayLabel:     { width: `${100/7}%`, textAlign: 'center', color: theme.textSecondary, fontSize: 11, marginBottom: 4 },
     dateCell:         { width: `${100/7}%`, aspectRatio: 1, justifyContent: 'center', alignItems: 'center', borderRadius: 100 },

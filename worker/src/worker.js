@@ -115,19 +115,30 @@ export async function handleAssignWorkout(request, env) {
  
     if (!client) return json({ error: 'Client not found' }, 404);
  
-    // If a date was provided, validate it hasn't passed in the CLIENT's timezone.
+    // If a date was provided, validate format and that it hasn't passed.
+    // Accepts YYYY-MM-DD (specific date) or YYYY-MM (month-only, unscheduled).
     // This is the authoritative check — the UI check is for UX only.
     if (scheduledDate) {
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(scheduledDate)) {
-            return json({ error: 'scheduledDate must be YYYY-MM-DD' }, 400);
+        const isFullDate  = /^\d{4}-\d{2}-\d{2}$/.test(scheduledDate);
+        const isMonthOnly = /^\d{4}-\d{2}$/.test(scheduledDate);
+
+        if (!isFullDate && !isMonthOnly) {
+            return json({ error: 'scheduledDate must be YYYY-MM-DD or YYYY-MM' }, 400);
         }
- 
-        const clientTimezone = client.timezone ?? 'UTC';
-        const clientToday = todayForTimezone(clientTimezone);
- 
-        if (scheduledDate < clientToday) {
+
+        const clientTimezone  = client.timezone ?? 'UTC';
+        const clientToday     = todayForTimezone(clientTimezone);
+        const clientThisMonth = clientToday.substring(0, 7);
+
+        if (isFullDate && scheduledDate < clientToday) {
             return json({
                 error: `Cannot schedule a workout on ${scheduledDate} — that date has already passed for this client (their current date is ${clientToday} in ${clientTimezone}).`
+            }, 422);
+        }
+
+        if (isMonthOnly && scheduledDate < clientThisMonth) {
+            return json({
+                error: `Cannot assign a workout to ${scheduledDate} — that month has already passed for this client (their current month is ${clientThisMonth} in ${clientTimezone}).`
             }, 422);
         }
     }

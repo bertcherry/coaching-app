@@ -123,8 +123,14 @@ export async function handleGetSchedule(request, env) {
     const todayStr = todayForTimezone(tz);
 
     // Mark any "scheduled" workout before today as "missed".
+    // Month-only workouts (scheduledDate.length === 7, e.g. "2026-04") are never
+    // missed — they have no specific day and persist for the full month.
     // Batch update to avoid N+1 DB calls.
-    const toMiss = results.filter(w => w.status === 'scheduled' && w.scheduledDate < todayStr);
+    const toMiss = results.filter(w =>
+        w.status === 'scheduled' &&
+        w.scheduledDate.length === 10 &&
+        w.scheduledDate < todayStr
+    );
 
     if (toMiss.length > 0) {
         const missPromises = toMiss.map(w =>

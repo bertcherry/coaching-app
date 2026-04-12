@@ -135,6 +135,17 @@ function addDays(dateStr, days) {
     return toISO(d);
 }
 
+/** True when scheduledDate is YYYY-MM (no specific day). */
+function isMonthOnly(dateStr) {
+    return typeof dateStr === 'string' && dateStr.length === 7;
+}
+
+/** Human-readable month name for a YYYY-MM string, e.g. "April 2026". */
+function formatMonthOnly(dateStr) {
+    const [y, m] = dateStr.split('-').map(Number);
+    return new Date(y, m - 1, 1).toLocaleString('default', { month: 'long', year: 'numeric' });
+}
+
 // ─── Workout status colours — WCAG checked ────────────────────────────────────
 // All pill text is #000 on these backgrounds; contrast ratios verified:
 // scheduled #fba8a0 on #000: 5.29:1 ✓ AA
@@ -394,6 +405,9 @@ const MonthDayCell = ({
 const WorkoutActionSheet = ({ workout, onClose, onSkip, onCopy, onMove }) => {
     const { theme } = useTheme();
     const styles = makeStyles(theme);
+    const dateDisplay = isMonthOnly(workout.scheduledDate)
+        ? formatMonthOnly(workout.scheduledDate)
+        : friendlyDate(workout.scheduledDate);
     return (
     <Modal
         transparent
@@ -418,7 +432,7 @@ const WorkoutActionSheet = ({ workout, onClose, onSkip, onCopy, onMove }) => {
                     importantForAccessibility="no"
                 />
                 <Text style={styles.sheetTitle}>{workout.workoutName}</Text>
-                <Text style={styles.sheetDate}>{friendlyDate(workout.scheduledDate)}</Text>
+                <Text style={styles.sheetDate}>{dateDisplay}</Text>
 
                 {workout.status === 'completed' ? (
                     <View style={styles.sheetCompleted} accessible accessibilityLabel="Workout completed">
@@ -789,6 +803,70 @@ const DatePickerModal = ({ title, minDate, sourceDate, workoutDates, onClose, on
     );
 };
 
+// ─── Unscheduled workouts section ────────────────────────────────────────────
+// Shown below the month grid and at the bottom of the week list.
+// These are workouts with scheduledDate = YYYY-MM (no specific day assigned).
+
+const UnscheduledSection = ({ workouts, isCoach, onWorkoutPress, onWorkoutLongPress, onAddUnscheduled }) => {
+    const { theme } = useTheme();
+    const styles = makeStyles(theme);
+    if (workouts.length === 0 && !isCoach) return null;
+    return (
+        <View style={styles.unscheduledSection}>
+            <View style={styles.unscheduledHeader}>
+                <Text
+                    style={styles.unscheduledTitle}
+                    accessibilityRole="header"
+                >
+                    Unscheduled
+                </Text>
+                {isCoach && onAddUnscheduled && (
+                    <Pressable
+                        style={styles.unscheduledAddBtn}
+                        onPress={onAddUnscheduled}
+                        accessibilityRole="button"
+                        accessibilityLabel="Add unscheduled workout for this month"
+                    >
+                        <Feather name="plus" size={16} color={theme.accent} accessible={false} />
+                        <Text style={styles.unscheduledAddText}>Add</Text>
+                    </Pressable>
+                )}
+            </View>
+
+            {workouts.length === 0 ? (
+                <Text style={styles.unscheduledEmpty}>
+                    No unscheduled workouts this month
+                </Text>
+            ) : (
+                workouts.map(w => {
+                    const statusLabel = STATUS_LABEL[w.status] ?? w.status;
+                    return (
+                        <Pressable
+                            key={w.id}
+                            style={[
+                                styles.weekListItem,
+                                { borderLeftColor: STATUS_COLOR[w.status] ?? STATUS_COLOR.scheduled },
+                            ]}
+                            onPress={() => onWorkoutPress(w)}
+                            onLongPress={() => onWorkoutLongPress(w)}
+                            delayLongPress={400}
+                            accessibilityRole="button"
+                            accessibilityLabel={`${w.workoutName}, unscheduled, ${statusLabel}`}
+                            accessibilityHint="Tap to open. Long press for actions."
+                        >
+                            <View style={styles.weekListItemContent}>
+                                <Text style={styles.weekListItemName}>{w.workoutName}</Text>
+                                <Text style={styles.weekListItemStatus}>{statusLabel}</Text>
+                            </View>
+                            <Feather name="chevron-right" size={16} color={theme.textTertiary} accessible={false} />
+                        </Pressable>
+                    );
+                })
+            )}
+        </View>
+    );
+};
+
 // ─── Week workout detail list ─────────────────────────────────────────────────
 
 const WeekWorkoutList = ({ weekGrid, workoutsByDate, todayStr, onWorkoutPress, onWorkoutLongPress }) => {
@@ -1075,11 +1153,18 @@ export default function CalendarScreen({ navigation, route }) {
     const workoutsByDate = React.useMemo(() => {
         const map = {};
         for (const w of workouts) {
+            if (isMonthOnly(w.scheduledDate)) continue; // handled separately
             if (!map[w.scheduledDate]) map[w.scheduledDate] = [];
             map[w.scheduledDate].push(w);
         }
         return map;
     }, [workouts]);
+
+    // Month-only workouts (scheduledDate = YYYY-MM): shown in the Unscheduled section.
+    const unscheduledWorkouts = React.useMemo(
+        () => workouts.filter(w => isMonthOnly(w.scheduledDate)),
+        [workouts],
+    );
 
     const monthGrid = React.useMemo(() => getMonthGrid(year, month), [year, month]);
 
@@ -1104,6 +1189,26 @@ export default function CalendarScreen({ navigation, route }) {
         const date = addDayTarget;
         setAddDayTarget(null);
         navigation.navigate('Create Workout', { clientEmail, clientName, scheduledDate: date });
+    };
+
+    // Month param for month view (YYYY-MM)
+    const currentMonthParam = React.useMemo(
+        () => `${year}-${String(month + 1).padStart(2, '0')}`,
+        [year, month],
+    );
+
+    // Month param for week view — the month that contains the week anchor
+    const weekMonthParam = React.useMemo(() => {
+        const anchor = parseISO(weekAnchor);
+        return `${anchor.getFullYear()}-${String(anchor.getMonth() + 1).padStart(2, '0')}`;
+    }, [weekAnchor]);
+
+    const handleAddUnscheduled = () => {
+        navigation.navigate('Create Workout', {
+            clientEmail,
+            clientName,
+            scheduledDate: currentMonthParam,
+        });
     };
 
     const handleUseTemplate = () => {
@@ -1230,9 +1335,9 @@ export default function CalendarScreen({ navigation, route }) {
         }
     };
 
-    // Workout date set for DatePickerModal dots
+    // Workout date set for DatePickerModal dots — only full dates
     const workoutDateSet = React.useMemo(
-        () => new Set(workouts.map(w => w.scheduledDate)),
+        () => new Set(workouts.filter(w => !isMonthOnly(w.scheduledDate)).map(w => w.scheduledDate)),
         [workouts],
     );
 
@@ -1385,6 +1490,15 @@ export default function CalendarScreen({ navigation, route }) {
                     </View>
 
                     <Legend />
+
+                    <UnscheduledSection
+                        workouts={unscheduledWorkouts}
+                        isCoach={isCoach}
+                        onWorkoutPress={handleWorkoutPress}
+                        onWorkoutLongPress={setActionWorkout}
+                        onAddUnscheduled={isCoach ? handleAddUnscheduled : undefined}
+                    />
+
                     {isCoach && (
                         <Text
                             style={styles.coachHint}
@@ -1464,6 +1578,14 @@ export default function CalendarScreen({ navigation, route }) {
                         weekGrid={weekGrid}
                         workoutsByDate={workoutsByDate}
                         todayStr={clientTodayStr}
+                        onWorkoutPress={handleWorkoutPress}
+                        onWorkoutLongPress={setActionWorkout}
+                    />
+
+                    {/* Unscheduled workouts for the month containing this week */}
+                    <UnscheduledSection
+                        workouts={unscheduledWorkouts.filter(w => w.scheduledDate === weekMonthParam)}
+                        isCoach={isCoach}
                         onWorkoutPress={handleWorkoutPress}
                         onWorkoutLongPress={setActionWorkout}
                     />
@@ -1637,6 +1759,14 @@ function makeStyles(theme) { return StyleSheet.create({
 
     weekEmptyState:     { alignItems: 'center', paddingVertical: 40, gap: 10 },
     weekEmptyStateText: { fontSize: 15, color: theme.textSecondary },
+
+    // ── Unscheduled section ──
+    unscheduledSection: { marginHorizontal: 16, marginTop: 8, marginBottom: 4 },
+    unscheduledHeader:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+    unscheduledTitle:   { fontSize: 11, fontWeight: '700', color: theme.textTertiary, textTransform: 'uppercase', letterSpacing: 0.8 },
+    unscheduledAddBtn:  { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 4, paddingHorizontal: 8, borderRadius: 6, borderWidth: 1, borderColor: theme.accent },
+    unscheduledAddText: { fontSize: 13, color: theme.accent, fontWeight: '600' },
+    unscheduledEmpty:   { fontSize: 13, color: theme.textTertiary, paddingVertical: 8 },
 
     // ── Legend ──
     legend:     { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, paddingVertical: 12, gap: 12 },

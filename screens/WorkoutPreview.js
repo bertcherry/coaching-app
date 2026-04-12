@@ -22,6 +22,12 @@ function getTodayStr() {
 }
 
 function formatScheduledDate(dateStr) {
+    if (!dateStr) return '';
+    if (dateStr.length === 7) {
+        // Month-only: YYYY-MM
+        const [year, month] = dateStr.split('-').map(Number);
+        return new Date(year, month - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    }
     const [year, month, day] = dateStr.split('-').map(Number);
     return new Date(year, month - 1, day).toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
 }
@@ -42,15 +48,18 @@ const FINISH_MESSAGES = [
 const RescheduleOverlay = ({ visible, scheduledDate, onDismiss, onConfirm }) => {
     const { theme } = useTheme();
     const styles = makeStyles(theme);
-    const dateLabel = scheduledDate ? formatScheduledDate(scheduledDate) : '';
+    const isMonthOnly = scheduledDate?.length === 7;
+    const dateLabel = formatScheduledDate(scheduledDate);
 
     return (
         <Modal transparent animationType="fade" visible={visible} onRequestClose={onDismiss}>
             <View style={styles.overlayBackdrop}>
                 <View style={[styles.overlayCard, styles.rescheduleCard]}>
-                    <Text style={styles.overlayMessage}>Reschedule to today?</Text>
+                    <Text style={styles.overlayMessage}>Move to today?</Text>
                     <Text style={styles.overlaySubtext}>
-                        This workout is scheduled for {dateLabel}.
+                        {isMonthOnly
+                            ? `This workout is unscheduled for ${dateLabel}. Move it to today?`
+                            : `This workout is scheduled for ${dateLabel}.`}
                     </Text>
                     <View style={styles.overlayActions}>
                         <Pressable style={styles.overlayButtonSecondary} onPress={onDismiss}>
