@@ -112,7 +112,7 @@ export default function TemplatePickerOverlay({
                     ...(search ? { search } : {}),
                 });
                 const res = await authFetch(
-                    `https://coaching-app.bert.m.cherry.workers.dev/workouts/templates?${params}`
+                    `https://coaching-app.bert-m-cherry.workers.dev/workouts/templates?${params}`
                 );
                 const body = await res.json();
                 setTemplates(body.workouts ?? []);
