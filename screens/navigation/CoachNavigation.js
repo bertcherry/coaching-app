@@ -8,7 +8,7 @@ import CalendarStack from './CalendarStack';
 import ClientListStack from './ClientListStack';
 import TemplateStack from './TemplateStack';
 import CreateWorkout from '../CreateWorkout';
-import ToBeFilmedScreen from '../ToBeFilmedScreen';
+import ExerciseLibraryStack from './ExerciseLibraryStack';
 import SettingsScreen from '../SettingsScreen';
 import AppDrawerContent from '../../components/AppDrawerContent';
 import { useTheme } from '../../context/ThemeContext';
@@ -57,7 +57,7 @@ function CoachDrawer() {
                 options={{ headerShown: false }}
             />
             <Drawer.Screen name="Create Workout" component={CreateWorkout} />
-            <Drawer.Screen name="To Be Filmed" component={ToBeFilmedScreen} />
+            <Drawer.Screen name="Exercise Library" component={ExerciseLibraryStack} options={{ headerShown: false }} />
             <Drawer.Screen
                 name="My Calendar"
                 component={CalendarStack}

@@ -176,6 +176,123 @@ export async function handleCreateDemo(request, env) {
 }
 
 /**
+ * GET /demos?page=1&pageSize=10&search=
+ * Coach only — list all exercises alphabetically with pagination.
+ */
+export async function handleGetAllDemos(request, env) {
+    try { await requireCoach(request, env); }
+    catch (e) { return e; }
+
+    const url = new URL(request.url);
+    const page     = Math.max(1, parseInt(url.searchParams.get('page')     ?? '1'));
+    const pageSize = Math.min(50, parseInt(url.searchParams.get('pageSize') ?? '10'));
+    const search   = (url.searchParams.get('search') ?? '').trim();
+    const offset   = (page - 1) * pageSize;
+
+    const searchClause = search ? 'WHERE name LIKE ?' : '';
+    const params = search ? [`%${search}%`] : [];
+
+    const countRow = await env.demosDB.prepare(
+        `SELECT COUNT(*) as total FROM demos ${searchClause}`
+    ).bind(...params).first();
+
+    const total = countRow?.total ?? 0;
+
+    const { results } = await env.demosDB.prepare(`
+        SELECT id, name, description, hasVideo, streamId
+        FROM demos
+        ${searchClause}
+        ORDER BY name ASC
+        LIMIT ? OFFSET ?
+    `).bind(...params, pageSize, offset).all();
+
+    return json({ exercises: results, total, page, pageSize });
+}
+
+/**
+ * PATCH /demos/:id
+ * Coach only — update name and description for an exercise.
+ * Body: { name, description }
+ */
+export async function handleUpdateDemo(id, request, env) {
+    try { await requireCoach(request, env); }
+    catch (e) { return e; }
+
+    if (!id) return json({ error: 'id required' }, 400);
+
+    const { name, description } = await request.json();
+    const trimmedName = name?.trim();
+
+    if (!trimmedName) return json({ error: 'name is required' }, 400);
+
+    const existing = await env.demosDB.prepare(
+        'SELECT id FROM demos WHERE id = ?'
+    ).bind(id).first();
+
+    if (!existing) return json({ error: 'Exercise not found' }, 404);
+
+    // Check for duplicate name (case-insensitive), excluding this exercise
+    const duplicate = await env.demosDB.prepare(
+        'SELECT id FROM demos WHERE lower(name) = lower(?) AND id != ?'
+    ).bind(trimmedName, id).first();
+
+    if (duplicate) {
+        return json({ error: 'An exercise with that name already exists' }, 409);
+    }
+
+    await env.demosDB.prepare(
+        'UPDATE demos SET name = ?, description = ? WHERE id = ?'
+    ).bind(trimmedName, description?.trim() ?? '', id).run();
+
+    return json({ message: 'Exercise updated', id, name: trimmedName, description: description?.trim() ?? '' });
+}
+
+/**
+ * POST /demos/:id/stream-upload-url
+ * Coach only — get a one-time Cloudflare Stream direct-upload URL.
+ * Returns { uploadURL, uid } — client uploads directly to Stream, then
+ * calls PATCH /demos/:id/stream to persist the uid.
+ */
+export async function handleGetStreamUploadUrl(id, request, env) {
+    try { await requireCoach(request, env); }
+    catch (e) { return e; }
+
+    if (!id) return json({ error: 'id required' }, 400);
+
+    const existing = await env.demosDB.prepare(
+        'SELECT id FROM demos WHERE id = ?'
+    ).bind(id).first();
+
+    if (!existing) return json({ error: 'Exercise not found' }, 404);
+
+    const accountId = env.CF_ACCOUNT_ID;
+    const apiToken  = env.CF_STREAM_TOKEN;
+
+    if (!accountId || !apiToken) {
+        return json({ error: 'Cloudflare Stream not configured' }, 500);
+    }
+
+    const res = await fetch(
+        `https://api.cloudflare.com/client/v4/accounts/${accountId}/stream/direct_upload`,
+        {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${apiToken}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ maxDurationSeconds: 300, requireSignedURLs: false }),
+        }
+    );
+
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+        return json({ error: data.errors?.[0]?.message ?? 'Failed to get upload URL' }, 502);
+    }
+
+    return json({ uploadURL: data.result.uploadURL, uid: data.result.uid });
+}
+
+/**
  * PATCH /demos/:id/stream
  * Coach only — update the Cloudflare Stream video ID for an exercise.
  * Body: { streamId }

@@ -5,8 +5,11 @@ import {
     handleSearchDemos,
     handleGetDemo,
     handleGetUnfilmed,
+    handleGetAllDemos,
     handleCreateDemo,
+    handleUpdateDemo,
     handleUpdateStreamId,
+    handleGetStreamUploadUrl,
 } from './demos';
 import { handleHistoryBatch, handleExerciseSummary } from './history';
 import { handleUpdateName, handleUpdateEmail, handleUpdatePassword, handleUpdateUnit } from './profile';
@@ -214,13 +217,26 @@ export default {
         if (method === 'GET' && pathname === '/demos/unfilmed') {
             return handleGetUnfilmed(request, env);
         }
+        if (method === 'GET' && pathname === '/demos') {
+            return handleGetAllDemos(request, env);
+        }
         if (method === 'POST' && pathname === '/demos') {
             return handleCreateDemo(request, env);
+        }
+        // POST /demos/:id/stream-upload-url
+        const streamUploadUrlMatch = pathname.match(/^\/demos\/([^/]+)\/stream-upload-url$/);
+        if (method === 'POST' && streamUploadUrlMatch) {
+            return handleGetStreamUploadUrl(streamUploadUrlMatch[1], request, env);
         }
         // PATCH /demos/:id/stream
         const streamPatchMatch = pathname.match(/^\/demos\/([^/]+)\/stream$/);
         if (method === 'PATCH' && streamPatchMatch) {
             return handleUpdateStreamId(streamPatchMatch[1], request, env);
+        }
+        // PATCH /demos/:id (update name/description)
+        const demoPatchMatch = pathname.match(/^\/demos\/([^/]+)$/);
+        if (method === 'PATCH' && demoPatchMatch) {
+            return handleUpdateDemo(demoPatchMatch[1], request, env);
         }
         // GET /demos/:id  (after the named sub-routes above)
         const demoGetMatch = pathname.match(/^\/demos\/([^/]+)$/);
