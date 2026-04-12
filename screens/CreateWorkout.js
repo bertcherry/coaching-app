@@ -11,7 +11,9 @@ import ExerciseCountInput from '../components/ExerciseCountInput';
 import Feather from '@expo/vector-icons/Feather';
 import * as Yup from 'yup';
 import { useAuth } from '../context/AuthContext';
+import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../context/ThemeContext';
+import { useScrollY } from '../context/ScrollContext';
 import ExerciseSearch from '../components/ExerciseSearch';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -573,6 +575,8 @@ export default function CreateWorkout({ navigation, route }) {
     const { user, authFetch } = useAuth();
     const { theme } = useTheme();
     const styles = makeStyles(theme);
+    const scrollY = useScrollY();
+    useFocusEffect(React.useCallback(() => { scrollY.setValue(0); }, [scrollY]));
     const prefillClient     = route?.params?.clientEmail ?? null;
     const prefillClientName = route?.params?.clientName ?? null;
     const prefillDate       = route?.params?.scheduledDate ?? null;
@@ -707,7 +711,7 @@ export default function CreateWorkout({ navigation, route }) {
 
     return (
         <View style={{ flex: 1, backgroundColor: theme.background }}>
-            <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
+            <ScrollView style={styles.container} keyboardShouldPersistTaps="handled" onScroll={(e) => scrollY.setValue(e.nativeEvent.contentOffset.y)} scrollEventThrottle={16}>
                 <Formik initialValues={makeInitialValues()} onSubmit={handleSave} validationSchema={workoutSchema}>
                     {({ handleChange, handleBlur, handleSubmit, setFieldValue, values, errors, setValues }) => {
                         formikRef.current = { values, setValues };

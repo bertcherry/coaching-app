@@ -7,6 +7,7 @@ import CoachingHeader from './components/CoachingHeader';
 import CoachingFooter from './components/CoachingFooter';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
+import { ScrollProvider } from './context/ScrollContext';
 import SignInNavigation from './screens/navigation/SignInNavigation';
 import CoachNavigation from './screens/navigation/CoachNavigation';
 import ClientNavigation from './screens/navigation/ClientNavigation';
@@ -32,13 +33,15 @@ function ThemedApp() {
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.headerBackground }]}>
-      <NavigationContainer>
-        <View style={[styles.container, { backgroundColor: theme.background }]}>
-          <CoachingHeader />
-          <RootNavigator />
-          <CoachingFooter />
-        </View>
-      </NavigationContainer>
+      <ScrollProvider>
+        <NavigationContainer>
+          <View style={[styles.container, { backgroundColor: theme.background }]}>
+            <CoachingHeader />
+            <RootNavigator />
+            <CoachingFooter />
+          </View>
+        </NavigationContainer>
+      </ScrollProvider>
     </SafeAreaView>
   );
 }

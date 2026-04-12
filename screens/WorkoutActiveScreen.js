@@ -27,7 +27,9 @@ import {
 import Feather from '@expo/vector-icons/Feather';
 import { Video, ResizeMode } from 'expo-av';
 import { useAuth } from '../context/AuthContext';
+import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../context/ThemeContext';
+import { useScrollY } from '../context/ScrollContext';
 import { enqueueRecord, syncQueue } from '../utils/WorkoutSync';
 import 'react-native-get-random-values';
 import { v4 as uuidv4 } from 'uuid';
@@ -240,6 +242,8 @@ export default function WorkoutActiveScreen({ route, navigation }) {
     const { user, accessToken, authFetch } = useAuth();
     const { theme } = useTheme();
     const styles = makeStyles(theme);
+    const scrollY = useScrollY();
+    useFocusEffect(React.useCallback(() => { scrollY.setValue(0); }, [scrollY]));
 
     // ── Cursor ──────────────────────────────────────────────────────────────
     const [sectionIdx, setSectionIdx] = React.useState(0);
@@ -649,6 +653,8 @@ export default function WorkoutActiveScreen({ route, navigation }) {
             <ScrollView
                 contentContainerStyle={styles.scrollContent}
                 keyboardDismissMode="on-drag"
+                onScroll={(e) => scrollY.setValue(e.nativeEvent.contentOffset.y)}
+                scrollEventThrottle={16}
             >
                 {/* ── Header ── */}
                 <View style={styles.header}>

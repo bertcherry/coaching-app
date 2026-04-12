@@ -51,7 +51,7 @@ export const dark = {
     inputBorder:        brand.rose,
     inputPlaceholder:   '#888888',
     // Navigation / header
-    headerBackground:   '#fae9e9',
+    headerBackground:   '#1a1a1a',
     // Misc
     divider:            '#222222',
     overlay:            'rgba(0,0,0,0.75)',

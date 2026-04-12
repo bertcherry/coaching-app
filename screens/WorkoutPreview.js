@@ -5,8 +5,10 @@ import {
 } from 'react-native';
 import Feather from '@expo/vector-icons/Feather';
 import { Video, ResizeMode } from 'expo-av';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { useScrollY } from '../context/ScrollContext';
 import { enqueueRecord, syncQueue } from '../utils/WorkoutSync';
 import SetRow from '../components/SetRow';
 import WorkoutPreviewItem from '../components/WorkoutPreviewItem';
@@ -212,6 +214,12 @@ export default function WorkoutPreview({ route, navigation }) {
     const { theme } = useTheme();
     const styles = makeStyles(theme);
 
+    const scrollY = useScrollY();
+
+    useFocusEffect(React.useCallback(() => {
+        scrollY.setValue(0);
+    }, [scrollY]));
+
     const [workoutData, setWorkoutData] = React.useState(undefined);
     const [showFinishOverlay, setShowFinishOverlay] = React.useState(false);
     const [showRescheduleOverlay, setShowRescheduleOverlay] = React.useState(false);
@@ -377,6 +385,8 @@ export default function WorkoutPreview({ route, navigation }) {
                 keyboardDismissMode="on-drag"
                 contentContainerStyle={{ paddingBottom: 40 }}
                 indicatorStyle={theme.mode === 'dark' ? 'white' : 'black'}
+                onScroll={(e) => scrollY.setValue(e.nativeEvent.contentOffset.y)}
+                scrollEventThrottle={16}
             />
 
             <FinishOverlay

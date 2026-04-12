@@ -29,8 +29,10 @@ import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import Animated, {
     useSharedValue, useAnimatedStyle, withSpring, runOnJS,
 } from 'react-native-reanimated';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { useScrollY } from '../context/ScrollContext';
 import TemplatePickerOverlay from '../components/TemplatePickerOverlay';
 
 const WORKER_URL = 'https://coaching-app.bert-m-cherry.workers.dev';
@@ -920,6 +922,11 @@ export default function CalendarScreen({ navigation, route }) {
     const { user, authFetch } = useAuth();
     const { theme } = useTheme();
     const styles = makeStyles(theme);
+    const scrollY = useScrollY();
+
+    useFocusEffect(React.useCallback(() => {
+        scrollY.setValue(0);
+    }, [scrollY]));
     const isCoach = user?.isCoach ?? false;
 
     const clientEmail    = route?.params?.clientEmail ?? user?.email;
@@ -1332,6 +1339,8 @@ export default function CalendarScreen({ navigation, route }) {
                 <ScrollView
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={{ paddingBottom: 80 }}
+                    onScroll={(e) => scrollY.setValue(e.nativeEvent.contentOffset.y)}
+                    scrollEventThrottle={16}
                 >
                     {/* Day-of-week row */}
                     <View
@@ -1393,6 +1402,8 @@ export default function CalendarScreen({ navigation, route }) {
                 <ScrollView
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={{ paddingBottom: 80 }}
+                    onScroll={(e) => scrollY.setValue(e.nativeEvent.contentOffset.y)}
+                    scrollEventThrottle={16}
                 >
                     {/* Week grid — compact pills in columns */}
                     <View style={styles.weekGrid}>

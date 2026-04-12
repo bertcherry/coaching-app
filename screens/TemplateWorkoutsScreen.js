@@ -18,7 +18,9 @@ import {
 } from 'react-native';
 import Feather from '@expo/vector-icons/Feather';
 import { useAuth } from '../context/AuthContext';
+import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../context/ThemeContext';
+import { useScrollY } from '../context/ScrollContext';
 
 const PAGE_SIZE = 10;
 
@@ -84,6 +86,8 @@ const WorkoutRow = ({ workout, onCopy, theme }) => {
 export default function UnscheduledWorkoutsScreen({ navigation }) {
     const { authFetch } = useAuth();
     const { theme } = useTheme();
+    const scrollY = useScrollY();
+    useFocusEffect(React.useCallback(() => { scrollY.setValue(0); }, [scrollY]));
 
     const [workouts, setWorkouts] = React.useState([]);
     const [loading, setLoading] = React.useState(true);
@@ -246,6 +250,8 @@ export default function UnscheduledWorkoutsScreen({ navigation }) {
                     data={workouts}
                     renderItem={renderItem}
                     keyExtractor={item => item.id}
+                    onScroll={(e) => scrollY.setValue(e.nativeEvent.contentOffset.y)}
+                    scrollEventThrottle={16}
                     ListEmptyComponent={renderEmpty}
                     ListFooterComponent={renderFooter}
                     onEndReached={loadMore}

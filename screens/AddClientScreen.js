@@ -12,7 +12,9 @@ import {
 } from 'react-native';
 import CustomButton from '../components/Button';
 import { useAuth } from '../context/AuthContext';
+import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../context/ThemeContext';
+import { useScrollY } from '../context/ScrollContext';
 
 export default function AddClientScreen() {
     const [fname, onChangeFname] = React.useState('');
@@ -23,6 +25,8 @@ export default function AddClientScreen() {
 
     const { authFetch } = useAuth();
     const { theme } = useTheme();
+    const scrollY = useScrollY();
+    useFocusEffect(React.useCallback(() => { scrollY.setValue(0); }, [scrollY]));
 
     const onAddClientPressed = async () => {
         if (!fname.trim() || !lname.trim() || !email.trim()) {
@@ -72,7 +76,7 @@ export default function AddClientScreen() {
 
     if (success) {
         return (
-            <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
+            <ScrollView style={[styles.container, { backgroundColor: theme.background }]} onScroll={(e) => scrollY.setValue(e.nativeEvent.contentOffset.y)} scrollEventThrottle={16}>
                 <View style={styles.successContainer}>
                     <Text style={[styles.successIcon, { color: theme.success }]}>✓</Text>
                     <Text style={[styles.headerText, { color: theme.textPrimary }]}>Client Added</Text>

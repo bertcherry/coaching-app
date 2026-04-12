@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable } from 'react-native';
+import { Pressable, Platform } from 'react-native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { DrawerActions } from '@react-navigation/native';
 import Feather from '@expo/vector-icons/Feather';
@@ -16,7 +16,7 @@ export default function ClientListStack() {
     return (
         <Stack.Navigator
             screenOptions={({ navigation }) => ({
-                headerStyle: { backgroundColor: theme.surfaceElevated },
+                headerStyle: { backgroundColor: theme.surfaceElevated, height: Platform.select({ ios: 44, android: 48 }) },
                 headerTintColor: theme.textPrimary,
                 headerRight: () => (
                     <Pressable

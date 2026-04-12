@@ -18,7 +18,9 @@ import {
 } from 'react-native';
 import Feather from '@expo/vector-icons/Feather';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../context/ThemeContext';
+import { useScrollY } from '../context/ScrollContext';
 import { useAuth } from '../context/AuthContext';
 import { CALENDAR_VIEW_KEY } from '../screens/CalendarScreen';
 
@@ -247,6 +249,8 @@ const UnitPickerModal = ({ visible, current, onClose, onSelect, theme }) => (
 
 export default function SettingsScreen() {
     const { theme, preference, setPreference } = useTheme();
+    const scrollY = useScrollY();
+    useFocusEffect(React.useCallback(() => { scrollY.setValue(0); }, [scrollY]));
     const { user, authFetch, signOut } = useAuth();
 
     const [loading, setLoading] = React.useState(false);
@@ -389,7 +393,7 @@ export default function SettingsScreen() {
 
     return (
         <View style={s.container}>
-            <ScrollView contentContainerStyle={s.scrollContent}>
+            <ScrollView contentContainerStyle={s.scrollContent} onScroll={(e) => scrollY.setValue(e.nativeEvent.contentOffset.y)} scrollEventThrottle={16}>
 
                 {/* ── Appearance ── */}
                 <SectionHeader title="APPEARANCE" theme={theme} />

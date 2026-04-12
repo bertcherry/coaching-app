@@ -11,11 +11,14 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import CustomButton from '../components/Button';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { useScrollY } from '../context/ScrollContext';
 
 export default function ClientList() {
     const navigation = useNavigation();
     const { authFetch } = useAuth();
     const { theme } = useTheme();
+    const scrollY = useScrollY();
+    useFocusEffect(React.useCallback(() => { scrollY.setValue(0); }, [scrollY]));
     const [clients, setClients] = React.useState([]);
     const [loading, setLoading] = React.useState(true);
     const [error, setError] = React.useState(null);
@@ -88,6 +91,8 @@ export default function ClientList() {
                     data={clients}
                     keyExtractor={(item) => item.email}
                     renderItem={renderClient}
+                    onScroll={(e) => scrollY.setValue(e.nativeEvent.contentOffset.y)}
+                    scrollEventThrottle={16}
                     contentContainerStyle={styles.listContent}
                     indicatorStyle={theme.mode === 'dark' ? 'white' : 'black'}
                 />

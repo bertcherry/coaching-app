@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable } from 'react-native';
+import { Pressable, Platform } from 'react-native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import { DrawerActions } from '@react-navigation/native';
@@ -33,7 +33,7 @@ function CoachDrawer() {
                 },
                 drawerActiveTintColor: theme.accent,
                 drawerInactiveTintColor: theme.textSecondary,
-                headerStyle: { backgroundColor: theme.surfaceElevated },
+                headerStyle: { backgroundColor: theme.surfaceElevated, height: Platform.select({ ios: 44, android: 48 }) },
                 headerTintColor: theme.textPrimary,
                 headerLeft: () => null,
                 headerRight: () => (
@@ -73,7 +73,7 @@ export default function CoachNavigation() {
     return (
         <Stack.Navigator
             screenOptions={{
-                headerStyle: { backgroundColor: theme.surfaceElevated },
+                headerStyle: { backgroundColor: theme.surfaceElevated, height: Platform.select({ ios: 44, android: 48 }) },
                 headerTintColor: theme.textPrimary,
             }}
         >

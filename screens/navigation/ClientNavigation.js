@@ -1,4 +1,5 @@
 import React from 'react';
+import { Platform } from 'react-native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import CalendarStack from './CalendarStack';
@@ -43,7 +44,7 @@ export default function ClientNavigation() {
     return (
         <Stack.Navigator
             screenOptions={{
-                headerStyle: { backgroundColor: theme.surfaceElevated },
+                headerStyle: { backgroundColor: theme.surfaceElevated, height: Platform.select({ ios: 44, android: 48 }) },
                 headerTintColor: theme.textPrimary,
             }}
         >

@@ -32,7 +32,9 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import Feather from '@expo/vector-icons/Feather';
 import { useAuth } from '../context/AuthContext';
+import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../context/ThemeContext';
+import { useScrollY } from '../context/ScrollContext';
 
 const WORKER_URL = 'https://coaching-app.bert-m-cherry.workers.dev';
 const PAGE_SIZE  = 20;
@@ -486,6 +488,8 @@ export default function ToBeFilmedScreen() {
     const { authFetch } = useAuth();
     const { theme }     = useTheme();
     const styles        = makeStyles(theme);
+    const scrollY = useScrollY();
+    useFocusEffect(React.useCallback(() => { scrollY.setValue(0); }, [scrollY]));
 
     const [exercises, setExercises]         = React.useState([]);
     const [loading, setLoading]             = React.useState(true);
@@ -631,6 +635,8 @@ export default function ToBeFilmedScreen() {
                     data={exercises}
                     renderItem={renderItem}
                     keyExtractor={item => item.id}
+                    onScroll={(e) => scrollY.setValue(e.nativeEvent.contentOffset.y)}
+                    scrollEventThrottle={16}
                     ListEmptyComponent={renderEmpty}
                     ListFooterComponent={renderFooter}
                     onEndReached={loadMore}
