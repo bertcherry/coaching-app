@@ -1,23 +1,25 @@
+import React from 'react';
+import { createStackNavigator } from '@react-navigation/stack';
 import { createDrawerNavigator } from '@react-navigation/drawer';
-import WorkoutPreview from '../WorkoutPreview';
-import WorkoutActiveScreen from '../WorkoutActiveScreen';
-import WelcomeScreen from '../WelcomeScreen';
-import SampleWorkout from '../SampleWorkout';
-import CalendarScreen from '../CalendarScreen';
+import CalendarStack from './CalendarStack';
 import SettingsScreen from '../SettingsScreen';
 import AppDrawerContent from '../../components/AppDrawerContent';
 import { useTheme } from '../../context/ThemeContext';
 
-export default function ClientNavigation() {
-    const Drawer = createDrawerNavigator();
+const Stack = createStackNavigator();
+const Drawer = createDrawerNavigator();
+
+function ClientDrawer() {
     const { theme } = useTheme();
 
-    return(
+    return (
         <Drawer.Navigator
             drawerContent={(props) => <AppDrawerContent {...props} />}
             screenOptions={{
+                drawerPosition: 'right',
                 drawerStyle: {
                     backgroundColor: theme.surfaceElevated,
+                    width: 200,
                 },
                 drawerLabelStyle: {
                     color: theme.textPrimary,
@@ -26,19 +28,31 @@ export default function ClientNavigation() {
                 drawerInactiveTintColor: theme.textSecondary,
             }}
         >
-            <Drawer.Screen name="Calendar" component={CalendarScreen} />
-            <Drawer.Screen name='Welcome' component={WelcomeScreen} />
-            <Drawer.Screen name='Sample Workout' component={SampleWorkout} />
-            <Drawer.Screen name='Workout Preview' component={WorkoutPreview}
-                options={{ drawerItemStyle: { display: 'none' } }}
-                initialParams={{id: 'c8d08b56-1303-41d3-ae6f-8883f2f396b7'}} />
-            <Drawer.Screen name='Workout Active' component={WorkoutActiveScreen}
-                options={{ drawerItemStyle: { display: 'none' } }} />
             <Drawer.Screen
-                name="Settings"
-                component={SettingsScreen}
-                options={{ drawerItemStyle: { display: 'none' } }}
+                name="Home"
+                component={CalendarStack}
+                options={{ headerShown: false }}
             />
         </Drawer.Navigator>
+    );
+}
+
+export default function ClientNavigation() {
+    const { theme } = useTheme();
+
+    return (
+        <Stack.Navigator
+            screenOptions={{
+                headerStyle: { backgroundColor: theme.surfaceElevated },
+                headerTintColor: theme.textPrimary,
+            }}
+        >
+            <Stack.Screen
+                name="MainDrawer"
+                component={ClientDrawer}
+                options={{ headerShown: false }}
+            />
+            <Stack.Screen name="Settings" component={SettingsScreen} />
+        </Stack.Navigator>
     );
 }

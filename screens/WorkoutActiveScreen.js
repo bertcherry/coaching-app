@@ -22,7 +22,7 @@
 import * as React from 'react';
 import {
     View, Text, TextInput, Pressable, StyleSheet,
-    ScrollView, Modal, KeyboardAvoidingView, Platform,
+    ScrollView, Modal, KeyboardAvoidingView, Platform, Alert,
 } from 'react-native';
 import Feather from '@expo/vector-icons/Feather';
 import { Video, ResizeMode } from 'expo-av';
@@ -137,7 +137,7 @@ const FinishOverlay = ({ visible, onDismiss, onConfirm }) => {
  *   upNextName     string | null    — shown during rest phase
  *   onAdvance      () => void       — called when timer should move to next step
  */
-const WorkTimer = ({ phase, workMin, workMax, restSeconds, timerMode, upNextName, onAdvance, onElapsedWork }) => {
+const WorkTimer = ({ phase, workMin, workMax, restSeconds, timerMode, upNextName, onAdvance, onElapsedWork, paused = false, onTimerStart }) => {
     const { theme } = useTheme();
     const styles = makeStyles(theme);
 
@@ -156,7 +156,7 @@ const WorkTimer = ({ phase, workMin, workMax, restSeconds, timerMode, upNextName
     }, [phase]);
 
     React.useEffect(() => {
-        if (!started || maxReached) return;
+        if (!started || maxReached || paused) return;
         const interval = setInterval(() => {
             setElapsed(prev => {
                 const next = prev + 1;
@@ -173,7 +173,7 @@ const WorkTimer = ({ phase, workMin, workMax, restSeconds, timerMode, upNextName
             });
         }, 1000);
         return () => clearInterval(interval);
-    }, [started, maxReached, phase, timerMode]);
+    }, [started, maxReached, phase, timerMode, paused]);
 
     const remaining = Math.max(0, targetSeconds - elapsed);
     const isWork = phase === 'work';
@@ -215,7 +215,7 @@ const WorkTimer = ({ phase, workMin, workMax, restSeconds, timerMode, upNextName
             )}
 
             {!started && (
-                <Pressable style={styles.timerStartButton} onPress={() => setStarted(true)}>
+                <Pressable style={styles.timerStartButton} onPress={() => { setStarted(true); onTimerStart?.(); }}>
                     <Feather name="play" size={18} color="#000" />
                     <Text style={styles.timerStartText}>Start</Text>
                 </Pressable>
@@ -265,6 +265,8 @@ export default function WorkoutActiveScreen({ route, navigation }) {
     // ── Timer ───────────────────────────────────────────────────────────────
     const [timerMode,  setTimerMode]  = React.useState('manual'); // 'auto' | 'manual'
     const [timerPhase, setTimerPhase] = React.useState('work');   // 'work' | 'rest'
+    const [timerPaused, setTimerPaused] = React.useState(false);
+    const timerActiveRef = React.useRef(false);
 
     // ── Video ───────────────────────────────────────────────────────────────
     const [showVideo, setShowVideo] = React.useState(false);
@@ -272,6 +274,38 @@ export default function WorkoutActiveScreen({ route, navigation }) {
     // ── Finish ──────────────────────────────────────────────────────────────
     const [showFinishOverlay, setShowFinishOverlay] = React.useState(false);
     const [workoutDone, setWorkoutDone] = React.useState(false);
+
+    // ── Back-navigation guard ────────────────────────────────────────────────
+    React.useEffect(() => {
+        const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+            if (!timerActiveRef.current || workoutDone) return;
+            e.preventDefault();
+            setTimerPaused(true);
+            Alert.alert(
+                'Leave workout?',
+                'The timer is running. Are you sure you want to leave?',
+                [
+                    {
+                        text: 'Stay',
+                        style: 'cancel',
+                        onPress: () => setTimerPaused(false),
+                    },
+                    {
+                        text: 'Leave',
+                        style: 'destructive',
+                        onPress: () => navigation.dispatch(e.data.action),
+                    },
+                ],
+            );
+        });
+        return unsubscribe;
+    }, [navigation, workoutDone]);
+
+    // Reset timer active state when advancing to a new section
+    React.useEffect(() => {
+        timerActiveRef.current = false;
+        setTimerPaused(false);
+    }, [sectionIdx]);
 
     // ── Derived current state ───────────────────────────────────────────────
     const currentSection  = workoutData[sectionIdx];
@@ -700,6 +734,8 @@ export default function WorkoutActiveScreen({ route, navigation }) {
                             upNextName={null}
                             onElapsedWork={(s) => setElapsedWork(s)}
                             onAdvance={handleTimerAdvance}
+                            paused={timerPaused}
+                            onTimerStart={() => { timerActiveRef.current = true; }}
                         />
                     </>
                 )}
@@ -714,6 +750,8 @@ export default function WorkoutActiveScreen({ route, navigation }) {
                         upNextName={upNextName()}
                         onElapsedWork={null}
                         onAdvance={handleTimerAdvance}
+                        paused={timerPaused}
+                        onTimerStart={() => { timerActiveRef.current = true; }}
                     />
                 )}
 

@@ -1,58 +1,88 @@
+import React from 'react';
+import { Pressable } from 'react-native';
+import { createStackNavigator } from '@react-navigation/stack';
 import { createDrawerNavigator } from '@react-navigation/drawer';
+import { DrawerActions } from '@react-navigation/native';
+import Feather from '@expo/vector-icons/Feather';
+import CalendarStack from './CalendarStack';
+import ClientListStack from './ClientListStack';
+import TemplateStack from './TemplateStack';
 import CreateWorkout from '../CreateWorkout';
-import WorkoutPreview from '../WorkoutPreview';
-import WorkoutActiveScreen from '../WorkoutActiveScreen';
-import WelcomeScreen from '../WelcomeScreen';
-import SampleWorkout from '../SampleWorkout';
-import ClientList from '../ClientList';
-import CalendarScreen from '../CalendarScreen';
-import TemplateWorkoutsScreen from '../TemplateWorkoutsScreen';
-import SettingsScreen from '../SettingsScreen';
-import AddClientScreen from '../AddClientScreen';
 import ToBeFilmedScreen from '../ToBeFilmedScreen';
+import SettingsScreen from '../SettingsScreen';
 import AppDrawerContent from '../../components/AppDrawerContent';
 import { useTheme } from '../../context/ThemeContext';
 
-export default function CoachNavigation() {
-    const Drawer = createDrawerNavigator();
+const Stack = createStackNavigator();
+const Drawer = createDrawerNavigator();
+
+function CoachDrawer() {
     const { theme } = useTheme();
 
-    return(
+    return (
         <Drawer.Navigator
             drawerContent={(props) => <AppDrawerContent {...props} />}
-            screenOptions={{
+            screenOptions={({ navigation }) => ({
+                drawerPosition: 'right',
                 drawerStyle: {
                     backgroundColor: theme.surfaceElevated,
+                    width: 220,
                 },
                 drawerLabelStyle: {
                     color: theme.textPrimary,
                 },
                 drawerActiveTintColor: theme.accent,
                 drawerInactiveTintColor: theme.textSecondary,
-            }}
+                headerStyle: { backgroundColor: theme.surfaceElevated },
+                headerTintColor: theme.textPrimary,
+                headerLeft: () => null,
+                headerRight: () => (
+                    <Pressable
+                        onPress={() => navigation.dispatch(DrawerActions.openDrawer())}
+                        style={{ marginRight: 16 }}
+                    >
+                        <Feather name="menu" size={24} color={theme.textPrimary} />
+                    </Pressable>
+                ),
+            })}
         >
-            <Drawer.Screen name='Welcome' component={WelcomeScreen} />
-            <Drawer.Screen name='Sample Workout' component={SampleWorkout} />
-            <Drawer.Screen name='Create Workout' component={CreateWorkout} />
-            <Drawer.Screen name='Client List' component={ClientList} />
             <Drawer.Screen
-                name="Add Client"
-                component={AddClientScreen}
-                options={{ drawerItemStyle: { display: 'none' } }}
+                name="Client List"
+                component={ClientListStack}
+                options={{ headerShown: false }}
             />
-            <Drawer.Screen name="Template Workouts" component={TemplateWorkoutsScreen} />
-            <Drawer.Screen name='Workout Preview' component={WorkoutPreview}
-                options={{ drawerItemStyle: { display: 'none' } }}
-                initialParams={{id: 'c8d08b56-1303-41d3-ae6f-8883f2f396b7'}} />
-            <Drawer.Screen name='Workout Active' component={WorkoutActiveScreen}
-                options={{ drawerItemStyle: { display: 'none' } }} />
-            <Drawer.Screen name="Calendar" component={CalendarScreen} />
+            <Drawer.Screen
+                name="Template Workouts"
+                component={TemplateStack}
+                options={{ headerShown: false }}
+            />
+            <Drawer.Screen name="Create Workout" component={CreateWorkout} />
             <Drawer.Screen name="To Be Filmed" component={ToBeFilmedScreen} />
             <Drawer.Screen
-                name="Settings"
-                component={SettingsScreen}
-                options={{ drawerItemStyle: { display: 'none' } }}
+                name="My Calendar"
+                component={CalendarStack}
+                options={{ headerShown: false }}
             />
         </Drawer.Navigator>
+    );
+}
+
+export default function CoachNavigation() {
+    const { theme } = useTheme();
+
+    return (
+        <Stack.Navigator
+            screenOptions={{
+                headerStyle: { backgroundColor: theme.surfaceElevated },
+                headerTintColor: theme.textPrimary,
+            }}
+        >
+            <Stack.Screen
+                name="MainDrawer"
+                component={CoachDrawer}
+                options={{ headerShown: false }}
+            />
+            <Stack.Screen name="Settings" component={SettingsScreen} />
+        </Stack.Navigator>
     );
 }

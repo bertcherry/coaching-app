@@ -1089,6 +1089,7 @@ export default function CalendarScreen({ navigation, route }) {
         navigation.navigate('Workout Preview', {
             id: workout.workoutId,
             scheduledWorkoutId: workout.id,
+            scheduledDate: workout.scheduledDate,
         });
     };
 

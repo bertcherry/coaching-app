@@ -42,7 +42,11 @@ export default function ClientList() {
     }, [authFetch]);
 
     // Refresh the list whenever this screen comes into focus (e.g. after adding a client)
-    useFocusEffect(fetchClients);
+    useFocusEffect(
+        React.useCallback(() => {
+            fetchClients();
+        }, [fetchClients])
+    );
 
     const goToClientCalendar = (client) => {
         navigation.navigate('Calendar', {

@@ -11,6 +11,18 @@ import { enqueueRecord, syncQueue } from '../utils/WorkoutSync';
 import SetRow from '../components/SetRow';
 import WorkoutPreviewItem from '../components/WorkoutPreviewItem';
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function getTodayStr() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function formatScheduledDate(dateStr) {
+    const [year, month, day] = dateStr.split('-').map(Number);
+    return new Date(year, month - 1, day).toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+}
+
 // ─── Rotating finish messages ─────────────────────────────────────────────────
 
 const FINISH_MESSAGES = [
@@ -21,6 +33,35 @@ const FINISH_MESSAGES = [
     { emoji: '🏆', text: 'Another one in the books.' },
     { emoji: '⚡', text: 'Hard work, done. Proud of you.' },
 ];
+
+// ─── Reschedule to today overlay ──────────────────────────────────────────────
+
+const RescheduleOverlay = ({ visible, scheduledDate, onDismiss, onConfirm }) => {
+    const { theme } = useTheme();
+    const styles = makeStyles(theme);
+    const dateLabel = scheduledDate ? formatScheduledDate(scheduledDate) : '';
+
+    return (
+        <Modal transparent animationType="fade" visible={visible} onRequestClose={onDismiss}>
+            <View style={styles.overlayBackdrop}>
+                <View style={[styles.overlayCard, styles.rescheduleCard]}>
+                    <Text style={styles.overlayMessage}>Reschedule to today?</Text>
+                    <Text style={styles.overlaySubtext}>
+                        This workout is scheduled for {dateLabel}.
+                    </Text>
+                    <View style={styles.overlayActions}>
+                        <Pressable style={styles.overlayButtonSecondary} onPress={onDismiss}>
+                            <Text style={styles.overlayButtonSecondaryText}>Keep date</Text>
+                        </Pressable>
+                        <Pressable style={[styles.overlayButtonPrimary, styles.rescheduleButtonPrimary]} onPress={onConfirm}>
+                            <Text style={styles.overlayButtonPrimaryText}>Reschedule</Text>
+                        </Pressable>
+                    </View>
+                </View>
+            </View>
+        </Modal>
+    );
+};
 
 // ─── Workout Finished confirmation overlay ────────────────────────────────────
 
@@ -166,14 +207,17 @@ const Item = ({ workoutId, clientId, unitDefault, onSetSaved, ...item }) => {
 // ─── WorkoutPreview ───────────────────────────────────────────────────────────
 
 export default function WorkoutPreview({ route, navigation }) {
-    const { id, scheduledWorkoutId } = route.params;
+    const { id, scheduledWorkoutId, scheduledDate } = route.params;
     const { user, accessToken, authFetch } = useAuth();
     const { theme } = useTheme();
     const styles = makeStyles(theme);
 
     const [workoutData, setWorkoutData] = React.useState(undefined);
     const [showFinishOverlay, setShowFinishOverlay] = React.useState(false);
+    const [showRescheduleOverlay, setShowRescheduleOverlay] = React.useState(false);
     const [workoutStatus, setWorkoutStatus] = React.useState('scheduled'); // 'scheduled' | 'completed'
+    const pendingAction = React.useRef(null);
+    const hasPromptedReschedule = React.useRef(false);
 
     React.useEffect(() => {
         const getWorkout = async () => {
@@ -197,9 +241,45 @@ export default function WorkoutPreview({ route, navigation }) {
         if (accessToken) syncQueue(accessToken);
     }, [accessToken]);
 
+    const maybePromptReschedule = (action) => {
+        const isToday = !scheduledDate || scheduledDate === getTodayStr();
+        if (isToday || hasPromptedReschedule.current) {
+            action();
+            return;
+        }
+        hasPromptedReschedule.current = true;
+        pendingAction.current = action;
+        setShowRescheduleOverlay(true);
+    };
+
+    const handleRescheduleConfirm = async () => {
+        setShowRescheduleOverlay(false);
+        if (scheduledWorkoutId) {
+            try {
+                await authFetch('https://coaching-app.bert-m-cherry.workers.dev/schedule/move', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: scheduledWorkoutId, newDate: getTodayStr(), today: getTodayStr() }),
+                });
+            } catch (e) {
+                console.error('Could not reschedule workout:', e);
+            }
+        }
+        pendingAction.current?.();
+        pendingAction.current = null;
+    };
+
+    const handleRescheduleDismiss = () => {
+        setShowRescheduleOverlay(false);
+        pendingAction.current?.();
+        pendingAction.current = null;
+    };
+
     const handleSetSaved = () => {
-        // Attempt background sync after each save — no-ops if already syncing
-        if (accessToken) syncQueue(accessToken);
+        maybePromptReschedule(() => {
+            // Attempt background sync after each save — no-ops if already syncing
+            if (accessToken) syncQueue(accessToken);
+        });
     };
 
     const handleFinishConfirm = async () => {
@@ -252,10 +332,12 @@ export default function WorkoutPreview({ route, navigation }) {
     );
 
     const handleStartWorkout = () => {
-        navigation.navigate('Workout Active', {
-            workoutData,
-            workoutId: id,
-            scheduledWorkoutId,
+        maybePromptReschedule(() => {
+            navigation.navigate('Workout Active', {
+                workoutData,
+                workoutId: id,
+                scheduledWorkoutId,
+            });
         });
     };
 
@@ -301,6 +383,13 @@ export default function WorkoutPreview({ route, navigation }) {
                 visible={showFinishOverlay}
                 onDismiss={() => setShowFinishOverlay(false)}
                 onConfirm={handleFinishConfirm}
+            />
+
+            <RescheduleOverlay
+                visible={showRescheduleOverlay}
+                scheduledDate={scheduledDate}
+                onDismiss={handleRescheduleDismiss}
+                onConfirm={handleRescheduleConfirm}
             />
         </View>
     );
@@ -498,6 +587,12 @@ function makeStyles(theme) {
             alignItems: 'center',
             borderWidth: 1,
             borderColor: theme.success,
+        },
+        rescheduleCard: {
+            borderColor: theme.accent,
+        },
+        rescheduleButtonPrimary: {
+            backgroundColor: theme.accent,
         },
         overlayEmoji: {
             fontSize: 52,
