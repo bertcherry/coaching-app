@@ -2,6 +2,7 @@ import * as React from 'react';
 import { ScrollView, Text, StyleSheet, KeyboardAvoidingView, TextInput, Platform } from 'react-native';
 import CustomButton from '../../components/Button';
 import { useNavigation } from '@react-navigation/native';
+import { useHeaderHeight } from '@react-navigation/elements';
 import { useTheme } from '../../context/ThemeContext';
 
 export default function ConfirmEmailScreen() {
@@ -9,6 +10,7 @@ export default function ConfirmEmailScreen() {
 
     const navigation = useNavigation();
     const { theme } = useTheme();
+    const headerHeight = useHeaderHeight();
 
     const onConfirmPressed = () => {
       //validate code
@@ -24,22 +26,22 @@ export default function ConfirmEmailScreen() {
     };
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
-      <Text style={[styles.regularText, { color: theme.textPrimary }]}>Confirm your email</Text>
-        <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-            <TextInput
-                value={confirmationCode}
-                onChangeText={onChangeConfirmationCode}
-                placeholder='confirmation code'
-                placeholderTextColor={theme.inputPlaceholder}
-                secureTextEntry={true}
-                style={[styles.input, { borderColor: theme.inputBorder, backgroundColor: theme.inputBackground, color: theme.inputText }]}
-            />
-            <CustomButton onPress={onConfirmPressed} text="Confirm"></CustomButton>
-            <CustomButton onPress={onResendPressed} text="Resend Code" type="SECONDARY"></CustomButton>
-            <CustomButton onPress={onSignInPressed} text="Back to sign in" type="TERTIARY"></CustomButton>
-        </KeyboardAvoidingView>
-    </ScrollView>
+    <KeyboardAvoidingView style={[styles.container, { backgroundColor: theme.background }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={headerHeight}>
+      <ScrollView style={styles.container} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets={true}>
+        <Text style={[styles.regularText, { color: theme.textPrimary }]}>Confirm your email</Text>
+        <TextInput
+            value={confirmationCode}
+            onChangeText={onChangeConfirmationCode}
+            placeholder='confirmation code'
+            placeholderTextColor={theme.inputPlaceholder}
+            secureTextEntry={true}
+            style={[styles.input, { borderColor: theme.inputBorder, backgroundColor: theme.inputBackground, color: theme.inputText }]}
+        />
+        <CustomButton onPress={onConfirmPressed} text="Confirm"></CustomButton>
+        <CustomButton onPress={onResendPressed} text="Resend Code" type="SECONDARY"></CustomButton>
+        <CustomButton onPress={onSignInPressed} text="Back to sign in" type="TERTIARY"></CustomButton>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 

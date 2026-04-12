@@ -6,6 +6,7 @@ import {
 import Feather from '@expo/vector-icons/Feather';
 import { Video, ResizeMode } from 'expo-av';
 import { useFocusEffect } from '@react-navigation/native';
+import { useHeaderHeight } from '@react-navigation/elements';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useScrollY } from '../context/ScrollContext';
@@ -213,8 +214,8 @@ export default function WorkoutPreview({ route, navigation }) {
     const { user, accessToken, authFetch } = useAuth();
     const { theme } = useTheme();
     const styles = makeStyles(theme);
-
     const scrollY = useScrollY();
+    const headerHeight = useHeaderHeight();
 
     useFocusEffect(React.useCallback(() => {
         scrollY.setValue(0);
@@ -375,7 +376,7 @@ export default function WorkoutPreview({ route, navigation }) {
     );
 
     return (
-        <View style={styles.container}>
+        <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={headerHeight}>
             <SectionList
                 sections={workoutData}
                 keyExtractor={(item) => item.id}
@@ -383,6 +384,7 @@ export default function WorkoutPreview({ route, navigation }) {
                 renderSectionHeader={renderSectionHeader}
                 ListFooterComponent={renderFooter}
                 keyboardDismissMode="on-drag"
+                automaticallyAdjustKeyboardInsets={true}
                 contentContainerStyle={{ paddingBottom: 40 }}
                 indicatorStyle={theme.mode === 'dark' ? 'white' : 'black'}
                 onScroll={(e) => scrollY.setValue(e.nativeEvent.contentOffset.y)}
@@ -401,7 +403,7 @@ export default function WorkoutPreview({ route, navigation }) {
                 onDismiss={handleRescheduleDismiss}
                 onConfirm={handleRescheduleConfirm}
             />
-        </View>
+        </KeyboardAvoidingView>
     );
 }
 

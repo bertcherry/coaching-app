@@ -28,6 +28,7 @@ import Feather from '@expo/vector-icons/Feather';
 import { Video, ResizeMode } from 'expo-av';
 import { useAuth } from '../context/AuthContext';
 import { useFocusEffect } from '@react-navigation/native';
+import { useHeaderHeight } from '@react-navigation/elements';
 import { useTheme } from '../context/ThemeContext';
 import { useScrollY } from '../context/ScrollContext';
 import { enqueueRecord, syncQueue } from '../utils/WorkoutSync';
@@ -243,6 +244,7 @@ export default function WorkoutActiveScreen({ route, navigation }) {
     const { theme } = useTheme();
     const styles = makeStyles(theme);
     const scrollY = useScrollY();
+    const headerHeight = useHeaderHeight();
     useFocusEffect(React.useCallback(() => { scrollY.setValue(0); }, [scrollY]));
 
     // ── Cursor ──────────────────────────────────────────────────────────────
@@ -649,10 +651,12 @@ export default function WorkoutActiveScreen({ route, navigation }) {
         <KeyboardAvoidingView
             style={styles.container}
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={headerHeight}
         >
             <ScrollView
                 contentContainerStyle={styles.scrollContent}
                 keyboardDismissMode="on-drag"
+                automaticallyAdjustKeyboardInsets={true}
                 onScroll={(e) => scrollY.setValue(e.nativeEvent.contentOffset.y)}
                 scrollEventThrottle={16}
             >

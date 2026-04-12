@@ -13,6 +13,7 @@ import {
 import CustomButton from '../components/Button';
 import { useAuth } from '../context/AuthContext';
 import { useFocusEffect } from '@react-navigation/native';
+import { useHeaderHeight } from '@react-navigation/elements';
 import { useTheme } from '../context/ThemeContext';
 import { useScrollY } from '../context/ScrollContext';
 
@@ -26,6 +27,7 @@ export default function AddClientScreen() {
     const { authFetch } = useAuth();
     const { theme } = useTheme();
     const scrollY = useScrollY();
+    const headerHeight = useHeaderHeight();
     useFocusEffect(React.useCallback(() => { scrollY.setValue(0); }, [scrollY]));
 
     const onAddClientPressed = async () => {
@@ -95,15 +97,12 @@ export default function AddClientScreen() {
     }
 
     return (
-        <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
-            <Text style={[styles.headerText, { color: theme.textPrimary }]}>Add a Client</Text>
-            <Text style={[styles.smallText, { color: theme.textSecondary }]}>
-                We'll create their account and email them an access code to sign up.
-            </Text>
-            <KeyboardAvoidingView
-                style={styles.container}
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            >
+        <KeyboardAvoidingView style={[styles.container, { backgroundColor: theme.background }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={headerHeight}>
+            <ScrollView style={styles.container} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets={true}>
+                <Text style={[styles.headerText, { color: theme.textPrimary }]}>Add a Client</Text>
+                <Text style={[styles.smallText, { color: theme.textSecondary }]}>
+                    We'll create their account and email them an access code to sign up.
+                </Text>
                 <TextInput
                     value={fname}
                     onChangeText={onChangeFname}
@@ -137,8 +136,8 @@ export default function AddClientScreen() {
                 ) : (
                     <CustomButton onPress={onAddClientPressed} text="Add Client & Send Invite" />
                 )}
-            </KeyboardAvoidingView>
-        </ScrollView>
+            </ScrollView>
+        </KeyboardAvoidingView>
     );
 }
 

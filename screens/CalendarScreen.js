@@ -20,7 +20,7 @@ import * as React from 'react';
 import {
     View, Text, StyleSheet, ScrollView, Pressable,
     Modal, TextInput, ActivityIndicator, Alert,
-    Platform,
+    Platform, KeyboardAvoidingView,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Localization from 'expo-localization';
@@ -571,7 +571,7 @@ const SkipModal = ({ workout, onClose, onConfirm }) => {
             onRequestClose={onClose}
             accessibilityViewIsModal={true}
         >
-            <View style={styles.modalOverlay}>
+            <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
                 <View style={styles.modalCard}>
                     <Text style={styles.modalTitle} accessibilityRole="header">
                         Skip workout?
@@ -608,7 +608,7 @@ const SkipModal = ({ workout, onClose, onConfirm }) => {
                         </Pressable>
                     </View>
                 </View>
-            </View>
+            </KeyboardAvoidingView>
         </Modal>
     );
 };

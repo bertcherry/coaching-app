@@ -2,6 +2,7 @@ import * as React from 'react';
 import { ScrollView, Text, StyleSheet, KeyboardAvoidingView, TextInput, Platform } from 'react-native';
 import CustomButton from '../../components/Button';
 import { useNavigation } from '@react-navigation/native';
+import { useHeaderHeight } from '@react-navigation/elements';
 import { useTheme } from '../../context/ThemeContext';
 
 export default function SignUpScreen() {
@@ -12,6 +13,7 @@ export default function SignUpScreen() {
 
     const navigation = useNavigation();
     const { theme } = useTheme();
+    const headerHeight = useHeaderHeight();
 
     const onRegisterPressed = async () => {
       const res = await fetch('https://coaching-app.bert-m-cherry.workers.dev/auth/register', {
@@ -40,50 +42,50 @@ export default function SignUpScreen() {
     };
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
-      <Text style={[styles.regularText, { color: theme.textPrimary }]}>Create an account</Text>
-        <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-            <TextInput
-                value={email}
-                onChangeText={onChangeEmail}
-                placeholder='email'
-                placeholderTextColor={theme.inputPlaceholder}
-                keyboardType='email-address'
-                style={[styles.input, { borderColor: theme.inputBorder, backgroundColor: theme.inputBackground, color: theme.inputText }]}
-            />
-            <TextInput
-                value={accessCode}
-                onChangeText={onChangeAccessCode}
-                placeholder='access code'
-                placeholderTextColor={theme.inputPlaceholder}
-                secureTextEntry={true}
-                style={[styles.input, { borderColor: theme.inputBorder, backgroundColor: theme.inputBackground, color: theme.inputText }]}
-            />
-            <TextInput
-                value={password}
-                onChangeText={onChangePassword}
-                placeholder='password'
-                placeholderTextColor={theme.inputPlaceholder}
-                secureTextEntry={true}
-                style={[styles.input, { borderColor: theme.inputBorder, backgroundColor: theme.inputBackground, color: theme.inputText }]}
-            />
-            <TextInput
-                value={passwordRepeat}
-                onChangeText={onChangePasswordRepeat}
-                placeholder='confirm password'
-                placeholderTextColor={theme.inputPlaceholder}
-                secureTextEntry={true}
-                style={[styles.input, { borderColor: theme.inputBorder, backgroundColor: theme.inputBackground, color: theme.inputText }]}
-            />
-            <CustomButton onPress={onRegisterPressed} text="Register"></CustomButton>
-            <Text style={[styles.smallText, { color: theme.textSecondary }]}>By registering you confirm agreement to our{' '}
-              <Text style={[styles.link, { color: theme.accent }]} onPress={onTermsOfUsePressed}>Terms of Use</Text> and{' '}
-              <Text style={[styles.link, { color: theme.accent }]} onPress={onPrivacyPressed}>Privacy Policy</Text>. Clients are reminded of their agreement to the{' '}
-              <Text style={[styles.link, { color: theme.accent }]} onPress={onWaiverPressed}>coaching waiver</Text>.
-            </Text>
-            <CustomButton onPress={onSignInPressed} text="Have an account? Sign in" type="TERTIARY"></CustomButton>
-        </KeyboardAvoidingView>
-    </ScrollView>
+    <KeyboardAvoidingView style={[styles.container, { backgroundColor: theme.background }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={headerHeight}>
+      <ScrollView style={styles.container} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets={true}>
+        <Text style={[styles.regularText, { color: theme.textPrimary }]}>Create an account</Text>
+        <TextInput
+            value={email}
+            onChangeText={onChangeEmail}
+            placeholder='email'
+            placeholderTextColor={theme.inputPlaceholder}
+            keyboardType='email-address'
+            style={[styles.input, { borderColor: theme.inputBorder, backgroundColor: theme.inputBackground, color: theme.inputText }]}
+        />
+        <TextInput
+            value={accessCode}
+            onChangeText={onChangeAccessCode}
+            placeholder='access code'
+            placeholderTextColor={theme.inputPlaceholder}
+            secureTextEntry={true}
+            style={[styles.input, { borderColor: theme.inputBorder, backgroundColor: theme.inputBackground, color: theme.inputText }]}
+        />
+        <TextInput
+            value={password}
+            onChangeText={onChangePassword}
+            placeholder='password'
+            placeholderTextColor={theme.inputPlaceholder}
+            secureTextEntry={true}
+            style={[styles.input, { borderColor: theme.inputBorder, backgroundColor: theme.inputBackground, color: theme.inputText }]}
+        />
+        <TextInput
+            value={passwordRepeat}
+            onChangeText={onChangePasswordRepeat}
+            placeholder='confirm password'
+            placeholderTextColor={theme.inputPlaceholder}
+            secureTextEntry={true}
+            style={[styles.input, { borderColor: theme.inputBorder, backgroundColor: theme.inputBackground, color: theme.inputText }]}
+        />
+        <CustomButton onPress={onRegisterPressed} text="Register"></CustomButton>
+        <Text style={[styles.smallText, { color: theme.textSecondary }]}>By registering you confirm agreement to our{' '}
+          <Text style={[styles.link, { color: theme.accent }]} onPress={onTermsOfUsePressed}>Terms of Use</Text> and{' '}
+          <Text style={[styles.link, { color: theme.accent }]} onPress={onPrivacyPressed}>Privacy Policy</Text>. Clients are reminded of their agreement to the{' '}
+          <Text style={[styles.link, { color: theme.accent }]} onPress={onWaiverPressed}>coaching waiver</Text>.
+        </Text>
+        <CustomButton onPress={onSignInPressed} text="Have an account? Sign in" type="TERTIARY"></CustomButton>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 

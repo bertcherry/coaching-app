@@ -2,6 +2,7 @@ import * as React from 'react';
 import { ScrollView, Text, StyleSheet, KeyboardAvoidingView, TextInput, Platform } from 'react-native';
 import CustomButton from '../../components/Button';
 import { useNavigation } from '@react-navigation/native';
+import { useHeaderHeight } from '@react-navigation/elements';
 import { useTheme } from '../../context/ThemeContext';
 
 export default function ForgotPasswordScreen() {
@@ -9,6 +10,7 @@ export default function ForgotPasswordScreen() {
 
     const navigation = useNavigation();
     const { theme } = useTheme();
+    const headerHeight = useHeaderHeight();
 
     const onSendPressed = () => {
       //send validation code
@@ -20,21 +22,21 @@ export default function ForgotPasswordScreen() {
     };
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
-      <Text style={[styles.regularText, { color: theme.textPrimary }]}>Reset your password</Text>
-        <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-            <TextInput
-                value={email}
-                onChangeText={onChangeEmail}
-                placeholder='email'
-                placeholderTextColor={theme.inputPlaceholder}
-                secureTextEntry={true}
-                style={[styles.input, { borderColor: theme.inputBorder, backgroundColor: theme.inputBackground, color: theme.inputText }]}
-            />
-            <CustomButton onPress={onSendPressed} text="Send Code"></CustomButton>
-            <CustomButton onPress={onSignInPressed} text="Back to sign in" type="TERTIARY"></CustomButton>
-        </KeyboardAvoidingView>
-    </ScrollView>
+    <KeyboardAvoidingView style={[styles.container, { backgroundColor: theme.background }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={headerHeight}>
+      <ScrollView style={styles.container} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets={true}>
+        <Text style={[styles.regularText, { color: theme.textPrimary }]}>Reset your password</Text>
+        <TextInput
+            value={email}
+            onChangeText={onChangeEmail}
+            placeholder='email'
+            placeholderTextColor={theme.inputPlaceholder}
+            secureTextEntry={true}
+            style={[styles.input, { borderColor: theme.inputBorder, backgroundColor: theme.inputBackground, color: theme.inputText }]}
+        />
+        <CustomButton onPress={onSendPressed} text="Send Code"></CustomButton>
+        <CustomButton onPress={onSignInPressed} text="Back to sign in" type="TERTIARY"></CustomButton>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 

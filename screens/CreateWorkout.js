@@ -7,6 +7,7 @@ import {
     Platform, Animated, Alert, ActivityIndicator,
     UIManager,
 } from 'react-native';
+import { useHeaderHeight } from '@react-navigation/elements';
 import ExerciseCountInput from '../components/ExerciseCountInput';
 import Feather from '@expo/vector-icons/Feather';
 import * as Yup from 'yup';
@@ -574,6 +575,7 @@ export default function CreateWorkout({ navigation, route }) {
     const { theme } = useTheme();
     const styles = makeStyles(theme);
     const scrollY = useScrollY();
+    const headerHeight = useHeaderHeight();
     useFocusEffect(React.useCallback(() => { scrollY.setValue(0); }, [scrollY]));
     const prefillClient     = route?.params?.clientEmail ?? null;
     const prefillClientName = route?.params?.clientName ?? null;
@@ -708,8 +710,8 @@ export default function CreateWorkout({ navigation, route }) {
     };
 
     return (
-        <View style={{ flex: 1, backgroundColor: theme.background }}>
-            <ScrollView style={styles.container} keyboardShouldPersistTaps="handled" onScroll={(e) => scrollY.setValue(e.nativeEvent.contentOffset.y)} scrollEventThrottle={16}>
+        <KeyboardAvoidingView style={{ flex: 1, backgroundColor: theme.background }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={headerHeight}>
+            <ScrollView style={styles.container} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets={true} onScroll={(e) => scrollY.setValue(e.nativeEvent.contentOffset.y)} scrollEventThrottle={16}>
                 <Formik initialValues={makeInitialValues()} onSubmit={handleSave} validationSchema={workoutSchema}>
                     {({ handleChange, handleBlur, handleSubmit, setFieldValue, values, errors, setValues }) => {
                         formikRef.current = { values, setValues };
@@ -807,7 +809,7 @@ export default function CreateWorkout({ navigation, route }) {
             )}
 
             {showToast && <SaveToast onDismiss={()=>setShowToast(false)} />}
-        </View>
+        </KeyboardAvoidingView>
     );
 }
 

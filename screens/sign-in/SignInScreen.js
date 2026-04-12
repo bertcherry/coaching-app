@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { ScrollView, Text, TextInput, StyleSheet, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { useHeaderHeight } from '@react-navigation/elements';
 import CustomButton from '../../components/Button';
 import { useNavigation } from '@react-navigation/native';
 import { ErrorMessage, Formik } from 'formik';
@@ -21,6 +22,7 @@ export default function SignInScreen() {
     const navigation = useNavigation();
     const { signIn } = useAuth();
     const { theme } = useTheme();
+    const headerHeight = useHeaderHeight();
 
     const onForgotPasswordPressed = () => {
         navigation.navigate('Forgot Password');
@@ -31,9 +33,9 @@ export default function SignInScreen() {
     };
 
     return (
-        <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
-            <Text style={[styles.regularText, { color: theme.textPrimary }]}>Sign in to continue</Text>
-            <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <KeyboardAvoidingView style={[styles.container, { backgroundColor: theme.background }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={headerHeight}>
+            <ScrollView style={styles.container} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets={true}>
+                <Text style={[styles.regularText, { color: theme.textPrimary }]}>Sign in to continue</Text>
                 <Formik
                     initialValues={initialValues}
                     validationSchema={signInSchema}
@@ -74,8 +76,8 @@ export default function SignInScreen() {
                 </Formik>
                 <CustomButton onPress={onForgotPasswordPressed} text="Forgot Password?" type="TERTIARY" />
                 <CustomButton onPress={onSignUpPressed} text="Don't have an account? Create one" type="TERTIARY" />
-            </KeyboardAvoidingView>
-        </ScrollView>
+            </ScrollView>
+        </KeyboardAvoidingView>
     );
 }
 
