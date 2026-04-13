@@ -110,7 +110,7 @@ export async function handleHistoryBatch(request, env) {
     for (const r of records) {
         if (r.clientId !== caller.email) { failed.push(r.id); continue; }
         try {
-            await env.DB.prepare(`INSERT INTO history (id, dateTime, clientId, workoutId, exerciseId, set, weight, weightUnit, reps, rpe, note, syncedAt, countType, prescribed, prescribedMax, unit, skipped) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (id) DO NOTHING`).bind(r.id, r.dateTime, r.clientId, r.workoutId, r.exerciseId, r.set, r.weight ?? null, r.weightUnit ?? 'lbs', r.reps ?? null, r.rpe ?? null, r.note ?? null, syncedAt, r.countType ?? null, r.prescribed ?? null, r.prescribedMax ?? null, r.unit ?? null, r.skipped ? 1 : 0).run();
+            await env.DB.prepare(`INSERT INTO history (id, dateTime, clientId, workoutId, exerciseId, "set", weight, weightUnit, reps, rpe, note, syncedAt, countType, prescribed, prescribedMax, unit, skipped) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (id) DO NOTHING`).bind(r.id, r.dateTime, r.clientId, r.workoutId, r.exerciseId, r.set, r.weight ?? null, r.weightUnit ?? 'lbs', r.reps ?? null, r.rpe ?? null, r.note ?? null, syncedAt, r.countType ?? null, r.prescribed ?? null, r.prescribedMax ?? null, r.unit ?? null, r.skipped ? 1 : 0).run();
             succeeded.push(r.id);
         } catch (err) {
             console.error(`Failed to insert history record ${r.id}:`, err);

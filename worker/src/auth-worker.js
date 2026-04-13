@@ -91,7 +91,7 @@ export async function handleRegister(request, env) {
   const normalizedEmail = email.trim().toLowerCase();
 
   const clientRow = await env.DB.prepare(
-    'SELECT email, coachedBy FROM clients WHERE email = ? AND accessCode = ?'
+    'SELECT email, coachedBy, pw FROM clients WHERE email = ? AND accessCode = ?'
   ).bind(normalizedEmail, accessCode).first();
 
   if (!clientRow) return json({ error: 'Invalid access code' }, 403);

@@ -164,7 +164,7 @@ export async function handleAssignWorkout(request, env) {
     return json({ message: 'Workout assigned', id }, 201);
 }
 
-async function handleMoveWorkout(request, env) {
+export async function handleMoveWorkout(request, env) {
     let caller;
     try { caller = await requireAuth(request, env); }
     catch (e) { return e; }
@@ -182,7 +182,7 @@ async function handleMoveWorkout(request, env) {
     return json({ message: 'Workout moved', id, newDate });
 }
 
-async function handleSkipWorkout(request, env) {
+export async function handleSkipWorkout(request, env) {
     let caller;
     try { caller = await requireAuth(request, env); }
     catch (e) { return e; }
@@ -215,7 +215,7 @@ async function handleSkipWorkout(request, env) {
     return json({ message: 'Workout skipped', id });
 }
 
-async function handleCopyWorkout(request, env) {
+export async function handleCopyWorkout(request, env) {
     let caller;
     try { caller = await requireAuth(request, env); }
     catch (e) { return e; }
@@ -230,7 +230,7 @@ async function handleCopyWorkout(request, env) {
     return json({ message: 'Workout copied', newId, newDate }, 201);
 }
 
-async function handleScheduleComplete(request, env) {
+export async function handleScheduleComplete(request, env) {
     let caller;
     try { caller = await requireAuth(request, env); }
     catch (e) { return e; }
