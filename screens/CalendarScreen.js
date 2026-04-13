@@ -33,6 +33,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useScrollY } from '../context/ScrollContext';
+import { useNotifications } from '../context/NotificationsContext';
+import NotificationDot from '../components/NotificationDot';
 import TemplatePickerOverlay from '../components/TemplatePickerOverlay';
 
 const WORKER_URL = 'https://coaching-app.bert-m-cherry.workers.dev';
@@ -173,15 +175,17 @@ const STATUS_LABEL = {
 const WorkoutPill = ({ workout, onPress, onLongPress, compact }) => {
     const { theme } = useTheme();
     const styles = makeStyles(theme);
+    const { unreadWorkoutIds } = useNotifications();
     const bg = STATUS_COLOR[workout.status] ?? STATUS_COLOR.scheduled;
     const statusLabel = STATUS_LABEL[workout.status] ?? workout.status;
+    const unread = unreadWorkoutIds.has(workout.id);
     return (
         <Pressable
             onPress={onPress}
             onLongPress={onLongPress}
             delayLongPress={400}
             accessibilityRole="button"
-            accessibilityLabel={`${workout.workoutName}, ${statusLabel}`}
+            accessibilityLabel={`${workout.workoutName}, ${statusLabel}${unread ? ', new' : ''}`}
             accessibilityHint="Tap to open workout. Long press for actions."
             style={[
                 styles.pill,
@@ -217,6 +221,7 @@ const WorkoutPill = ({ workout, onPress, onLongPress, compact }) => {
                     accessible={false}
                 />
             )}
+            <NotificationDot visible={unread} size={6} style={{ top: -2, right: -2 }} />
         </Pressable>
     );
 };
@@ -233,8 +238,10 @@ const MonthWorkoutPill = ({
 }) => {
     const { theme } = useTheme();
     const styles = makeStyles(theme);
+    const { unreadWorkoutIds } = useNotifications();
     const bg = STATUS_COLOR[workout.status] ?? STATUS_COLOR.scheduled;
     const statusLabel = STATUS_LABEL[workout.status] ?? workout.status;
+    const unread = unreadWorkoutIds.has(workout.id);
     const scale   = useSharedValue(1);
     const opacity = useSharedValue(1);
 
@@ -284,7 +291,7 @@ const MonthWorkoutPill = ({
                     animStyle,
                 ]}
                 accessibilityRole="button"
-                accessibilityLabel={`${workout.workoutName}, ${statusLabel}`}
+                accessibilityLabel={`${workout.workoutName}, ${statusLabel}${unread ? ', new' : ''}`}
                 accessibilityHint="Tap to open. Long press for options, or long press and drag to move."
             >
                 <Text style={[styles.pillText, compact && styles.pillTextCompact]} numberOfLines={1}>
@@ -299,6 +306,7 @@ const MonthWorkoutPill = ({
                 {workout.status === 'missed' && (
                     <Feather name="alert-circle" size={compact ? 8 : 10} color="#000" accessible={false} />
                 )}
+                <NotificationDot visible={unread} size={6} style={{ top: -2, right: -2 }} />
             </Animated.View>
         </GestureDetector>
     );
@@ -1001,6 +1009,7 @@ export default function CalendarScreen({ navigation, route }) {
     const { theme } = useTheme();
     const styles = makeStyles(theme);
     const scrollY = useScrollY();
+    const { markRead } = useNotifications();
 
     useFocusEffect(React.useCallback(() => {
         scrollY.setValue(0);
@@ -1178,6 +1187,7 @@ export default function CalendarScreen({ navigation, route }) {
     // ── Handlers ─────────────────────────────────────────────────────────────
 
     const handleWorkoutPress = (workout) => {
+        markRead(workout.id);
         navigation.navigate('Workout Preview', {
             id: workout.workoutId,
             scheduledWorkoutId: workout.id,

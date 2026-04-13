@@ -58,6 +58,57 @@ const Row = ({ icon, label, value, onPress, theme, last = false, destructive = f
     </Pressable>
 );
 
+// ─── Notification toggle row ──────────────────────────────────────────────────
+
+const NotifRow = ({ label, type, settings, onToggle, theme, last = false }) => {
+    const s = settings[type] ?? { push: true, badge: true };
+    return (
+        <View style={[
+            notifRowStyles.container,
+            { backgroundColor: theme.surface, borderBottomColor: theme.divider },
+            last && notifRowStyles.last,
+        ]}>
+            <Text style={[notifRowStyles.label, { color: theme.textPrimary }]}>{label}</Text>
+            <View style={notifRowStyles.toggles}>
+                <Pressable
+                    style={notifRowStyles.toggleItem}
+                    onPress={() => onToggle(type, 'push')}
+                    accessibilityRole="switch"
+                    accessibilityLabel={`Push notification for ${label}`}
+                    accessibilityState={{ checked: s.push }}
+                >
+                    <View style={[notifRowStyles.pill, { borderWidth: 1, borderColor: s.push ? 'transparent' : theme.divider, backgroundColor: s.push ? theme.accent : 'transparent' }]}>
+                        <Feather name="bell" size={12} color={s.push ? '#000' : theme.textTertiary} />
+                        <Text style={[notifRowStyles.pillLabel, { color: s.push ? '#000' : theme.textTertiary }]}>Push</Text>
+                    </View>
+                </Pressable>
+                <Pressable
+                    style={notifRowStyles.toggleItem}
+                    onPress={() => onToggle(type, 'badge')}
+                    accessibilityRole="switch"
+                    accessibilityLabel={`Badge for ${label}`}
+                    accessibilityState={{ checked: s.badge }}
+                >
+                    <View style={[notifRowStyles.pill, { borderWidth: 1, borderColor: s.badge ? 'transparent' : theme.divider, backgroundColor: s.badge ? theme.accent : 'transparent' }]}>
+                        <Feather name="circle" size={12} color={s.badge ? '#000' : theme.textTertiary} />
+                        <Text style={[notifRowStyles.pillLabel, { color: s.badge ? '#000' : theme.textTertiary }]}>Badge</Text>
+                    </View>
+                </Pressable>
+            </View>
+        </View>
+    );
+};
+
+const notifRowStyles = StyleSheet.create({
+    container:   { paddingHorizontal: 16, paddingVertical: 14, flexDirection: 'row', alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth },
+    last:        { borderBottomWidth: 0 },
+    label:       { flex: 1, fontSize: 15 },
+    toggles:     { flexDirection: 'row', gap: 8 },
+    toggleItem:  { minWidth: 44, minHeight: 44, justifyContent: 'center', alignItems: 'center' },
+    pill:        { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5 },
+    pillLabel:   { fontSize: 12, fontWeight: '600' },
+});
+
 // ─── Theme picker ─────────────────────────────────────────────────────────────
 
 const ThemeOption = ({ value, label, icon, current, onSelect, theme }) => {
@@ -264,6 +315,37 @@ export default function SettingsScreen() {
     // Local prefs
     const [unitDefault,   setUnitDefault]   = React.useState(user?.unitDefault ?? 'imperial');
     const [calendarView,  setCalendarView]  = React.useState('month'); // 'month' | 'week'
+
+    // Notification settings
+    const DEFAULT_NOTIF_SETTINGS = {
+        new_workout:       { push: true, badge: true },
+        workout_completed: { push: true, badge: true },
+        workout_skipped:   { push: true, badge: true },
+    };
+    const [notifSettings, setNotifSettings] = React.useState(DEFAULT_NOTIF_SETTINGS);
+
+    React.useEffect(() => {
+        if (!user) return;
+        authFetch(`${WORKER_URL}/profile/notification-settings`)
+            .then(r => r.ok ? r.json() : null)
+            .then(data => { if (data?.settings) setNotifSettings(data.settings); })
+            .catch(() => {});
+    }, [user]);
+
+    const handleNotifToggle = async (type, key) => {
+        const updated = {
+            ...notifSettings,
+            [type]: { ...notifSettings[type], [key]: !notifSettings[type][key] },
+        };
+        setNotifSettings(updated);
+        try {
+            await authFetch(`${WORKER_URL}/profile/notification-settings`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ settings: updated }),
+            });
+        } catch {}
+    };
 
     // Load saved calendar view preference
     React.useEffect(() => {
@@ -493,6 +575,39 @@ export default function SettingsScreen() {
                     />
                 </View>
 
+                {/* ── Notifications ── */}
+                <SectionHeader title="NOTIFICATIONS" theme={theme} />
+                <View style={[s.notifGroup, { borderColor: theme.surfaceBorder, backgroundColor: theme.surface }]}>
+                    {user?.isCoach ? (
+                        <>
+                            <NotifRow
+                                label="Client completes workout"
+                                type="workout_completed"
+                                settings={notifSettings}
+                                onToggle={handleNotifToggle}
+                                theme={theme}
+                            />
+                            <NotifRow
+                                label="Client skips workout"
+                                type="workout_skipped"
+                                settings={notifSettings}
+                                onToggle={handleNotifToggle}
+                                theme={theme}
+                                last
+                            />
+                        </>
+                    ) : (
+                        <NotifRow
+                            label="New workout assigned"
+                            type="new_workout"
+                            settings={notifSettings}
+                            onToggle={handleNotifToggle}
+                            theme={theme}
+                            last
+                        />
+                    )}
+                </View>
+
                 <View style={{ height: 40 }} />
             </ScrollView>
 
@@ -571,7 +686,8 @@ function makeStyles(theme) {
         tzNote:         { flexDirection: 'row', alignItems: 'flex-start', borderRadius: 8, borderWidth: 1, padding: 12, marginTop: 14 },
         tzNoteText:     { fontSize: 12, lineHeight: 17, flex: 1 },
 
-        group: { marginHorizontal: 16, marginBottom: 8, borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: theme.surfaceBorder },
+        group:       { marginHorizontal: 16, marginBottom: 8, borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: theme.surfaceBorder },
+        notifGroup:  { marginHorizontal: 16, marginBottom: 8, borderRadius: 12, overflow: 'hidden', borderWidth: 1 },
     });
 }
 

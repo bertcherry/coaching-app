@@ -155,3 +155,62 @@ export async function handleUpdateUnit(request, env) {
 
     return json({ message: 'Unit preference updated' });
 }
+
+// ─── GET /profile/notification-settings ──────────────────────────────────────
+
+const DEFAULT_NOTIFICATION_SETTINGS = {
+    new_workout:       { push: true, badge: true },
+    workout_completed: { push: true, badge: true },
+    workout_skipped:   { push: true, badge: true },
+};
+
+export async function handleGetNotificationSettings(request, env) {
+    let caller;
+    try { caller = await requireAuth(request, env); }
+    catch (e) { return e; }
+
+    const client = await env.DB.prepare(
+        'SELECT notificationSettings FROM clients WHERE email = ?'
+    ).bind(caller.email).first();
+
+    let parsed = DEFAULT_NOTIFICATION_SETTINGS;
+    if (client?.notificationSettings) {
+        try {
+            parsed = { ...DEFAULT_NOTIFICATION_SETTINGS, ...JSON.parse(client.notificationSettings) };
+        } catch {}
+    }
+
+    return json({ settings: parsed });
+}
+
+// ─── PATCH /profile/notification-settings ────────────────────────────────────
+
+const VALID_TYPES = ['new_workout', 'workout_completed', 'workout_skipped'];
+
+export async function handleUpdateNotificationSettings(request, env) {
+    let caller;
+    try { caller = await requireAuth(request, env); }
+    catch (e) { return e; }
+
+    const { settings } = await request.json();
+    if (!settings || typeof settings !== 'object') {
+        return json({ error: 'settings object is required' }, 400);
+    }
+
+    // Only keep known types; each value must have push/badge booleans
+    const sanitized = {};
+    for (const type of VALID_TYPES) {
+        if (settings[type]) {
+            sanitized[type] = {
+                push:  typeof settings[type].push  === 'boolean' ? settings[type].push  : true,
+                badge: typeof settings[type].badge === 'boolean' ? settings[type].badge : true,
+            };
+        }
+    }
+
+    await env.DB.prepare(
+        'UPDATE clients SET notificationSettings = ? WHERE email = ?'
+    ).bind(JSON.stringify(sanitized), caller.email).run();
+
+    return json({ message: 'Notification settings updated' });
+}

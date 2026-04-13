@@ -12,8 +12,9 @@ import {
     handleGetStreamUploadUrl,
 } from './demos';
 import { handleHistoryBatch, handleExerciseSummary } from './history';
-import { handleUpdateName, handleUpdateEmail, handleUpdatePassword, handleUpdateUnit } from './profile';
+import { handleUpdateName, handleUpdateEmail, handleUpdatePassword, handleUpdateUnit, handleUpdateNotificationSettings, handleGetNotificationSettings } from './profile';
 import { handleGetSchedule } from './schedule';
+import { emitNotification, handleRegisterPushToken, handleGetUnread, handleMarkRead } from './notifications';
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
 
@@ -148,7 +149,18 @@ export async function handleAssignWorkout(request, env) {
         `INSERT INTO scheduled_workouts (id, clientEmail, workoutId, workoutName, scheduledDate, status)
          VALUES (?, ?, ?, ?, ?, 'scheduled')`
     ).bind(id, clientEmail, workoutId, workoutName, scheduledDate ?? null).run();
- 
+
+    await emitNotification(env.DB, env, {
+        recipientEmail: clientEmail,
+        type: 'new_workout',
+        scheduledWorkoutId: id,
+        payload: {
+            workoutName,
+            scheduledDate: scheduledDate ?? null,
+            coachName: `${coach.fname} ${coach.lname}`,
+        },
+    });
+
     return json({ message: 'Workout assigned', id }, 201);
 }
 
@@ -181,6 +193,25 @@ async function handleSkipWorkout(request, env) {
     if (!caller.isCoach && workout.clientEmail !== caller.email) return json({ error: 'Forbidden' }, 403);
     if (workout.status === 'completed') return json({ error: 'Completed workouts cannot be skipped' }, 422);
     await env.DB.prepare(`UPDATE scheduled_workouts SET status = 'skipped', skipReason = ? WHERE id = ?`).bind(reason ?? null, id).run();
+
+    const clientRecord = await env.DB.prepare(
+        'SELECT fname, lname, coachedBy FROM clients WHERE email = ?'
+    ).bind(workout.clientEmail).first();
+    if (clientRecord?.coachedBy) {
+        await emitNotification(env.DB, env, {
+            recipientEmail: clientRecord.coachedBy,
+            type: 'workout_skipped',
+            scheduledWorkoutId: id,
+            payload: {
+                workoutName: workout.workoutName,
+                scheduledDate: workout.scheduledDate,
+                clientEmail: workout.clientEmail,
+                clientName: `${clientRecord.fname} ${clientRecord.lname}`,
+                skipReason: reason ?? null,
+            },
+        });
+    }
+
     return json({ message: 'Workout skipped', id });
 }
 
@@ -209,6 +240,24 @@ async function handleScheduleComplete(request, env) {
     if (!workout) return json({ error: 'Workout not found' }, 404);
     if (!caller.isCoach && workout.clientEmail !== caller.email) return json({ error: 'Forbidden' }, 403);
     await env.DB.prepare(`UPDATE scheduled_workouts SET status = 'completed', completedAt = ? WHERE id = ?`).bind(completedAt ?? new Date().toISOString(), id).run();
+
+    const clientRecord = await env.DB.prepare(
+        'SELECT fname, lname, coachedBy FROM clients WHERE email = ?'
+    ).bind(workout.clientEmail).first();
+    if (clientRecord?.coachedBy) {
+        await emitNotification(env.DB, env, {
+            recipientEmail: clientRecord.coachedBy,
+            type: 'workout_completed',
+            scheduledWorkoutId: id,
+            payload: {
+                workoutName: workout.workoutName,
+                scheduledDate: workout.scheduledDate,
+                clientEmail: workout.clientEmail,
+                clientName: `${clientRecord.fname} ${clientRecord.lname}`,
+            },
+        });
+    }
+
     return json({ message: 'Workout marked complete', id });
 }
 
@@ -258,34 +307,39 @@ export default {
         // ── Auth routes ───────────────────────────────────────────────────────
 
         const patchRoutes = {
-            '/profile/name':     handleUpdateName,
-            '/profile/email':    handleUpdateEmail,
-            '/profile/password': handleUpdatePassword,
-            '/profile/unit':     handleUpdateUnit,
+            '/profile/name':                     handleUpdateName,
+            '/profile/email':                    handleUpdateEmail,
+            '/profile/password':                 handleUpdatePassword,
+            '/profile/unit':                     handleUpdateUnit,
+            '/profile/notification-settings':    handleUpdateNotificationSettings,
+            '/notifications/read':               handleMarkRead,
         }
 
         const postRoutes = {
-            '/auth/login':           handleLogin,
-            '/auth/register':        handleRegister,
-            '/auth/refresh':         handleRefresh,
-            '/auth/logout':          handleLogout,
-            '/auth/forgot-password': handleForgotPassword,
-            '/auth/reset-password':  handleResetPassword,
-            '/coach/add-client':     handleAddClient,
-            '/schedule/assign':      handleAssignWorkout,
-            '/schedule/move':        handleMoveWorkout,
-            '/schedule/skip':        handleSkipWorkout,
-            '/schedule/copy':        handleCopyWorkout,
-            '/schedule/complete':    handleScheduleComplete,
-            '/history/batch':        handleHistoryBatch,
-            '/workouts/save':        handleSaveWorkout,
+            '/auth/login':                handleLogin,
+            '/auth/register':             handleRegister,
+            '/auth/refresh':              handleRefresh,
+            '/auth/logout':               handleLogout,
+            '/auth/forgot-password':      handleForgotPassword,
+            '/auth/reset-password':       handleResetPassword,
+            '/coach/add-client':          handleAddClient,
+            '/schedule/assign':           handleAssignWorkout,
+            '/schedule/move':             handleMoveWorkout,
+            '/schedule/skip':             handleSkipWorkout,
+            '/schedule/copy':             handleCopyWorkout,
+            '/schedule/complete':         handleScheduleComplete,
+            '/history/batch':             handleHistoryBatch,
+            '/workouts/save':             handleSaveWorkout,
+            '/notifications/push-token':  handleRegisterPushToken,
         };
 
         const getRoutes = {
-            '/coach/clients':               handleGetClients,
-            '/schedule':                    handleGetSchedule,
-            '/workouts/templates':          handleGetTemplates,
-            '/history/exercise-summary':    handleExerciseSummary,
+            '/coach/clients':                        handleGetClients,
+            '/schedule':                             handleGetSchedule,
+            '/workouts/templates':                   handleGetTemplates,
+            '/history/exercise-summary':             handleExerciseSummary,
+            '/notifications/unread':                 handleGetUnread,
+            '/profile/notification-settings':        handleGetNotificationSettings,
         };
 
         if (method === 'PATCH' && patchRoutes[pathname]) {

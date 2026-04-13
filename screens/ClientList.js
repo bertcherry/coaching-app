@@ -12,12 +12,15 @@ import CustomButton from '../components/Button';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useScrollY } from '../context/ScrollContext';
+import { useNotifications } from '../context/NotificationsContext';
+import NotificationDot from '../components/NotificationDot';
 
 export default function ClientList() {
     const navigation = useNavigation();
     const { authFetch } = useAuth();
     const { theme } = useTheme();
     const scrollY = useScrollY();
+    const { unreadClientEmails } = useNotifications();
     useFocusEffect(React.useCallback(() => { scrollY.setValue(0); }, [scrollY]));
     const [clients, setClients] = React.useState([]);
     const [loading, setLoading] = React.useState(true);
@@ -65,7 +68,10 @@ export default function ClientList() {
             onPress={() => goToClientCalendar(item)}
         >
             <View style={styles.clientInfo}>
-                <Text style={[styles.clientName, { color: theme.textPrimary }]}>{item.fname} {item.lname}</Text>
+                <View style={styles.clientNameRow}>
+                    <Text style={[styles.clientName, { color: theme.textPrimary }]}>{item.fname} {item.lname}</Text>
+                    <NotificationDot visible={unreadClientEmails.has(item.email)} size={8} style={{ position: 'relative', top: 0, right: 0, marginLeft: 6 }} />
+                </View>
                 <Text style={[styles.clientEmail, { color: theme.textSecondary }]}>{item.email}</Text>
             </View>
             {!item.emailConfirmed && (
@@ -138,6 +144,10 @@ const styles = StyleSheet.create({
     },
     clientInfo: {
         flex: 1,
+    },
+    clientNameRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
     },
     clientName: {
         fontSize: 18,

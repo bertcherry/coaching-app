@@ -8,6 +8,7 @@ import CoachingFooter from './components/CoachingFooter';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { ScrollProvider } from './context/ScrollContext';
+import { NotificationsProvider } from './context/NotificationsContext';
 import SignInNavigation from './screens/navigation/SignInNavigation';
 import CoachNavigation from './screens/navigation/CoachNavigation';
 import ClientNavigation from './screens/navigation/ClientNavigation';
@@ -50,7 +51,9 @@ export default function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <ThemedApp />
+        <NotificationsProvider>
+          <ThemedApp />
+        </NotificationsProvider>
       </AuthProvider>
     </ThemeProvider>
   );

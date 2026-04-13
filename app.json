@@ -12,13 +12,15 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.anonymous.coachingapp"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.anonymous.coachingapp"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -26,7 +28,13 @@
     "plugins": [
       "expo-secure-store",
       "expo-asset",
-      "expo-localization"
+      "expo-localization",
+      [
+        "expo-notifications",
+        {
+          "iosDisplayInForeground": true
+        }
+      ]
     ]
   }
 }
