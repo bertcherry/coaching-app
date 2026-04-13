@@ -82,7 +82,7 @@ export default function CoachNavigation() {
                 component={CoachDrawer}
                 options={{ headerShown: false }}
             />
-            <Stack.Screen name="Settings" component={SettingsScreen} />
+            <Stack.Screen name="Settings" component={SettingsScreen} options={{ headerBackTitle: 'Back' }} />
         </Stack.Navigator>
     );
 }

@@ -55,10 +55,13 @@ export default function ClientList() {
     );
 
     const goToClientCalendar = (client) => {
-        navigation.navigate('Calendar', {
-            clientEmail: client.email,
-            clientName: `${client.fname} ${client.lname}`,
-            clientTimezone: client.timezone ?? 'UTC',
+        navigation.navigate('My Calendar', {
+            screen: 'Calendar',
+            params: {
+                clientEmail: client.email,
+                clientName: `${client.fname} ${client.lname}`,
+                clientTimezone: client.timezone ?? 'UTC',
+            },
         });
     };
 
