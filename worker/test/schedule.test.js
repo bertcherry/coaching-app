@@ -10,7 +10,10 @@
  *   POST /schedule/complete (handleScheduleComplete)
  */
 
-import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
+/**
+ * @jest-environment node
+ */
+
 import { env } from 'cloudflare:test';
 import { handleGetSchedule } from '../src/schedule.js';
 import { handleAssignWorkout, handleMoveWorkout, handleSkipWorkout, handleCopyWorkout, handleScheduleComplete } from '../src/worker.js';

@@ -261,10 +261,10 @@ export function get(path, token) {
 /**
  * Stubs globalThis.fetch to succeed for Resend + Expo push calls.
  * Call in beforeEach for tests that involve email/push sending.
- * Call vi.unstubAllGlobals() in afterEach.
+ * Call jest.restoreAllMocks() in afterEach.
  */
-export function mockExternalFetch(vi) {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
+export function mockExternalFetch() {
+    jest.spyOn(globalThis, 'fetch').mockResolvedValue(
         new Response(JSON.stringify({ id: 'mocked' }), { status: 200 })
-    ));
+    );
 }

@@ -8,7 +8,10 @@
  *   emitNotification() (internal helper, exported for testing)
  */
 
-import { describe, it, expect, beforeAll, beforeEach, vi, afterEach } from 'vitest';
+/**
+ * @jest-environment node
+ */
+
 import { env } from 'cloudflare:test';
 import {
     emitNotification,
@@ -28,9 +31,9 @@ beforeEach(async () => {
     await clearData();
     await seedCoach();
     await seedClient();
-    mockExternalFetch(vi);
+    mockExternalFetch();
 });
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => jest.restoreAllMocks());
 
 // ─── POST /notifications/push-token ──────────────────────────────────────────
 
@@ -233,7 +236,7 @@ describe('emitNotification', () => {
     });
 
     it('does not attempt push when user has no registered tokens', async () => {
-        const fetchSpy = vi.spyOn(globalThis, 'fetch');
+        const fetchSpy = jest.spyOn(globalThis, 'fetch');
         await emitNotification(env.DB, env, {
             recipientEmail: 'client@example.com',
             type: 'new_workout',
@@ -250,7 +253,7 @@ describe('emitNotification', () => {
             `INSERT INTO push_tokens (id, userEmail, token, updatedAt) VALUES (?, ?, ?, datetime('now'))`
         ).bind('pt1', 'client@example.com', 'ExponentPushToken[test]').run();
 
-        const fetchSpy = vi.spyOn(globalThis, 'fetch');
+        const fetchSpy = jest.spyOn(globalThis, 'fetch');
         await emitNotification(env.DB, env, {
             recipientEmail: 'client@example.com',
             type: 'new_workout',

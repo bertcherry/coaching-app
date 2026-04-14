@@ -43,6 +43,7 @@
     "@babel/core": "^7.20.0",
     "@testing-library/react-hooks": "^8.0.1",
     "@testing-library/react-native": "^12.9.0",
+    "better-sqlite3": "^12.9.0",
     "jest": "^30.3.0",
     "jest-expo": "~53.0.0",
     "typescript": "~5.8.3"
@@ -50,14 +51,18 @@
   "jest": {
     "preset": "jest-expo",
     "transformIgnorePatterns": [
-      "/node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg)",
+      "/node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg|jose)",
       "/node_modules/react-native-reanimated/plugin/"
     ],
     "moduleNameMapper": {
+      "^cloudflare:test$": "<rootDir>/tests/__mocks__/cloudflareTest.js",
       "^expo/src/winter$": "<rootDir>/tests/__mocks__/expoWinterRuntime.js",
       "^expo/src/winter/(.*)$": "<rootDir>/tests/__mocks__/expoWinterRuntime.js",
       "^@react-native-async-storage/async-storage$": "@react-native-async-storage/async-storage/jest/async-storage-mock"
-    }
+    },
+    "modulePaths": [
+      "<rootDir>/worker/node_modules"
+    ]
   },
   "private": true
 }

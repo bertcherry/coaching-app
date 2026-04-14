@@ -4,9 +4,10 @@
  * Tests for all /auth/* endpoints using real in-memory D1.
  * Handlers: handleLogin, handleRegister, handleRefresh, handleLogout,
  *           handleForgotPassword, handleResetPassword
+ *
+ * @jest-environment node
  */
 
-import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import { env } from 'cloudflare:test';
 import worker from '../src/worker.js';
 import {

@@ -7,8 +7,12 @@
  *           handleUpdateNotificationSettings
  */
 
-import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
+/**
+ * @jest-environment node
+ */
+
 import { env } from 'cloudflare:test';
+import worker from '../src/worker.js';
 import {
     handleUpdateName,
     handleUpdateEmail,
@@ -163,8 +167,6 @@ describe('PATCH /profile/password', () => {
         const res = await handleUpdatePassword(patch('/profile/password', { currentPassword: 'testpassword', newPassword: 'newpassword123' }, tok), e);
         expect(res.status).toBe(200);
 
-        // Import worker to test login
-        const worker = (await import('../src/worker.js')).default;
         const loginRes = await worker.fetch(
             new Request('https://worker.test/auth/login', {
                 method: 'POST',

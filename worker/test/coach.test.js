@@ -6,7 +6,10 @@
  *   GET  /coach/clients     (handleGetClients)
  */
 
-import { describe, it, expect, beforeAll, beforeEach, vi, afterEach } from 'vitest';
+/**
+ * @jest-environment node
+ */
+
 import { env } from 'cloudflare:test';
 import { handleAddClient, handleGetClients } from '../src/coach.js';
 import {
@@ -20,9 +23,9 @@ beforeAll(async () => { await setupSchema(); });
 beforeEach(async () => {
     await clearData();
     await seedCoach();
-    mockExternalFetch(vi);
+    mockExternalFetch();
 });
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => jest.restoreAllMocks());
 
 // ─── POST /coach/add-client ───────────────────────────────────────────────────
 
@@ -91,7 +94,7 @@ describe('POST /coach/add-client', () => {
 
     it('rolls back the client insert when email sending fails', async () => {
         // Override fetch to simulate Resend failure
-        vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Network error')));
+        jest.spyOn(global, 'fetch').mockRejectedValue(new Error('Network error'));
 
         const tok = await coachToken();
         const res = await handleAddClient(post('/coach/add-client', { fname: 'Fail', lname: 'User', email: 'failclient@example.com' }, tok), env);

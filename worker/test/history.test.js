@@ -6,7 +6,10 @@
  *   GET  /history/exercise-summary (handleExerciseSummary)
  */
 
-import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
+/**
+ * @jest-environment node
+ */
+
 import { env } from 'cloudflare:test';
 import { handleHistoryBatch, handleExerciseSummary } from '../src/history.js';
 import {
