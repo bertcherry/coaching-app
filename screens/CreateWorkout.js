@@ -43,15 +43,19 @@ const exerciseSchema = Yup.object().shape({
             then: (schema) => schema.min(Yup.ref('setsMin'), 'Max sets must be >= min sets'),
             otherwise: (schema) => schema.notRequired(),
         }),
-    countType: Yup.string().oneOf(['Reps', 'Timed', 'AMRAP']).nullable(),
+    countType: Yup.string()
+        .oneOf(['Reps', 'Timed', 'AMRAP'], 'Select Reps, Timed, or AMRAP')
+        .required('Select Reps, Timed, or AMRAP'),
     countMin: Yup.number()
         .typeError('Must be a number')
         .nullable()
         .positive('Must be positive')
-        .when('countType', {
-            is: (v) => v === 'Reps' || v === 'Timed',
-            then: (schema) => schema.required('Enter a rep or time value'),
-            otherwise: (schema) => schema.notRequired(),
+        .test('count-min-required', 'Enter a rep or time value', function (v) {
+            const { countType, setConfigs } = this.parent;
+            if (countType !== 'Reps' && countType !== 'Timed') return true;
+            // Not required if per-set targets already supply a countMin for at least one set
+            if (Array.isArray(setConfigs) && setConfigs.some(cfg => cfg && cfg.countMin != null)) return true;
+            return v != null;
         }),
     countMax: Yup.number()
         .typeError('Must be a number')
@@ -63,14 +67,26 @@ const exerciseSchema = Yup.object().shape({
             otherwise: (schema) => schema.notRequired(),
         }),
     timeCapSeconds: Yup.number().typeError('Must be a number').nullable().positive('Must be positive').notRequired(),
-    recommendedRpe: Yup.number()
-        .typeError('RPE must be a number (e.g. 7 or 7.5)')
+    recommendedRpe: Yup.mixed()
         .nullable()
-        .min(1, 'RPE must be between 1 and 10')
-        .max(10, 'RPE must be between 1 and 10')
-        .notRequired(),
+        .notRequired()
+        .test('valid-rpe-range', 'RPE must be a number or range 1–10 (e.g. 7 or 7–8)', (v) => {
+            if (v == null || v === '') return true;
+            const s = String(v).trim();
+            if (/^[\d.]+$/.test(s)) { const n = parseFloat(s); return n >= 1 && n <= 10; }
+            const m = s.match(/^([\d.]+)\s*[–\-]\s*([\d.]+)$/);
+            if (m) { const lo = parseFloat(m[1]), hi = parseFloat(m[2]); return lo >= 1 && hi <= 10 && lo <= hi; }
+            return false;
+        }),
     recommendedWeight: Yup.string().nullable().notRequired(),
     coachNotes: Yup.string().nullable().notRequired(),
+    setConfigs: Yup.mixed()
+        .nullable()
+        .notRequired()
+        .test('per-set-has-data', 'Each set needs at least one value (weight, RPE, or reps)', (v) => {
+            if (!Array.isArray(v) || v.length === 0) return true;
+            return v.every(cfg => cfg && (cfg.weight || cfg.rpe != null || cfg.countMin != null));
+        }),
 });
 
 const sectionSchema = Yup.object().shape({
@@ -102,6 +118,7 @@ const emptyExercise = () => ({
     setsMin: null, setsMax: null,
     countType: null, countMin: null, countMax: null, timeCapSeconds: null,
     recommendedRpe: null, recommendedWeight: null, coachNotes: null,
+    setConfigs: null,
 });
 
 
@@ -386,6 +403,7 @@ const ExerciseCard = React.memo(({
     const [history, setHistory]           = React.useState(null);
     const [loadingHistory, setLoadingHist]= React.useState(false);
     const [showAdvanced, setShowAdvanced] = React.useState(false);
+    const [showPerSet, setShowPerSet]     = React.useState(!!(exercise.setConfigs?.length));
     const [confirmRemove, setConfirmRemove] = React.useState(false);
 
     React.useEffect(() => {
@@ -408,8 +426,22 @@ const ExerciseCard = React.memo(({
 
     // Auto-expand if prefilled advanced data
     React.useEffect(() => {
-        if(exercise.coachNotes || exercise.recommendedRpe != null || exercise.recommendedWeight) setShowAdvanced(true);
+        if (exercise.coachNotes || exercise.recommendedRpe != null || exercise.recommendedWeight || exercise.setConfigs?.length) setShowAdvanced(true);
+        if (exercise.setConfigs?.length) setShowPerSet(true);
     }, []);
+
+    // Keep setConfigs array length in sync with setsMin/setsMax while per-set mode is on
+    React.useEffect(() => {
+        if (!showPerSet) return;
+        const total = parseInt(exercise.setsMax ?? exercise.setsMin);
+        if (isNaN(total) || total <= 0) return;
+        const current = Array.isArray(exercise.setConfigs) ? exercise.setConfigs : [];
+        if (current.length === total) return;
+        const next = Array.from({ length: total }, (_, i) =>
+            current[i] ?? { weight: null, rpe: null, countMin: null }
+        );
+        setFieldValue(`${fieldBase}.setConfigs`, next);
+    }, [showPerSet, exercise.setsMin, exercise.setsMax]);
 
     const hasAdvData = !!(exercise.recommendedRpe || exercise.recommendedWeight || exercise.coachNotes);
 
@@ -462,6 +494,8 @@ const ExerciseCard = React.memo(({
                         handleChange={handleChange} handleBlur={handleBlur} setFieldValue={setFieldValue}
                         forceTimed={isTimed} />
                 </View>
+                <ErrorMessage render={msg=><Text style={styles.errorText}>{msg}</Text>} name={`${fieldBase}.countType`} />
+                <ErrorMessage render={msg=><Text style={styles.errorText}>{msg}</Text>} name={`${fieldBase}.countMin`} />
 
                 {/* Advanced toggle */}
                 <Pressable style={styles.advancedToggle} onPress={()=>setShowAdvanced(v=>!v)}>
@@ -474,8 +508,8 @@ const ExerciseCard = React.memo(({
                     <View style={styles.advancedContainer}>
                         <View style={styles.advancedRow}>
                             <View style={styles.advancedField}>
-                                <Text style={styles.inputLabel}>Rec. RPE <Text style={styles.inputLabelSub}>(1–10)</Text></Text>
-                                <TextInput style={styles.advancedInput} keyboardType="decimal-pad" placeholder="e.g. 7" placeholderTextColor={theme.inputPlaceholder}
+                                <Text style={styles.inputLabel}>Rec. RPE <Text style={styles.inputLabelSub}>(1–10, range ok)</Text></Text>
+                                <TextInput style={styles.advancedInput} keyboardType="default" placeholder="e.g. 7 or 7–8" placeholderTextColor={theme.inputPlaceholder}
                                     onChangeText={handleChange(`${fieldBase}.recommendedRpe`)} onBlur={handleBlur(`${fieldBase}.recommendedRpe`)}
                                     value={exercise.recommendedRpe!=null?String(exercise.recommendedRpe):''} />
                                 <ErrorMessage render={msg=><Text style={styles.errorText}>{msg}</Text>} name={`${fieldBase}.recommendedRpe`} />
@@ -500,6 +534,96 @@ const ExerciseCard = React.memo(({
                         </View>
                     </View>
                 )}
+
+                {/* Per-set control toggle */}
+                <Pressable style={styles.advancedToggle} onPress={() => {
+                        if (showPerSet) {
+                            setFieldValue(`${fieldBase}.setConfigs`, null);
+                            setShowPerSet(false);
+                        } else {
+                            const total = parseInt(exercise.setsMax ?? exercise.setsMin ?? 1);
+                            const n = isNaN(total) || total <= 0 ? 1 : total;
+                            // Pre-fill weight only if it's a plain number (not a range)
+                            const recW = exercise.recommendedWeight;
+                            const prefillWeight = recW && /^[\d.]+$/.test(String(recW).trim()) ? String(recW).trim() : null;
+                            const configs = Array.from({ length: n }, () => ({
+                                weight: prefillWeight,
+                                rpe: exercise.recommendedRpe != null ? exercise.recommendedRpe : null,
+                                countMin: exercise.countMin != null ? exercise.countMin : null,
+                            }));
+                            setFieldValue(`${fieldBase}.setConfigs`, configs);
+                            setShowPerSet(true);
+                        }
+                    }}>
+                        <Feather name={showPerSet ? 'chevron-up' : 'sliders'} size={14} color={theme.textTertiary} />
+                        <Text style={styles.advancedToggleText}>
+                            {showPerSet ? 'Remove per-set targets' : 'Set per-set weight & RPE'}
+                        </Text>
+                        {exercise.setConfigs?.length > 0 && <View style={styles.advancedDot} />}
+                    </Pressable>
+
+                {showPerSet && Array.isArray(exercise.setConfigs) && exercise.setConfigs.length > 0 && (
+                    <View style={styles.setConfigsContainer}>
+                        {/* Column headers */}
+                        <View style={styles.setConfigHeader}>
+                            <Text style={[styles.setConfigHeaderText, { width: 42 }]}>Set</Text>
+                            <Text style={[styles.setConfigHeaderText, { flex: 1 }]}>
+                                Weight{clientEmail ? ` (${unitDefault ?? 'lbs'})` : ''}
+                            </Text>
+                            <Text style={[styles.setConfigHeaderText, { flex: 1 }]}>RPE</Text>
+                            {(exercise.countType === 'Reps' || exercise.countType === 'Timed') && (
+                                <Text style={[styles.setConfigHeaderText, { flex: 1 }]}>
+                                    {exercise.countType === 'Timed' ? 'Sec' : 'Reps'}
+                                </Text>
+                            )}
+                        </View>
+
+                        {exercise.setConfigs.map((cfg, i) => {
+                            const isOpt = exercise.setsMin != null && i + 1 > parseInt(exercise.setsMin);
+                            return (
+                                <View key={i} style={[styles.setConfigRow, i === 0 && styles.setConfigRowFirst]}>
+                                    {/* Set number */}
+                                    <View style={{ width: 42 }}>
+                                        <Text style={[styles.setConfigNum, isOpt && styles.setConfigNumOpt]}>{i + 1}</Text>
+                                        {isOpt && <Text style={styles.setConfigOptLabel}>opt</Text>}
+                                    </View>
+
+                                    {/* Weight */}
+                                    <TextInput
+                                        style={styles.setConfigInput}
+                                        placeholder="e.g. 135"
+                                        placeholderTextColor={theme.inputPlaceholder}
+                                        value={cfg.weight ?? ''}
+                                        onChangeText={(v) => setFieldValue(`${fieldBase}.setConfigs[${i}].weight`, v || null)}
+                                    />
+
+                                    {/* RPE */}
+                                    <TextInput
+                                        style={styles.setConfigInput}
+                                        keyboardType="default"
+                                        placeholder="e.g. 7–8"
+                                        placeholderTextColor={theme.inputPlaceholder}
+                                        value={cfg.rpe != null ? String(cfg.rpe) : ''}
+                                        onChangeText={(v) => setFieldValue(`${fieldBase}.setConfigs[${i}].rpe`, v || null)}
+                                    />
+
+                                    {/* Reps / Sec override (only for Reps and Timed) */}
+                                    {(exercise.countType === 'Reps' || exercise.countType === 'Timed') && (
+                                        <TextInput
+                                            style={styles.setConfigInput}
+                                            keyboardType="number-pad"
+                                            placeholder="opt."
+                                            placeholderTextColor={theme.inputPlaceholder}
+                                            value={cfg.countMin != null ? String(cfg.countMin) : ''}
+                                            onChangeText={(v) => setFieldValue(`${fieldBase}.setConfigs[${i}].countMin`, v ? parseInt(v) : null)}
+                                        />
+                                    )}
+                                </View>
+                            );
+                        })}
+                    </View>
+                )}
+                <ErrorMessage render={msg=><Text style={styles.errorText}>{msg}</Text>} name={`${fieldBase}.setConfigs`} />
             </View>
 
             <ConfirmDialog visible={confirmRemove} title="Remove exercise?"
@@ -964,6 +1088,16 @@ function makeStyles(theme) { return StyleSheet.create({
     advancedInput:      { backgroundColor: theme.surfaceElevated, borderWidth: 1, borderColor: theme.surfaceBorder, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, fontSize: 15, color: theme.textPrimary, textAlign: 'center' },
     advancedNotesBlock: { gap: 6 },
     notesInput:         { backgroundColor: theme.surfaceElevated, borderWidth: 1, borderColor: theme.surfaceBorder, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 13, color: theme.textPrimary, minHeight: 72, textAlignVertical: 'top' },
+
+    setConfigsContainer: { borderWidth: 0.5, borderColor: theme.divider, borderRadius: 8, marginBottom: 8, overflow: 'hidden' },
+    setConfigHeader:     { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 5, backgroundColor: theme.surfaceElevated },
+    setConfigHeaderText: { fontSize: 10, fontWeight: '600', color: theme.textTertiary, textTransform: 'uppercase', letterSpacing: 0.4 },
+    setConfigRow:        { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderTopWidth: 0.5, borderTopColor: theme.divider },
+    setConfigRowFirst:   { borderTopWidth: 0 },
+    setConfigNum:        { fontSize: 13, fontWeight: '700', color: theme.accent },
+    setConfigNumOpt:     { color: theme.textTertiary },
+    setConfigOptLabel:   { fontSize: 9, color: theme.textTertiary, fontStyle: 'italic', marginTop: 1 },
+    setConfigInput:      { flex: 1, height: 32, backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.surfaceBorder, borderRadius: 6, textAlign: 'center', fontSize: 13, color: theme.textPrimary },
 
     addExerciseButton:     { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 12, marginHorizontal: 14, borderTopWidth: 0.5, borderTopColor: theme.divider },
     addExerciseButtonText: { fontSize: 14, color: theme.accent, fontWeight: '600' },

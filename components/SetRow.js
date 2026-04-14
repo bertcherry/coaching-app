@@ -33,6 +33,7 @@ export default function SetRow({
     timeCapSeconds,
     recommendedWeight,  // string, may be a range like "135–155" — used as placeholder/hint only
     recommendedRpe,     // number — used as placeholder/hint only
+    setConfig,          // { weight, rpe, countMin } — per-set override from coach; takes priority
     onSave,
 }) {
     const { theme } = useTheme();
@@ -45,19 +46,29 @@ export default function SetRow({
 
     const profileUnit = resolveUnit(unitDefault) ?? 'lbs';
 
-    const defaultCount = (isTimed || isReps) && countMin != null ? String(countMin) : '';
+    // Per-set config takes priority over exercise-level recommendations
+    const effRecommendedWeight = setConfig?.weight ?? recommendedWeight;
+    const effRecommendedRpe    = setConfig?.rpe    ?? recommendedRpe;
+    const effCountMin          = setConfig?.countMin ?? countMin;
 
-    // Pre-fill weight from coach recommendation if it's a single number (not a range)
+    const defaultCount = (isTimed || isReps) && effCountMin != null ? String(effCountMin) : '';
+
+    // Pre-fill weight from effective recommendation if it's a single number (not a range)
     const defaultWeight = React.useMemo(() => {
-        if (!recommendedWeight) return '';
-        const trimmed = String(recommendedWeight).trim();
+        if (!effRecommendedWeight) return '';
+        const trimmed = String(effRecommendedWeight).trim();
         // Only pre-fill if it's a plain number (not a range like "135-155")
         if (/^[\d.]+$/.test(trimmed)) return trimmed;
         return '';
-    }, [recommendedWeight]);
+    }, [effRecommendedWeight]);
 
-    // Pre-fill RPE from coach recommendation
-    const defaultRpe = recommendedRpe != null ? String(recommendedRpe) : '';
+    // Pre-fill RPE only when it's a single number (not a range like "7–8")
+    const defaultRpe = React.useMemo(() => {
+        if (effRecommendedRpe == null) return '';
+        const s = String(effRecommendedRpe).trim();
+        if (/^[\d.]+$/.test(s)) return s;
+        return '';
+    }, [effRecommendedRpe]);
 
     const [weight,     setWeight]     = React.useState(defaultWeight);
     const [count,      setCount]      = React.useState(defaultCount);
@@ -153,8 +164,8 @@ export default function SetRow({
     const countLabel       = isTimed ? 'Sec done' : isAMRAP ? 'Reps (AMRAP)' : 'Reps done';
     const prescriptionLabel = (() => {
         if (!countType) return null;
-        if (isReps)  return countMax ? `${countMin}–${countMax} reps` : countMin ? `${countMin} reps` : null;
-        if (isTimed) return countMax ? `${countMin}–${countMax} sec`  : countMin ? `${countMin} sec`  : null;
+        if (isReps)  return countMax ? `${effCountMin}–${countMax} reps` : effCountMin ? `${effCountMin} reps` : null;
+        if (isTimed) return countMax ? `${effCountMin}–${countMax} sec`  : effCountMin ? `${effCountMin} sec`  : null;
         if (isAMRAP) return timeCapSeconds ? `AMRAP · ${Math.round(timeCapSeconds / 60)} min cap` : 'AMRAP · no time cap';
         return null;
     })();
@@ -178,11 +189,11 @@ export default function SetRow({
             </View>
 
             {/* Recommendations as helper text */}
-            {(recommendedWeight || recommendedRpe) && !saved && (
+            {(effRecommendedWeight || effRecommendedRpe) && !saved && (
                 <View style={styles.recRow}>
                     <Feather name="info" size={11} color={theme.accent} style={{ marginRight: 5 }} />
                     <Text style={styles.recText}>
-                        Coach rec:{recommendedWeight ? ` ${recommendedWeight}${weightUnit !== 'other' ? ` ${weightUnit}` : ''}` : ''}{recommendedRpe ? `  ·  RPE ${recommendedRpe}` : ''}
+                        Coach rec:{effRecommendedWeight ? ` ${effRecommendedWeight}${weightUnit !== 'other' ? ` ${weightUnit}` : ''}` : ''}{effRecommendedRpe ? `  ·  RPE ${effRecommendedRpe}` : ''}
                     </Text>
                 </View>
             )}

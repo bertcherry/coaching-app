@@ -360,6 +360,21 @@ export default function WorkoutActiveScreen({ route, navigation }) {
         return () => { cancelled = true; };
     }, [currentExercise?.id]);
 
+    // Pre-fill inputs from per-set config (or exercise-level fallback) when exercise/set changes
+    React.useEffect(() => {
+        if (!currentExercise) return;
+        const cfg = currentExercise.setConfigs?.[setNum - 1] ?? null;
+        const rw  = cfg?.weight   ?? currentExercise.recommendedWeight ?? null;
+        const rr  = cfg?.rpe      ?? currentExercise.recommendedRpe    ?? null;
+        const rc  = cfg?.countMin ?? currentExercise.countMin          ?? null;
+
+        if (rw && /^[\d.]+$/.test(String(rw).trim())) setWeight(String(rw).trim());
+        if (rr != null && /^[\d.]+$/.test(String(rr).trim())) setRpe(String(rr).trim());
+        if (rc != null && (currentExercise.countType === 'Reps' || currentExercise.countType === 'Timed')) {
+            setCount(String(rc));
+        }
+    }, [currentExercise?.id, setNum]);
+
     // Fetch demo metadata for exercises we haven't seen yet
     React.useEffect(() => {
         if (!currentExercise?.id || demos[currentExercise.id] !== undefined) return;
@@ -645,7 +660,13 @@ export default function WorkoutActiveScreen({ route, navigation }) {
     const sectionLabel = `Section ${sectionIdx + 1}${isCircuit ? ' · Circuit' : ''}${isTimed ? ' · Timed' : ''}`;
     const totalExInSection = currentSection.data.length;
     const setLabel = `Set ${setNum} of ${totalSets}${isOptionalSet ? ' (optional)' : ''}`;
-    const prescription = formatPrescription(currentExercise);
+    // Per-set config overrides exercise-level recommendations
+    const setConfig  = currentExercise?.setConfigs?.[setNum - 1] ?? null;
+    const recWeight  = setConfig?.weight   ?? currentExercise?.recommendedWeight ?? null;
+    const recRpe     = setConfig?.rpe      ?? currentExercise?.recommendedRpe    ?? null;
+    const effCountMin = setConfig?.countMin ?? currentExercise?.countMin ?? null;
+
+    const prescription = formatPrescription({ ...currentExercise, countMin: effCountMin });
 
     // ── Determine which rest time applies (between exercises vs between sets) ──
     const isNextSameExercise = !isCircuit && setNum < totalSets;
@@ -696,12 +717,12 @@ export default function WorkoutActiveScreen({ route, navigation }) {
                 ) : null}
 
                 {/* ── Coach rec ── */}
-                {(currentExercise.recommendedWeight || currentExercise.recommendedRpe) && (
+                {(recWeight || recRpe) && (
                     <View style={styles.recBanner}>
                         <Feather name="info" size={12} color={theme.accent} style={{ marginRight: 6 }} />
                         <Text style={styles.recText}>
-                            Coach rec:{currentExercise.recommendedWeight ? ` ${currentExercise.recommendedWeight} ${weightUnit !== 'other' ? weightUnit : ''}` : ''}
-                            {currentExercise.recommendedRpe ? `  ·  RPE ${currentExercise.recommendedRpe}` : ''}
+                            Coach rec:{recWeight ? ` ${recWeight} ${weightUnit !== 'other' ? weightUnit : ''}` : ''}
+                            {recRpe ? `  ·  RPE ${recRpe}` : ''}
                         </Text>
                     </View>
                 )}

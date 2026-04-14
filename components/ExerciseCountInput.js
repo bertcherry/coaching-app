@@ -30,16 +30,22 @@ export default function ExerciseCountInput({ exercise, fieldBase, handleChange, 
     return (
         <View style={styles.container}>
             {!forceTimed && (
-                <View style={styles.segmentRow}>
-                    {COUNT_TYPES.map(({ label, value }) => {
-                        const active = type === value;
-                        return (
-                            <Pressable key={value} style={[styles.segment, active && styles.segmentActive]} onPress={() => onTypeChange(value)}>
-                                <Text style={[styles.segmentText, active && styles.segmentTextActive]}>{label}</Text>
-                            </Pressable>
-                        );
-                    })}
-                </View>
+                <>
+                    <View style={styles.typeHeader}>
+                        <Text style={styles.inputLabel}>Count type <Text style={styles.req}>*</Text></Text>
+                        {!type && <View style={styles.requiredDot} />}
+                    </View>
+                    <View style={styles.segmentRow}>
+                        {COUNT_TYPES.map(({ label, value }) => {
+                            const active = type === value;
+                            return (
+                                <Pressable key={value} style={[styles.segment, active && styles.segmentActive]} onPress={() => onTypeChange(value)}>
+                                    <Text style={[styles.segmentText, active && styles.segmentTextActive]}>{label}</Text>
+                                </Pressable>
+                            );
+                        })}
+                    </View>
+                </>
             )}
             {forceTimed && (
                 <View style={styles.forcedTimedBadge}>
@@ -124,7 +130,9 @@ function makeStyles(theme) {
         inputGroup: { flex: 1 },
         inputLabel: { fontSize: 10, color: theme.textSecondary, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4 },
         req: { color: theme.accent },
-        countInput: { height: 40, backgroundColor: theme.surfaceElevated, borderWidth: 1, borderColor: theme.surfaceBorder, borderRadius: 8, paddingHorizontal: 10, fontSize: 15, color: theme.inputText, textAlign: 'center' },
+        typeHeader:   { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 },
+        requiredDot:  { width: 6, height: 6, borderRadius: 3, backgroundColor: theme.accent },
+        countInput: { height: 40, backgroundColor: theme.surfaceElevated, borderWidth: 1, borderColor: theme.surfaceBorder, borderRadius: 8, paddingHorizontal: 10, fontSize: 15, color: theme.textPrimary, textAlign: 'center' },
         countInputOptional: { borderStyle: 'dashed', borderColor: theme.surfaceBorder, color: theme.textSecondary },
         rangeDash: { color: theme.textTertiary, fontSize: 20, paddingBottom: 8, width: 16, textAlign: 'center' },
         preview: { fontSize: 12, color: theme.success, paddingTop: 4, paddingHorizontal: 2, fontStyle: 'italic' },

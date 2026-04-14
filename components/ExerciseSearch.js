@@ -344,8 +344,8 @@ function makeStyles(theme) {
         container:      { flex: 1, marginHorizontal: 10, marginTop: 8 },
         label:          { fontSize: 11, fontWeight: '600', color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4 },
 
-        selectedRow:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: theme.accent, backgroundColor: theme.inputBackground, paddingHorizontal: 12, paddingVertical: 10 },
-        selectedName:   { fontSize: 15, color: theme.inputText, flex: 1 },
+        selectedRow:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: theme.accent, backgroundColor: theme.surface, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10 },
+        selectedName:   { fontSize: 15, color: theme.textPrimary, flex: 1 },
 
         searchPlaceholder:     { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.surfaceBorder, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, color: theme.textPrimary },
         searchPlaceholderText: { color: theme.textSecondary, fontSize: 15 },

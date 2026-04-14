@@ -143,8 +143,8 @@ const Item = ({ workoutId, clientId, unitDefault, onSetSaved, ...item }) => {
         getVideo();
     }, [item.id]);
 
-    // Build set rows based on the sets value from the workout
-    const setCount = item.sets ? parseInt(item.sets) : 1;
+    // Build set rows: prefer setsMax → setsMin → legacy sets field
+    const setCount = item.setsMax ? parseInt(item.setsMax) : item.setsMin ? parseInt(item.setsMin) : item.sets ? parseInt(item.sets) : 1;
     const setRows = Array.from({ length: setCount }, (_, i) => i + 1);
 
     if (!Object.keys(video).length) return (
@@ -199,6 +199,7 @@ const Item = ({ workoutId, clientId, unitDefault, onSetSaved, ...item }) => {
                         <SetRow
                             key={`${item.id}-set-${setNum}`}
                             setNumber={setNum}
+                            isOptional={item.setsMin != null && setNum > parseInt(item.setsMin)}
                             exerciseId={item.id}
                             workoutId={workoutId}
                             clientId={clientId}
@@ -207,6 +208,9 @@ const Item = ({ workoutId, clientId, unitDefault, onSetSaved, ...item }) => {
                             countMin={item.countMin != null ? parseFloat(item.countMin) : null}
                             countMax={item.countMax != null ? parseFloat(item.countMax) : null}
                             timeCapSeconds={item.timeCapSeconds != null ? parseFloat(item.timeCapSeconds) : null}
+                            recommendedWeight={item.recommendedWeight ?? null}
+                            recommendedRpe={item.recommendedRpe != null ? parseFloat(item.recommendedRpe) : null}
+                            setConfig={Array.isArray(item.setConfigs) ? (item.setConfigs[setNum - 1] ?? null) : null}
                             onSave={onSetSaved}
                         />
                     ))}
