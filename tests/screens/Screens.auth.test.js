@@ -18,6 +18,7 @@ jest.mock('@react-navigation/native', () => {
   const React = require('react');
   return {
     useNavigation: () => ({ navigate: mockNavigate }),
+    useRoute: () => ({ params: {} }),
     useFocusEffect: (cb) => { React.useEffect(cb, []); },
   };
 });
@@ -144,7 +145,7 @@ describe('SignUpScreen', () => {
     fireEvent.press(getByText('Register'));
 
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('Confirm Email');
+      expect(mockNavigate).toHaveBeenCalledWith('Confirm Email', expect.any(Object));
     });
   });
 

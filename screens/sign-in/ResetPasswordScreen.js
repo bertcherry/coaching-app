@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { ScrollView, Text, StyleSheet, KeyboardAvoidingView, TextInput, Platform } from 'react-native';
+import { ScrollView, Text, StyleSheet, KeyboardAvoidingView, TextInput, Platform, Alert } from 'react-native';
 import CustomButton from '../../components/Button';
 import { useNavigation } from '@react-navigation/native';
 import { useHeaderHeight } from '@react-navigation/elements';
@@ -13,10 +13,17 @@ export default function ResetPasswordScreen() {
     const { theme } = useTheme();
     const headerHeight = useHeaderHeight();
 
-    const onSetPressed = () => {
-      //update password in back end
-      //validate user
-      navigation.navigate('Welcome');
+    const onSetPressed = async () => {
+      const res = await fetch('https://coaching-app.bert-m-cherry.workers.dev/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, newPassword }),
+      });
+      if (res.ok) navigation.navigate('Welcome');
+      else {
+        const err = await res.json();
+        Alert.alert('Error', err.error);
+      }
     };
 
     const onSignInPressed = () => {

@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { ScrollView, Text, StyleSheet, KeyboardAvoidingView, TextInput, Platform } from 'react-native';
+import { ScrollView, Text, StyleSheet, KeyboardAvoidingView, TextInput, Platform, Alert } from 'react-native';
 import CustomButton from '../../components/Button';
 import { useNavigation } from '@react-navigation/native';
 import { useHeaderHeight } from '@react-navigation/elements';
@@ -12,9 +12,17 @@ export default function ForgotPasswordScreen() {
     const { theme } = useTheme();
     const headerHeight = useHeaderHeight();
 
-    const onSendPressed = () => {
-      //send validation code
-      navigation.navigate('Reset Password');
+    const onSendPressed = async () => {
+      const res = await fetch('https://coaching-app.bert-m-cherry.workers.dev/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      if (res.ok) navigation.navigate('Reset Password');
+      else {
+        const err = await res.json();
+        Alert.alert('Error', err.error);
+      }
     };
 
     const onSignInPressed = () => {
@@ -30,7 +38,7 @@ export default function ForgotPasswordScreen() {
             onChangeText={onChangeEmail}
             placeholder='email'
             placeholderTextColor={theme.inputPlaceholder}
-            secureTextEntry={true}
+            keyboardType='email-address'
             style={[styles.input, { borderColor: theme.inputBorder, backgroundColor: theme.inputBackground, color: theme.inputText }]}
         />
         <CustomButton onPress={onSendPressed} text="Send Code"></CustomButton>

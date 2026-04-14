@@ -16,12 +16,16 @@ export default function SignUpScreen() {
     const headerHeight = useHeaderHeight();
 
     const onRegisterPressed = async () => {
+      if (password !== passwordRepeat) {
+        Alert.alert('Error', 'Passwords do not match');
+        return;
+      }
       const res = await fetch('https://coaching-app.bert-m-cherry.workers.dev/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password, accessCode }),
       });
-      if (res.ok) navigation.navigate('Confirm Email');
+      if (res.ok) navigation.navigate('Confirm Email', { email });
       else {
         const err = await res.json();
         Alert.alert('Error', err.error);

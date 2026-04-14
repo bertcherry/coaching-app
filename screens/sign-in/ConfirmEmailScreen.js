@@ -1,7 +1,7 @@
 import * as React from 'react';
-import { ScrollView, Text, StyleSheet, KeyboardAvoidingView, TextInput, Platform } from 'react-native';
+import { ScrollView, Text, StyleSheet, KeyboardAvoidingView, TextInput, Platform, Alert } from 'react-native';
 import CustomButton from '../../components/Button';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -9,16 +9,30 @@ export default function ConfirmEmailScreen() {
     const [confirmationCode, onChangeConfirmationCode] = React.useState('');
 
     const navigation = useNavigation();
+    const route = useRoute();
+    const email = route?.params?.email || '';
     const { theme } = useTheme();
     const headerHeight = useHeaderHeight();
 
-    const onConfirmPressed = () => {
-      //validate code
-      navigation.navigate('Welcome');
+    const onConfirmPressed = async () => {
+      const res = await fetch('https://coaching-app.bert-m-cherry.workers.dev/auth/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: confirmationCode, email }),
+      });
+      if (res.ok) navigation.navigate('Welcome');
+      else {
+        const err = await res.json();
+        Alert.alert('Error', err.error);
+      }
     };
 
-    const onResendPressed = () => {
-      //send a confirmation code to email
+    const onResendPressed = async () => {
+      await fetch('https://coaching-app.bert-m-cherry.workers.dev/auth/resend-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
     };
 
     const onSignInPressed = () => {
