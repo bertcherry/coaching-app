@@ -1192,6 +1192,7 @@ export default function CalendarScreen({ navigation, route }) {
             id: workout.workoutId,
             scheduledWorkoutId: workout.id,
             scheduledDate: workout.scheduledDate,
+            initialStatus: workout.status,
         });
     };
 

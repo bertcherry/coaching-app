@@ -1,7 +1,7 @@
 import * as React from 'react';
 import {
     View, Text, SectionList, TextInput, KeyboardAvoidingView,
-    StyleSheet, Platform, Pressable, Modal, Animated,
+    StyleSheet, Platform, Pressable, Modal, Animated, Alert,
 } from 'react-native';
 import Feather from '@expo/vector-icons/Feather';
 import { Video, ResizeMode } from 'expo-av';
@@ -219,12 +219,14 @@ const Item = ({ workoutId, clientId, unitDefault, onSetSaved, ...item }) => {
 // ─── WorkoutPreview ───────────────────────────────────────────────────────────
 
 export default function WorkoutPreview({ route, navigation }) {
-    const { id, scheduledWorkoutId, scheduledDate } = route.params;
+    const { id, scheduledWorkoutId, scheduledDate, initialStatus } = route.params;
     const { user, accessToken, authFetch } = useAuth();
     const { theme } = useTheme();
     const styles = makeStyles(theme);
     const scrollY = useScrollY();
     const headerHeight = useHeaderHeight();
+
+    const isCoach = user?.isCoach ?? false;
 
     useFocusEffect(React.useCallback(() => {
         scrollY.setValue(0);
@@ -233,9 +235,32 @@ export default function WorkoutPreview({ route, navigation }) {
     const [workoutData, setWorkoutData] = React.useState(undefined);
     const [showFinishOverlay, setShowFinishOverlay] = React.useState(false);
     const [showRescheduleOverlay, setShowRescheduleOverlay] = React.useState(false);
-    const [workoutStatus, setWorkoutStatus] = React.useState('scheduled'); // 'scheduled' | 'completed'
+    const [workoutStatus, setWorkoutStatus] = React.useState(initialStatus ?? 'scheduled'); // 'scheduled' | 'completed'
+    // For clients: in edit mode they can log sets on a completed workout
+    const [editMode, setEditMode] = React.useState(false);
+    // Track if any set has been saved so we can warn before leaving
+    const hasSavedSets = React.useRef(false);
     const pendingAction = React.useRef(null);
     const hasPromptedReschedule = React.useRef(false);
+
+    // Back-navigation guard: warn if client has saved sets without finishing
+    React.useEffect(() => {
+        const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+            // Allow if: workout completed, no sets saved, or navigating to settings
+            const targetRoute = e.data?.action?.payload?.name;
+            if (workoutStatus === 'completed' || !hasSavedSets.current || targetRoute === 'Settings') return;
+            e.preventDefault();
+            Alert.alert(
+                'Leave workout?',
+                'You have logged sets but haven\'t marked this workout as finished. Leave anyway?',
+                [
+                    { text: 'Stay', style: 'cancel' },
+                    { text: 'Leave', style: 'destructive', onPress: () => navigation.dispatch(e.data.action) },
+                ],
+            );
+        });
+        return unsubscribe;
+    }, [navigation, workoutStatus]);
 
     React.useEffect(() => {
         const getWorkout = async () => {
@@ -294,6 +319,7 @@ export default function WorkoutPreview({ route, navigation }) {
     };
 
     const handleSetSaved = () => {
+        hasSavedSets.current = true;
         maybePromptReschedule(() => {
             // Attempt background sync after each save — no-ops if already syncing
             if (accessToken) syncQueue(accessToken);
@@ -333,6 +359,9 @@ export default function WorkoutPreview({ route, navigation }) {
         );
     }
 
+    // Clients can log sets on a completed workout only while in editMode
+    const loggingEnabled = workoutStatus !== 'completed' || (!isCoach && editMode);
+
     const renderItem = ({ item }) => (
         <WorkoutPreviewItem
             {...item}
@@ -340,6 +369,7 @@ export default function WorkoutPreview({ route, navigation }) {
             clientId={user?.email}
             unitDefault={user?.unitDefault}
             onSetSaved={handleSetSaved}
+            readOnly={!loggingEnabled}
         />
     );
 
@@ -362,10 +392,24 @@ export default function WorkoutPreview({ route, navigation }) {
     const renderFooter = () => (
         <View style={styles.footerContainer}>
             {workoutStatus === 'completed' ? (
-                <View style={styles.completedBadge}>
-                    <Feather name="check-circle" size={18} color={theme.success} />
-                    <Text style={styles.completedText}>Workout completed</Text>
-                </View>
+                <>
+                    <View style={styles.completedBadge}>
+                        <Feather name="check-circle" size={18} color={theme.success} />
+                        <Text style={styles.completedText}>Workout completed</Text>
+                    </View>
+                    {/* Clients can edit logged data after completion */}
+                    {!isCoach && (
+                        <Pressable
+                            style={[styles.editButton, editMode && styles.editButtonActive]}
+                            onPress={() => setEditMode(v => !v)}
+                        >
+                            <Feather name={editMode ? 'x' : 'edit-2'} size={16} color={editMode ? theme.textPrimary : theme.accent} />
+                            <Text style={[styles.editButtonText, editMode && styles.editButtonTextActive]}>
+                                {editMode ? 'Done editing' : 'Edit workout'}
+                            </Text>
+                        </Pressable>
+                    )}
+                </>
             ) : (
                 <>
                     <Pressable style={styles.startButton} onPress={handleStartWorkout}>
@@ -590,6 +634,28 @@ function makeStyles(theme) {
             fontSize: 16,
             color: theme.success,
             fontWeight: '600',
+        },
+        editButton: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            paddingVertical: 14,
+            borderWidth: 1,
+            borderColor: theme.accent,
+            borderRadius: 12,
+        },
+        editButtonActive: {
+            borderColor: theme.surfaceBorder,
+            backgroundColor: theme.surfaceElevated,
+        },
+        editButtonText: {
+            fontSize: 15,
+            color: theme.accent,
+            fontWeight: '600',
+        },
+        editButtonTextActive: {
+            color: theme.textSecondary,
         },
 
         // ── Finish overlay ──

@@ -39,6 +39,7 @@ export default function WorkoutPreviewItem({
     countType, countMin, countMax, timeCapSeconds,
     recommendedRpe, recommendedWeight,
     coachNotes,
+    readOnly,  // when true: hides the log-sets button (edit icon)
 }) {
     const { theme } = useTheme();
     const styles = makeStyles(theme);
@@ -46,6 +47,11 @@ export default function WorkoutPreviewItem({
     const [loading,   setLoading]   = React.useState(true);
     const [showLogs,  setShowLogs]  = React.useState(false);
     const [showVideo, setShowVideo] = React.useState(false);
+
+    // Close log panel when readOnly becomes true (e.g. leaving edit mode)
+    React.useEffect(() => {
+        if (readOnly) setShowLogs(false);
+    }, [readOnly]);
 
     React.useEffect(() => {
         if (!id) { setLoading(false); return; }
@@ -114,9 +120,11 @@ export default function WorkoutPreviewItem({
                         </Pressable>
                     )}
                     {!hasVideo && <View style={styles.noVideoTag}><Feather name="video-off" size={12} color={theme.surfaceBorder} /></View>}
-                    <Pressable style={[styles.iconButton, showLogs && styles.iconButtonActive]} onPress={() => setShowLogs(v => !v)}>
-                        <Feather name="edit-3" size={15} color={showLogs ? theme.accent : theme.textPrimary} />
-                    </Pressable>
+                    {!readOnly && (
+                        <Pressable style={[styles.iconButton, showLogs && styles.iconButtonActive]} onPress={() => setShowLogs(v => !v)}>
+                            <Feather name="edit-3" size={15} color={showLogs ? theme.accent : theme.textPrimary} />
+                        </Pressable>
+                    )}
                 </View>
             </View>
 

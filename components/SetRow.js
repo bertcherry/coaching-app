@@ -45,13 +45,23 @@ export default function SetRow({
 
     const profileUnit = resolveUnit(unitDefault) ?? 'lbs';
 
-    const defaultCount = isTimed
-        ? (countMin != null ? String(countMin) : '')
-        : isReps ? (countMin != null ? String(countMin) : '') : '';
+    const defaultCount = (isTimed || isReps) && countMin != null ? String(countMin) : '';
 
-    const [weight,     setWeight]     = React.useState('');
+    // Pre-fill weight from coach recommendation if it's a single number (not a range)
+    const defaultWeight = React.useMemo(() => {
+        if (!recommendedWeight) return '';
+        const trimmed = String(recommendedWeight).trim();
+        // Only pre-fill if it's a plain number (not a range like "135-155")
+        if (/^[\d.]+$/.test(trimmed)) return trimmed;
+        return '';
+    }, [recommendedWeight]);
+
+    // Pre-fill RPE from coach recommendation
+    const defaultRpe = recommendedRpe != null ? String(recommendedRpe) : '';
+
+    const [weight,     setWeight]     = React.useState(defaultWeight);
     const [count,      setCount]      = React.useState(defaultCount);
-    const [rpe,        setRpe]        = React.useState('');
+    const [rpe,        setRpe]        = React.useState(defaultRpe);
     const [note,       setNote]       = React.useState('');
     const [saved,      setSaved]      = React.useState(false);
     const [weightUnit, setWeightUnit] = React.useState(profileUnit); // 'lbs' | 'kg' | 'other'
@@ -206,6 +216,7 @@ export default function SetRow({
                             saved && styles.setInputSaved,
                             weightError && styles.setInputError,
                             weightUnit === 'other' && styles.setInputOther,
+                            !saved && weightUnit !== 'other' && weight !== '' && weight === defaultWeight && styles.setInputPrefilled,
                         ]}
                         value={weightUnit === 'other' ? otherLoad : weight}
                         onChangeText={weightUnit === 'other'
@@ -226,7 +237,7 @@ export default function SetRow({
                 <View style={styles.setInputGroup}>
                     <Text style={styles.setInputLabel}>{countLabel}</Text>
                     <TextInput
-                        style={[styles.setInput, saved && styles.setInputSaved, isTimed && !saved && count === defaultCount && count !== '' && styles.setInputPrefilled]}
+                        style={[styles.setInput, saved && styles.setInputSaved, !saved && count !== '' && count === defaultCount && styles.setInputPrefilled]}
                         value={count}
                         onChangeText={setCount}
                         onBlur={handleBlurSave}
@@ -241,7 +252,7 @@ export default function SetRow({
                 <View style={styles.setInputGroup}>
                     <Text style={styles.setInputLabel}>RPE</Text>
                     <TextInput
-                        style={[styles.setInput, saved && styles.setInputSaved, rpeError && styles.setInputError]}
+                        style={[styles.setInput, saved && styles.setInputSaved, rpeError && styles.setInputError, !saved && rpe !== '' && rpe === defaultRpe && styles.setInputPrefilled]}
                         value={rpe}
                         onChangeText={(v) => { setRpe(v); if (rpeError) validateRpe(v); }}
                         onBlur={handleBlurSave}

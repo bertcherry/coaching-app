@@ -273,6 +273,7 @@ export default function WorkoutActiveScreen({ route, navigation }) {
     const [timerPhase, setTimerPhase] = React.useState('work');   // 'work' | 'rest'
     const [timerPaused, setTimerPaused] = React.useState(false);
     const timerActiveRef = React.useRef(false);
+    const hasSavedSetsRef = React.useRef(false);
 
     // ── Video ───────────────────────────────────────────────────────────────
     const [showVideo, setShowVideo] = React.useState(false);
@@ -284,17 +285,21 @@ export default function WorkoutActiveScreen({ route, navigation }) {
     // ── Back-navigation guard ────────────────────────────────────────────────
     React.useEffect(() => {
         const unsubscribe = navigation.addListener('beforeRemove', (e) => {
-            if (!timerActiveRef.current || workoutDone) return;
+            if (workoutDone) return;
+            // Also allow leaving if no sets have been saved and the timer isn't running
+            if (!timerActiveRef.current && !hasSavedSetsRef.current) return;
             e.preventDefault();
-            setTimerPaused(true);
+            if (timerActiveRef.current) setTimerPaused(true);
             Alert.alert(
                 'Leave workout?',
-                'The timer is running. Are you sure you want to leave?',
+                timerActiveRef.current
+                    ? 'The timer is running. Are you sure you want to leave?'
+                    : 'You\'re in the middle of a workout. Leave anyway?',
                 [
                     {
                         text: 'Stay',
                         style: 'cancel',
-                        onPress: () => setTimerPaused(false),
+                        onPress: () => { if (timerActiveRef.current) setTimerPaused(false); },
                     },
                     {
                         text: 'Leave',
@@ -445,6 +450,7 @@ export default function WorkoutActiveScreen({ route, navigation }) {
         };
 
         enqueueRecord(record);
+        hasSavedSetsRef.current = true;
         if (accessToken) syncQueue(accessToken);
     }
 
