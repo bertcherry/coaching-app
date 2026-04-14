@@ -17,6 +17,33 @@ jest.mock('../../context/AuthContext', () => ({
     useAuth: () => ({ authFetch: mockAuthFetch }),
 }));
 
+jest.mock('@react-navigation/native', () => {
+    const React = require('react');
+    return {
+        useFocusEffect: (cb) => { React.useEffect(cb, []); },
+    };
+});
+
+jest.mock('@react-navigation/elements', () => ({
+    useHeaderHeight: () => 0,
+}));
+
+jest.mock('../../context/ThemeContext', () => ({
+    useTheme: () => ({
+        theme: {
+            background: '#000', surface: '#111', surfaceElevated: '#222',
+            surfaceBorder: '#333', textPrimary: '#fff', textSecondary: '#aaa',
+            textTertiary: '#666', divider: '#444', accent: '#fba8a0',
+            accentSubtle: '#3a2020', inputBackground: '#111', inputText: '#fff',
+            inputBorder: '#333', inputPlaceholder: '#666', overlay: 'rgba(0,0,0,0.5)',
+        },
+    }),
+}));
+
+jest.mock('../../context/ScrollContext', () => ({
+    useScrollY: () => ({ setValue: jest.fn() }),
+}));
+
 const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
 
 beforeEach(() => {

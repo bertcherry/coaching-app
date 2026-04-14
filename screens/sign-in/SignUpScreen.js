@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { ScrollView, Text, StyleSheet, KeyboardAvoidingView, TextInput, Platform } from 'react-native';
+import { ScrollView, Text, StyleSheet, KeyboardAvoidingView, TextInput, Platform, Alert } from 'react-native';
 import CustomButton from '../../components/Button';
 import { useNavigation } from '@react-navigation/native';
 import { useHeaderHeight } from '@react-navigation/elements';
@@ -19,7 +19,7 @@ export default function SignUpScreen() {
       const res = await fetch('https://coaching-app.bert-m-cherry.workers.dev/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, fname, lname, accessCode }),
+        body: JSON.stringify({ email, password, accessCode }),
       });
       if (res.ok) navigation.navigate('Confirm Email');
       else {

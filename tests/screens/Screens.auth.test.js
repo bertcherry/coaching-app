@@ -14,8 +14,32 @@ import { render, fireEvent, waitFor, screen } from '@testing-library/react-nativ
 
 // ─── Navigation mock ──────────────────────────────────────────────────────────
 const mockNavigate = jest.fn();
-jest.mock('@react-navigation/native', () => ({
-  useNavigation: () => ({ navigate: mockNavigate }),
+jest.mock('@react-navigation/native', () => {
+  const React = require('react');
+  return {
+    useNavigation: () => ({ navigate: mockNavigate }),
+    useFocusEffect: (cb) => { React.useEffect(cb, []); },
+  };
+});
+
+jest.mock('@react-navigation/elements', () => ({
+  useHeaderHeight: () => 0,
+}));
+
+jest.mock('../../context/ThemeContext', () => ({
+  useTheme: () => ({
+    theme: {
+      background: '#000', surface: '#111', surfaceElevated: '#222',
+      surfaceBorder: '#333', textPrimary: '#fff', textSecondary: '#aaa',
+      textTertiary: '#666', divider: '#444', accent: '#fba8a0',
+      accentSubtle: '#3a2020', inputBackground: '#111', inputText: '#fff',
+      inputBorder: '#333', inputPlaceholder: '#666', overlay: 'rgba(0,0,0,0.5)',
+    },
+  }),
+}));
+
+jest.mock('../../context/ScrollContext', () => ({
+  useScrollY: () => ({ setValue: jest.fn() }),
 }));
 
 // ─── Auth context mock ────────────────────────────────────────────────────────
@@ -30,7 +54,7 @@ import SignInScreen from '../../screens/sign-in/SignInScreen';
 import SignUpScreen from '../../screens/sign-in/SignUpScreen';
 import ForgotPasswordScreen from '../../screens/sign-in/ForgotPasswordScreen';
 import ResetPasswordScreen from '../../screens/sign-in/ResetPasswordScreen';
-import ConfirmEmailScreen from '../../screens/ConfirmEmailScreen';
+import ConfirmEmailScreen from '../../screens/sign-in/ConfirmEmailScreen';
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -82,7 +106,7 @@ describe('SignInScreen', () => {
   it('navigates to Sign Up when link pressed', () => {
     const { getByText } = render(<SignInScreen />);
     fireEvent.press(getByText("Don't have an account? Create one"));
-    expect(mockNavigate).toHaveBeenCalledWith('Sign Up');
+    expect(mockNavigate).toHaveBeenCalledWith('Register');
   });
 
   it('password field has secureTextEntry enabled', () => {

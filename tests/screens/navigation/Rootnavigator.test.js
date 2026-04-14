@@ -10,21 +10,39 @@
 
 import React from 'react';
 import { render } from '@testing-library/react-native';
-import { Text } from 'react-native';
 
 // ─── Stub navigators so we only test routing logic, not full screens ───────────
-jest.mock('../../navigation/SignInNavigation', () => () => <Text testID="sign-in-nav">SignIn</Text>);
-jest.mock('../../navigation/CoachNavigation',  () => () => <Text testID="coach-nav">Coach</Text>);
-jest.mock('../../navigation/ClientNavigation', () => () => <Text testID="client-nav">Client</Text>);
+// jest.mock factory must not reference outer-scope variables (Jest 30); use require() inside.
+jest.mock('../../../screens/navigation/SignInNavigation', () => {
+    const { Text } = require('react-native');
+    return () => <Text testID="sign-in-nav">SignIn</Text>;
+});
+jest.mock('../../../screens/navigation/CoachNavigation', () => {
+    const { Text } = require('react-native');
+    return () => <Text testID="coach-nav">Coach</Text>;
+});
+jest.mock('../../../screens/navigation/ClientNavigation', () => {
+    const { Text } = require('react-native');
+    return () => <Text testID="client-nav">Client</Text>;
+});
 
 // ─── Auth context mock — overridden per test ──────────────────────────────────
 let mockAuthState = { user: null, loading: false };
-jest.mock('../../context/AuthContext', () => ({
+jest.mock('../../../context/AuthContext', () => ({
   useAuth: () => mockAuthState,
   AuthProvider: ({ children }) => children,
 }));
 
-import RootNavigator from '../../navigation/RootNavigator'; // adjust to your file
+jest.mock('../../../context/ThemeContext', () => ({
+  useTheme: () => ({ theme: { accent: '#fba8a0' } }),
+}));
+
+jest.mock('../../../utils/WorkoutSync', () => ({
+  startNetInfoSync: jest.fn(),
+  stopNetInfoSync: jest.fn(),
+}));
+
+import RootNavigator from '../../../screens/navigation/RootNavigator';
 
 describe('RootNavigator — auth gating', () => {
   it('shows sign-in stack when user is null', () => {
