@@ -331,8 +331,8 @@ describe('WorkoutActiveScreen — cursor advancement', () => {
         fireEvent.press(screen.getByText('Next'));
         await waitFor(() => screen.getByText('Set 2 of 2'));
         fireEvent.press(screen.getByText('Finish workout'));
-        await waitFor(() => screen.getByText("Thanks! 🎊"));
-        fireEvent.press(screen.getByText("Thanks! 🎊"));
+        await waitFor(() => screen.getByText("Thanks!"));
+        fireEvent.press(screen.getByText("Thanks!"));
 
         await waitFor(() => expect(screen.getByText('Workout complete!')).toBeTruthy());
     });
@@ -475,13 +475,55 @@ describe('WorkoutActiveScreen — back-navigation guard', () => {
         fireEvent.press(screen.getByText('Next'));
         await waitFor(() => screen.getByText('Set 2 of 2'));
         fireEvent.press(screen.getByText('Finish workout'));
-        await waitFor(() => screen.getByText("Thanks! 🎊"));
-        fireEvent.press(screen.getByText("Thanks! 🎊"));
+        await waitFor(() => screen.getByText("Thanks!"));
+        fireEvent.press(screen.getByText("Thanks!"));
         await waitFor(() => screen.getByText('Workout complete!'));
 
         const event = { preventDefault: jest.fn(), data: { action: {} } };
         act(() => { mockBeforeRemoveListener?.(event); });
 
         expect(event.preventDefault).not.toHaveBeenCalled();
+    });
+});
+
+// ─── Finish overlay icons ─────────────────────────────────────────────────────
+
+const VALID_FINISH_ICONS = ['thumbs-up', 'star', 'sun', 'zap', 'award', 'heart'];
+
+/** Navigate to the last set so the finish overlay can be triggered. */
+async function navigateToFinishOverlay() {
+    render(<WorkoutActiveScreen navigation={makeNavigation()} route={makeRoute()} />);
+    await waitFor(() => screen.getByText('Set 1 of 3'));
+    fireEvent.press(screen.getByText('Next'));
+    await waitFor(() => screen.getByText('Set 2 of 3'));
+    fireEvent.press(screen.getByText('Next'));
+    await waitFor(() => screen.getByText('Set 3 of 3'));
+    fireEvent.press(screen.getByText('Next'));
+    await waitFor(() => screen.getByText('Deadlift'));
+    fireEvent.press(screen.getByText('Next'));
+    await waitFor(() => screen.getByText('Set 2 of 2'));
+    fireEvent.press(screen.getByText('Finish workout'));
+    await waitFor(() => screen.getByText('Mark this workout as finished?'));
+}
+
+describe('WorkoutActiveScreen — finish overlay icons', () => {
+    it('finish overlay shows one of the known encouragement icons', async () => {
+        await navigateToFinishOverlay();
+        const found = VALID_FINISH_ICONS.some(name => {
+            try { screen.getByTestId(`icon-${name}`); return true; } catch { return false; }
+        });
+        expect(found).toBe(true);
+    });
+
+    it('confirm button reads "Thanks!"', async () => {
+        await navigateToFinishOverlay();
+        expect(screen.getByText('Thanks!')).toBeTruthy();
+    });
+
+    it('done screen shows the award icon after confirming', async () => {
+        await navigateToFinishOverlay();
+        fireEvent.press(screen.getByText('Thanks!'));
+        await waitFor(() => screen.getByText('Workout complete!'));
+        expect(screen.getByTestId('icon-award')).toBeTruthy();
     });
 });

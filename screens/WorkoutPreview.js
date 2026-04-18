@@ -35,12 +35,12 @@ function formatScheduledDate(dateStr) {
 // ─── Rotating finish messages ─────────────────────────────────────────────────
 
 const FINISH_MESSAGES = [
-    { emoji: '💪', text: 'Nice job, friend!' },
-    { emoji: '🎉', text: "Yay, you did it!" },
-    { emoji: '✨', text: 'Way to show up for yourself today.' },
-    { emoji: '🔥', text: "You're on fire. Keep that momentum." },
-    { emoji: '🏆', text: 'Another one in the books.' },
-    { emoji: '⚡', text: 'Hard work, done. Proud of you.' },
+    { icon: 'thumbs-up', text: 'Nice job, friend!' },
+    { icon: 'star',      text: "Yay, you did it!" },
+    { icon: 'sun',       text: 'Way to show up for yourself today.' },
+    { icon: 'zap',       text: "You're on fire. Keep that momentum." },
+    { icon: 'award',     text: 'Another one in the books.' },
+    { icon: 'heart',     text: 'Hard work, done. Proud of you.' },
 ];
 
 // ─── Reschedule to today overlay ──────────────────────────────────────────────
@@ -89,7 +89,7 @@ const FinishOverlay = ({ visible, onDismiss, onConfirm }) => {
         <Modal transparent animationType="fade" visible={visible} onRequestClose={onDismiss}>
             <View style={styles.overlayBackdrop}>
                 <View style={styles.overlayCard}>
-                    <Text style={styles.overlayEmoji}>{message.emoji}</Text>
+                    <Feather name={message.icon} size={52} color={theme.textPrimary} style={styles.overlayIcon} />
                     <Text style={styles.overlayMessage}>{message.text}</Text>
                     <Text style={styles.overlaySubtext}>
                         Mark this workout as finished?
@@ -99,7 +99,7 @@ const FinishOverlay = ({ visible, onDismiss, onConfirm }) => {
                             <Text style={styles.overlayButtonSecondaryText}>I'm not done</Text>
                         </Pressable>
                         <Pressable style={styles.overlayButtonPrimary} onPress={onConfirm}>
-                            <Text style={styles.overlayButtonPrimaryText}>Thanks! 🎊</Text>
+                            <Text style={styles.overlayButtonPrimaryText}>Thanks!</Text>
                         </Pressable>
                     </View>
                 </View>
@@ -685,10 +685,7 @@ function makeStyles(theme) {
         rescheduleButtonPrimary: {
             backgroundColor: theme.accent,
         },
-        overlayEmoji: {
-            fontSize: 52,
-            marginBottom: 12,
-        },
+        overlayIcon: { marginBottom: 12 },
         overlayMessage: {
             fontSize: 22,
             fontWeight: 'bold',

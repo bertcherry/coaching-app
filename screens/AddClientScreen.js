@@ -10,6 +10,7 @@ import {
     Alert,
     ActivityIndicator,
 } from 'react-native';
+import Feather from '@expo/vector-icons/Feather';
 import CustomButton from '../components/Button';
 import { useAuth } from '../context/AuthContext';
 import { useFocusEffect } from '@react-navigation/native';
@@ -80,7 +81,7 @@ export default function AddClientScreen() {
         return (
             <ScrollView style={[styles.container, { backgroundColor: theme.background }]} onScroll={(e) => scrollY.setValue(e.nativeEvent.contentOffset.y)} scrollEventThrottle={16}>
                 <View style={styles.successContainer}>
-                    <Text style={[styles.successIcon, { color: theme.success }]}>✓</Text>
+                    <Feather name="check-circle" size={64} color={theme.success} style={styles.successIcon} />
                     <Text style={[styles.headerText, { color: theme.textPrimary }]}>Client Added</Text>
                     <Text style={[styles.regularText, { color: theme.textPrimary }]}>{success.name}</Text>
                     <Text style={[styles.smallText, { color: theme.textSecondary }]}>
@@ -151,7 +152,6 @@ const styles = StyleSheet.create({
         paddingTop: 60,
     },
     successIcon: {
-        fontSize: 64,
         marginBottom: 10,
     },
     headerText: {

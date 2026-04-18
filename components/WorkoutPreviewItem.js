@@ -165,9 +165,12 @@ export default function WorkoutPreviewItem({
             {showLogs && (
                 <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.logsContainer}>
                     <View style={styles.logsHeader}>
-                        <Text style={[styles.setsHeader, requiredComplete && styles.setsHeaderDone]}>
-                            {requiredComplete ? '✓ ' : ''}{setsLabel ?? `${totalSets} sets`} · {formatPrescription({ countType, countMin, countMax, timeCapSeconds })}
-                        </Text>
+                        <View style={styles.setsHeaderRow}>
+                            {requiredComplete && <Feather name="check" size={13} color={theme.success} style={styles.setsHeaderCheck} />}
+                            <Text style={[styles.setsHeader, requiredComplete && styles.setsHeaderDone]}>
+                                {setsLabel ?? `${totalSets} sets`} · {formatPrescription({ countType, countMin, countMax, timeCapSeconds })}
+                            </Text>
+                        </View>
                         {/* Recommendations as helper text above set rows */}
                         {(recommendedWeight || recommendedRpe) && (
                             <View style={styles.recBanner}>
@@ -227,8 +230,10 @@ function makeStyles(theme) {
 
         logsContainer: { backgroundColor: theme.surface, marginHorizontal: 8, marginBottom: 8, borderRadius: 8, padding: 10, borderWidth: 0.5, borderColor: theme.surfaceBorder },
         logsHeader:    { marginBottom: 8, gap: 6 },
-        setsHeader:     { fontSize: 11, color: theme.textSecondary, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.6 },
-        setsHeaderDone: { color: theme.success },
+        setsHeaderRow:   { flexDirection: 'row', alignItems: 'center' },
+        setsHeaderCheck: { marginRight: 4 },
+        setsHeader:      { fontSize: 11, color: theme.textSecondary, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.6 },
+        setsHeaderDone:  { color: theme.success },
         recBanner:     { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.accentSubtle, borderWidth: 0.5, borderColor: theme.accent, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 5 },
         recBannerText: { fontSize: 12, color: theme.accent, fontStyle: 'italic' },
     });

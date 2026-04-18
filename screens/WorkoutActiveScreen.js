@@ -90,12 +90,12 @@ function nextCircuitExerciseIdx(exercises, setsCompleted, currentIdx) {
 // ─── Finish overlay ───────────────────────────────────────────────────────────
 
 const FINISH_MESSAGES = [
-    { emoji: '💪', text: 'Nice job, friend!' },
-    { emoji: '🎉', text: "Yay, you did it!" },
-    { emoji: '✨', text: 'Way to show up for yourself today.' },
-    { emoji: '🔥', text: "You're on fire. Keep that momentum." },
-    { emoji: '🏆', text: 'Another one in the books.' },
-    { emoji: '⚡', text: 'Hard work, done. Proud of you.' },
+    { icon: 'thumbs-up', text: 'Nice job, friend!' },
+    { icon: 'star',      text: "Yay, you did it!" },
+    { icon: 'sun',       text: 'Way to show up for yourself today.' },
+    { icon: 'zap',       text: "You're on fire. Keep that momentum." },
+    { icon: 'award',     text: 'Another one in the books.' },
+    { icon: 'heart',     text: 'Hard work, done. Proud of you.' },
 ];
 
 const FinishOverlay = ({ visible, onDismiss, onConfirm }) => {
@@ -109,7 +109,7 @@ const FinishOverlay = ({ visible, onDismiss, onConfirm }) => {
         <Modal transparent animationType="fade" visible={visible} onRequestClose={onDismiss}>
             <View style={styles.overlayBackdrop}>
                 <View style={styles.overlayCard}>
-                    <Text style={styles.overlayEmoji}>{message.emoji}</Text>
+                    <Feather name={message.icon} size={52} color={theme.textPrimary} style={styles.overlayIcon} />
                     <Text style={styles.overlayMessage}>{message.text}</Text>
                     <Text style={styles.overlaySubtext}>Mark this workout as finished?</Text>
                     <View style={styles.overlayActions}>
@@ -117,7 +117,7 @@ const FinishOverlay = ({ visible, onDismiss, onConfirm }) => {
                             <Text style={styles.overlayButtonSecondaryText}>I'm not done</Text>
                         </Pressable>
                         <Pressable style={styles.overlayButtonPrimary} onPress={onConfirm}>
-                            <Text style={styles.overlayButtonPrimaryText}>Thanks! 🎊</Text>
+                            <Text style={styles.overlayButtonPrimaryText}>Thanks!</Text>
                         </Pressable>
                     </View>
                 </View>
@@ -637,7 +637,7 @@ export default function WorkoutActiveScreen({ route, navigation }) {
     if (workoutDone) {
         return (
             <View style={[styles.container, styles.centerContent]}>
-                <Text style={styles.doneEmoji}>🎊</Text>
+                <Feather name="award" size={64} color={theme.success} style={styles.doneIcon} />
                 <Text style={styles.doneTitle}>Workout complete!</Text>
                 <Text style={styles.doneSubtitle}>Your sets have been saved locally and will sync shortly.</Text>
                 <Pressable style={styles.doneButton} onPress={() => navigation.goBack()}>
@@ -976,7 +976,7 @@ function makeStyles(theme) {
 
         // ── Done ──
         headingText: { fontSize: 20, fontWeight: '700', color: theme.textPrimary },
-        doneEmoji: { fontSize: 64, marginBottom: 16 },
+        doneIcon: { marginBottom: 16 },
         doneTitle: { fontSize: 24, fontWeight: '700', color: theme.textPrimary, marginBottom: 8 },
         doneSubtitle: { fontSize: 14, color: theme.textSecondary, textAlign: 'center', marginHorizontal: 24, marginBottom: 32 },
         doneButton: { backgroundColor: theme.surfaceElevated, borderRadius: 12, paddingHorizontal: 32, paddingVertical: 14, borderWidth: 1, borderColor: theme.surfaceBorder },
@@ -985,7 +985,7 @@ function makeStyles(theme) {
         // ── Finish overlay ──
         overlayBackdrop: { flex: 1, backgroundColor: theme.overlay, justifyContent: 'center', alignItems: 'center', padding: 32 },
         overlayCard: { backgroundColor: theme.surface, borderRadius: 16, padding: 28, width: '100%', alignItems: 'center', borderWidth: 1, borderColor: theme.success },
-        overlayEmoji: { fontSize: 52, marginBottom: 12 },
+        overlayIcon: { marginBottom: 12 },
         overlayMessage: { fontSize: 22, fontWeight: 'bold', color: theme.textPrimary, textAlign: 'center', marginBottom: 8 },
         overlaySubtext: { fontSize: 14, color: theme.textSecondary, textAlign: 'center', marginBottom: 28 },
         overlayActions: { flexDirection: 'row', gap: 12, width: '100%' },

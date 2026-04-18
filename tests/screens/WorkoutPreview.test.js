@@ -364,3 +364,29 @@ describe('WorkoutPreview — Start Workout navigation', () => {
         }));
     });
 });
+
+// ─── Finish overlay icons ─────────────────────────────────────────────────────
+
+const VALID_FINISH_ICONS = ['thumbs-up', 'star', 'sun', 'zap', 'award', 'heart'];
+
+describe('WorkoutPreview — finish overlay icons', () => {
+    async function openFinishOverlay() {
+        render(<WorkoutPreview navigation={makeNavigation()} route={makeRoute({ scheduledDate: null })} />);
+        await waitFor(() => screen.getByText('Workout Finished'));
+        fireEvent.press(screen.getByText('Workout Finished'));
+        await waitFor(() => screen.getByText('Mark this workout as finished?'));
+    }
+
+    it('finish overlay shows one of the known encouragement icons', async () => {
+        await openFinishOverlay();
+        const found = VALID_FINISH_ICONS.some(name => {
+            try { screen.getByTestId(`icon-${name}`); return true; } catch { return false; }
+        });
+        expect(found).toBe(true);
+    });
+
+    it('confirm button reads "Thanks!"', async () => {
+        await openFinishOverlay();
+        expect(screen.getByText('Thanks!')).toBeTruthy();
+    });
+});
