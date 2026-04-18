@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { useHeaderHeight } from '@react-navigation/elements';
 import ExerciseCountInput from '../components/ExerciseCountInput';
+import { syncRpe, syncWeight, syncCountMax } from '../utils/setConfigSync';
 import Feather from '@expo/vector-icons/Feather';
 import * as Yup from 'yup';
 import { useAuth } from '../context/AuthContext';
@@ -405,6 +406,8 @@ const ExerciseCard = React.memo(({
     const [showAdvanced, setShowAdvanced] = React.useState(false);
     const [showPerSet, setShowPerSet]     = React.useState(!!(exercise.setConfigs?.length));
     const [confirmRemove, setConfirmRemove] = React.useState(false);
+    // committedRpe only updates on blur so the per-set effect doesn't fire mid-typing
+    const [committedRpe, setCommittedRpe] = React.useState(exercise.recommendedRpe ?? null);
 
     React.useEffect(() => {
         if(!exercise?.id || !clientEmail){setHistory(null);return;}
@@ -442,6 +445,24 @@ const ExerciseCard = React.memo(({
         );
         setFieldValue(`${fieldBase}.setConfigs`, next);
     }, [showPerSet, exercise.setsMin, exercise.setsMax]);
+
+    // Reps/sec: update per-set countMin when countMax changes
+    React.useEffect(() => {
+        if (!showPerSet || !Array.isArray(exercise.setConfigs)) return;
+        setFieldValue(`${fieldBase}.setConfigs`, syncCountMax(exercise.setConfigs, exercise.countMax, exercise.countMin));
+    }, [exercise.countMax]);
+
+    // RPE: keyed off committedRpe (set on blur) so mid-typing doesn't trigger
+    React.useEffect(() => {
+        if (!showPerSet || !Array.isArray(exercise.setConfigs)) return;
+        setFieldValue(`${fieldBase}.setConfigs`, syncRpe(exercise.setConfigs, committedRpe));
+    }, [committedRpe]);
+
+    // Weight: update per-set weight when recommendedWeight changes
+    React.useEffect(() => {
+        if (!showPerSet || !Array.isArray(exercise.setConfigs)) return;
+        setFieldValue(`${fieldBase}.setConfigs`, syncWeight(exercise.setConfigs, exercise.recommendedWeight));
+    }, [exercise.recommendedWeight]);
 
     const hasAdvData = !!(exercise.recommendedRpe || exercise.recommendedWeight || exercise.coachNotes);
 
@@ -510,7 +531,8 @@ const ExerciseCard = React.memo(({
                             <View style={styles.advancedField}>
                                 <Text style={styles.inputLabel}>Rec. RPE <Text style={styles.inputLabelSub}>(1–10, range ok)</Text></Text>
                                 <TextInput style={styles.advancedInput} keyboardType="default" placeholder="e.g. 7 or 7–8" placeholderTextColor={theme.inputPlaceholder}
-                                    onChangeText={handleChange(`${fieldBase}.recommendedRpe`)} onBlur={handleBlur(`${fieldBase}.recommendedRpe`)}
+                                    onChangeText={handleChange(`${fieldBase}.recommendedRpe`)}
+                                    onBlur={(e) => { handleBlur(`${fieldBase}.recommendedRpe`)(e); setCommittedRpe(exercise.recommendedRpe ?? null); }}
                                     value={exercise.recommendedRpe!=null?String(exercise.recommendedRpe):''} />
                                 <ErrorMessage render={msg=><Text style={styles.errorText}>{msg}</Text>} name={`${fieldBase}.recommendedRpe`} />
                             </View>
@@ -546,10 +568,13 @@ const ExerciseCard = React.memo(({
                             // Pre-fill weight only if it's a plain number (not a range)
                             const recW = exercise.recommendedWeight;
                             const prefillWeight = recW && /^[\d.]+$/.test(String(recW).trim()) ? String(recW).trim() : null;
+                            // Pre-fill countMin only when there's no countMax (single value, not a range)
+                            const hasRepRange = exercise.countMax != null && exercise.countMax !== '';
+                            const prefillCount = !hasRepRange && exercise.countMin != null ? exercise.countMin : null;
                             const configs = Array.from({ length: n }, () => ({
                                 weight: prefillWeight,
                                 rpe: exercise.recommendedRpe != null ? exercise.recommendedRpe : null,
-                                countMin: exercise.countMin != null ? exercise.countMin : null,
+                                countMin: prefillCount,
                             }));
                             setFieldValue(`${fieldBase}.setConfigs`, configs);
                             setShowPerSet(true);
@@ -589,13 +614,19 @@ const ExerciseCard = React.memo(({
                                     </View>
 
                                     {/* Weight */}
-                                    <TextInput
-                                        style={styles.setConfigInput}
-                                        placeholder="e.g. 135"
-                                        placeholderTextColor={theme.inputPlaceholder}
-                                        value={cfg.weight ?? ''}
-                                        onChangeText={(v) => setFieldValue(`${fieldBase}.setConfigs[${i}].weight`, v || null)}
-                                    />
+                                    {(() => {
+                                        const recW = exercise.recommendedWeight;
+                                        const isRange = recW && !/^[\d.]+$/.test(String(recW).trim());
+                                        return (
+                                            <TextInput
+                                                style={styles.setConfigInput}
+                                                placeholder={isRange ? String(recW) : 'e.g. 135'}
+                                                placeholderTextColor={theme.inputPlaceholder}
+                                                value={cfg.weight ?? ''}
+                                                onChangeText={(v) => setFieldValue(`${fieldBase}.setConfigs[${i}].weight`, v || null)}
+                                            />
+                                        );
+                                    })()}
 
                                     {/* RPE */}
                                     <TextInput
@@ -608,16 +639,23 @@ const ExerciseCard = React.memo(({
                                     />
 
                                     {/* Reps / Sec override (only for Reps and Timed) */}
-                                    {(exercise.countType === 'Reps' || exercise.countType === 'Timed') && (
-                                        <TextInput
-                                            style={styles.setConfigInput}
-                                            keyboardType="number-pad"
-                                            placeholder="opt."
-                                            placeholderTextColor={theme.inputPlaceholder}
-                                            value={cfg.countMin != null ? String(cfg.countMin) : ''}
-                                            onChangeText={(v) => setFieldValue(`${fieldBase}.setConfigs[${i}].countMin`, v ? parseInt(v) : null)}
-                                        />
-                                    )}
+                                    {(exercise.countType === 'Reps' || exercise.countType === 'Timed') && (() => {
+                                        const hasRange = exercise.countMax != null && exercise.countMax !== '';
+                                        const unit = exercise.countType === 'Timed' ? 'sec' : 'reps';
+                                        const rangePlaceholder = hasRange
+                                            ? `${exercise.countMin ?? '?'}–${exercise.countMax} ${unit}`
+                                            : 'opt.';
+                                        return (
+                                            <TextInput
+                                                style={styles.setConfigInput}
+                                                keyboardType="number-pad"
+                                                placeholder={rangePlaceholder}
+                                                placeholderTextColor={theme.inputPlaceholder}
+                                                value={cfg.countMin != null ? String(cfg.countMin) : ''}
+                                                onChangeText={(v) => setFieldValue(`${fieldBase}.setConfigs[${i}].countMin`, v ? parseInt(v) : null)}
+                                            />
+                                        );
+                                    })()}
                                 </View>
                             );
                         })}
@@ -1075,7 +1113,7 @@ function makeStyles(theme) { return StyleSheet.create({
     setsRow:         { flexDirection: 'row', alignItems: 'flex-end', gap: 6, marginBottom: 4 },
     setsField:       { width: 80 },
     setsInput:       { height: 40, backgroundColor: theme.surfaceElevated, borderWidth: 1, borderColor: theme.surfaceBorder, borderRadius: 8, textAlign: 'center', fontSize: 15, color: theme.textPrimary },
-    setsInputOptional:{ borderStyle: 'dashed', borderColor: theme.surfaceBorder, color: theme.textSecondary },
+    setsInputOptional:{ borderStyle: 'dashed', borderColor: theme.surfaceBorder },
     setsDash:        { color: theme.textTertiary, fontSize: 20, paddingBottom: 8, width: 16, textAlign: 'center' },
     countSection:    { marginTop: 4, marginBottom: 4 },
 

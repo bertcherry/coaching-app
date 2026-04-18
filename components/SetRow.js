@@ -51,7 +51,11 @@ export default function SetRow({
     const effRecommendedRpe    = setConfig?.rpe    ?? recommendedRpe;
     const effCountMin          = setConfig?.countMin ?? countMin;
 
-    const defaultCount = (isTimed || isReps) && effCountMin != null ? String(effCountMin) : '';
+    // Only pre-fill count when it's a single prescribed value (no range); ranges show as helper text
+    const defaultCount = React.useMemo(
+        () => (isTimed || isReps) && effCountMin != null && !countMax ? String(effCountMin) : '',
+        [isTimed, isReps, effCountMin, countMax],
+    );
 
     // Pre-fill weight from effective recommendation if it's a single number (not a range)
     const defaultWeight = React.useMemo(() => {
@@ -77,6 +81,26 @@ export default function SetRow({
     const [saved,      setSaved]      = React.useState(false);
     const [weightUnit, setWeightUnit] = React.useState(profileUnit); // 'lbs' | 'kg' | 'other'
     const [otherLoad,  setOtherLoad]  = React.useState(''); // free text when unit === 'other'
+
+    // Track whether the user has manually edited each field so prop-driven updates
+    // don't overwrite intentional edits.
+    const weightTouched = React.useRef(false);
+    const countTouched  = React.useRef(false);
+    const rpeTouched    = React.useRef(false);
+
+    // When computed defaults change (e.g. countMax added, recommendedWeight updated),
+    // push the new value into state — unless the user has already touched the field.
+    React.useEffect(() => {
+        if (!weightTouched.current && !saved) setWeight(defaultWeight);
+    }, [defaultWeight]);
+
+    React.useEffect(() => {
+        if (!countTouched.current && !saved) setCount(defaultCount);
+    }, [defaultCount]);
+
+    React.useEffect(() => {
+        if (!rpeTouched.current && !saved) setRpe(defaultRpe);
+    }, [defaultRpe]);
 
     // Validation errors for client entries
     const [weightError, setWeightError] = React.useState(null);
@@ -188,15 +212,24 @@ export default function SetRow({
                 )}
             </View>
 
-            {/* Recommendations as helper text */}
-            {(effRecommendedWeight || effRecommendedRpe) && !saved && (
-                <View style={styles.recRow}>
-                    <Feather name="info" size={11} color={theme.accent} style={{ marginRight: 5 }} />
-                    <Text style={styles.recText}>
-                        Coach rec:{effRecommendedWeight ? ` ${effRecommendedWeight}${weightUnit !== 'other' ? ` ${weightUnit}` : ''}` : ''}{effRecommendedRpe ? `  ·  RPE ${effRecommendedRpe}` : ''}
-                    </Text>
-                </View>
-            )}
+            {/* Recommendations as helper text — only shown when the value is a range
+                (single values are pre-filled directly into the input instead) */}
+            {(() => {
+                const weightRange = !!effRecommendedWeight && defaultWeight === '';
+                const rpeRange    = !!effRecommendedRpe    && defaultRpe === '';
+                const countRange  = (isTimed || isReps) && effCountMin != null && !!countMax;
+                if ((!weightRange && !rpeRange && !countRange) || saved) return null;
+                const parts = [];
+                if (weightRange) parts.push(`${effRecommendedWeight}${weightUnit !== 'other' ? ` ${weightUnit}` : ''}`);
+                if (countRange)  parts.push(`${effCountMin}–${countMax} ${isTimed ? 'sec' : 'reps'}`);
+                if (rpeRange)    parts.push(`RPE ${effRecommendedRpe}`);
+                return (
+                    <View style={styles.recRow}>
+                        <Feather name="info" size={11} color={theme.accent} style={{ marginRight: 5 }} />
+                        <Text style={styles.recText}>Coach rec: {parts.join('  ·  ')}</Text>
+                    </View>
+                );
+            })()}
 
             {/* Weight unit selector */}
             {!saved && (
@@ -231,8 +264,8 @@ export default function SetRow({
                         ]}
                         value={weightUnit === 'other' ? otherLoad : weight}
                         onChangeText={weightUnit === 'other'
-                            ? setOtherLoad
-                            : (v) => { setWeight(v); if (weightError) validateWeight(v); }
+                            ? (v) => { weightTouched.current = true; setOtherLoad(v); }
+                            : (v) => { weightTouched.current = true; setWeight(v); if (weightError) validateWeight(v); }
                         }
                         onBlur={handleBlurSave}
                         placeholder="—"
@@ -250,7 +283,7 @@ export default function SetRow({
                     <TextInput
                         style={[styles.setInput, saved && styles.setInputSaved, !saved && count !== '' && count === defaultCount && styles.setInputPrefilled]}
                         value={count}
-                        onChangeText={setCount}
+                        onChangeText={(v) => { countTouched.current = true; setCount(v); }}
                         onBlur={handleBlurSave}
                         placeholder="—"
                         placeholderTextColor={theme.textSecondary}
@@ -265,7 +298,7 @@ export default function SetRow({
                     <TextInput
                         style={[styles.setInput, saved && styles.setInputSaved, rpeError && styles.setInputError, !saved && rpe !== '' && rpe === defaultRpe && styles.setInputPrefilled]}
                         value={rpe}
-                        onChangeText={(v) => { setRpe(v); if (rpeError) validateRpe(v); }}
+                        onChangeText={(v) => { rpeTouched.current = true; setRpe(v); if (rpeError) validateRpe(v); }}
                         onBlur={handleBlurSave}
                         placeholder="—"
                         placeholderTextColor={theme.textSecondary}

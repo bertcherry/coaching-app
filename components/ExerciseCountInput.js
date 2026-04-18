@@ -133,7 +133,7 @@ function makeStyles(theme) {
         typeHeader:   { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 },
         requiredDot:  { width: 6, height: 6, borderRadius: 3, backgroundColor: theme.accent },
         countInput: { height: 40, backgroundColor: theme.surfaceElevated, borderWidth: 1, borderColor: theme.surfaceBorder, borderRadius: 8, paddingHorizontal: 10, fontSize: 15, color: theme.textPrimary, textAlign: 'center' },
-        countInputOptional: { borderStyle: 'dashed', borderColor: theme.surfaceBorder, color: theme.textSecondary },
+        countInputOptional: { borderStyle: 'dashed', borderColor: theme.surfaceBorder },
         rangeDash: { color: theme.textTertiary, fontSize: 20, paddingBottom: 8, width: 16, textAlign: 'center' },
         preview: { fontSize: 12, color: theme.success, paddingTop: 4, paddingHorizontal: 2, fontStyle: 'italic' },
         errorText: { fontSize: 12, fontStyle: 'italic', paddingTop: 2, color: theme.accent },

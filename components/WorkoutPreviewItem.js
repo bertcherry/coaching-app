@@ -39,19 +39,32 @@ export default function WorkoutPreviewItem({
     countType, countMin, countMax, timeCapSeconds,
     recommendedRpe, recommendedWeight,
     coachNotes,
-    readOnly,  // when true: hides the log-sets button (edit icon)
+    setConfigs, // per-set coach targets [{ weight, rpe, countMin }]
+    readOnly,   // when true: hides the log-sets button (edit icon)
 }) {
     const { theme } = useTheme();
     const styles = makeStyles(theme);
-    const [demo,      setDemo]      = React.useState(null);
-    const [loading,   setLoading]   = React.useState(true);
-    const [showLogs,  setShowLogs]  = React.useState(false);
-    const [showVideo, setShowVideo] = React.useState(false);
+    const [demo,         setDemo]         = React.useState(null);
+    const [loading,      setLoading]      = React.useState(true);
+    const [showLogs,     setShowLogs]     = React.useState(false);
+    const [showVideo,    setShowVideo]    = React.useState(false);
+    const [savedSetNums, setSavedSetNums] = React.useState(() => new Set());
 
     // Close log panel when readOnly becomes true (e.g. leaving edit mode)
     React.useEffect(() => {
         if (readOnly) setShowLogs(false);
     }, [readOnly]);
+
+    // Intercept onSetSaved to track which sets have been saved
+    const handleSetSaved = React.useCallback((record) => {
+        setSavedSetNums(prev => {
+            if (prev.has(record.set)) return prev;
+            const next = new Set(prev);
+            next.add(record.set);
+            return next;
+        });
+        onSetSaved?.(record);
+    }, [onSetSaved]);
 
     React.useEffect(() => {
         if (!id) { setLoading(false); return; }
@@ -78,6 +91,10 @@ export default function WorkoutPreviewItem({
     const totalSets       = resolvedSetsMax ?? resolvedSetsMin ?? 1;
     const requiredSets    = resolvedSetsMin ?? totalSets;
     const setRows         = Array.from({ length: totalSets }, (_, i) => ({ setNumber: i + 1, isOptional: i >= requiredSets }));
+
+    // Required sets are 1..requiredSets. Complete = every required set has been saved.
+    const requiredComplete = requiredSets > 0 &&
+        Array.from({ length: requiredSets }, (_, i) => i + 1).every(n => savedSetNums.has(n));
 
     const setsLabel = hasRange
         ? `${resolvedSetsMin}–${resolvedSetsMax} sets (+${resolvedSetsMax - resolvedSetsMin} optional)`
@@ -121,8 +138,15 @@ export default function WorkoutPreviewItem({
                     )}
                     {!hasVideo && <View style={styles.noVideoTag}><Feather name="video-off" size={12} color={theme.surfaceBorder} /></View>}
                     {!readOnly && (
-                        <Pressable style={[styles.iconButton, showLogs && styles.iconButtonActive]} onPress={() => setShowLogs(v => !v)}>
-                            <Feather name="edit-3" size={15} color={showLogs ? theme.accent : theme.textPrimary} />
+                        <Pressable
+                            style={[styles.iconButton, showLogs && styles.iconButtonActive, requiredComplete && styles.iconButtonDone]}
+                            onPress={() => setShowLogs(v => !v)}
+                        >
+                            <Feather
+                                name={requiredComplete && !showLogs ? 'check' : 'edit-3'}
+                                size={15}
+                                color={requiredComplete ? theme.success : showLogs ? theme.accent : theme.textPrimary}
+                            />
                         </Pressable>
                     )}
                 </View>
@@ -141,8 +165,8 @@ export default function WorkoutPreviewItem({
             {showLogs && (
                 <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.logsContainer}>
                     <View style={styles.logsHeader}>
-                        <Text style={styles.setsHeader}>
-                            {setsLabel ?? `${totalSets} sets`} · {formatPrescription({ countType, countMin, countMax, timeCapSeconds })}
+                        <Text style={[styles.setsHeader, requiredComplete && styles.setsHeaderDone]}>
+                            {requiredComplete ? '✓ ' : ''}{setsLabel ?? `${totalSets} sets`} · {formatPrescription({ countType, countMin, countMax, timeCapSeconds })}
                         </Text>
                         {/* Recommendations as helper text above set rows */}
                         {(recommendedWeight || recommendedRpe) && (
@@ -170,7 +194,8 @@ export default function WorkoutPreviewItem({
                             timeCapSeconds={timeCapSeconds != null ? parseFloat(timeCapSeconds) : null}
                             recommendedWeight={recommendedWeight ?? null}
                             recommendedRpe={recommendedRpe ?? null}
-                            onSave={onSetSaved}
+                            setConfig={Array.isArray(setConfigs) ? (setConfigs[setNumber - 1] ?? null) : null}
+                            onSave={handleSetSaved}
                         />
                     ))}
                 </KeyboardAvoidingView>
@@ -191,6 +216,7 @@ function makeStyles(theme) {
         actionButtons:   { flexDirection: 'row', alignItems: 'center', gap: 6, paddingRight: 8, paddingTop: 4 },
         iconButton:      { width: 34, height: 34, justifyContent: 'center', alignItems: 'center', borderColor: theme.surfaceBorder, borderWidth: 1, borderRadius: 8 },
         iconButtonActive:{ borderColor: theme.accent, backgroundColor: theme.accentSubtle },
+        iconButtonDone:  { borderColor: theme.success, backgroundColor: theme.surface },
         noVideoTag:      { width: 34, height: 34, justifyContent: 'center', alignItems: 'center' },
 
         coachNotesContainer: { flexDirection: 'row', alignItems: 'flex-start', marginHorizontal: 16, marginBottom: 8, backgroundColor: theme.accentSubtle, borderLeftWidth: 2, borderLeftColor: theme.accent, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 4 },
@@ -201,7 +227,8 @@ function makeStyles(theme) {
 
         logsContainer: { backgroundColor: theme.surface, marginHorizontal: 8, marginBottom: 8, borderRadius: 8, padding: 10, borderWidth: 0.5, borderColor: theme.surfaceBorder },
         logsHeader:    { marginBottom: 8, gap: 6 },
-        setsHeader:    { fontSize: 11, color: theme.textSecondary, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.6 },
+        setsHeader:     { fontSize: 11, color: theme.textSecondary, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.6 },
+        setsHeaderDone: { color: theme.success },
         recBanner:     { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.accentSubtle, borderWidth: 0.5, borderColor: theme.accent, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 5 },
         recBannerText: { fontSize: 12, color: theme.accent, fontStyle: 'italic' },
     });
