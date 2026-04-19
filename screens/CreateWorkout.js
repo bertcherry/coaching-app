@@ -205,7 +205,7 @@ const ClientSearch = ({ selectedEmail, selectedName, onSelect, coachEmail, authF
     }, [searchValue, allClients]);
 
     const onSelectClient = (client) => {
-        onSelect(client.email, `${client.fname} ${client.lname}`);
+        onSelect(client.email, `${client.fname} ${client.lname}`, client.timezone ?? null);
         setShowModal(false); setSearchValue('');
     };
 
@@ -773,10 +773,11 @@ export default function CreateWorkout({ navigation, route }) {
     const scrollY = useScrollY();
     const headerHeight = useHeaderHeight();
     useFocusEffect(React.useCallback(() => { scrollY.setValue(0); }, [scrollY]));
-    const prefillClient     = route?.params?.clientEmail ?? null;
-    const prefillClientName = route?.params?.clientName ?? null;
-    const prefillDate       = route?.params?.scheduledDate ?? null;
-    const prefillWorkout    = route?.params?.workoutData ?? null;
+    const prefillClient         = route?.params?.clientEmail  ?? null;
+    const prefillClientName     = route?.params?.clientName   ?? null;
+    const prefillClientTimezone = route?.params?.clientTimezone ?? null;
+    const prefillDate           = route?.params?.scheduledDate ?? null;
+    const prefillWorkout        = route?.params?.workoutData  ?? null;
 
     const [showToast, setShowToast] = React.useState(false);
 
@@ -861,6 +862,7 @@ export default function CreateWorkout({ navigation, route }) {
         id: uuid.v4(),
         workoutName: prefillWorkout?.workoutName ?? '',
         clientEmail: prefillClient, clientName: prefillClientName,
+        clientTimezone: prefillClientTimezone,
         scheduledDate: prefillDate ?? null,
         data: prefillWorkout?.data
             ? prefillWorkout.data.map(s => ({ ...s, data: s.data.map(migrateEx) }))
@@ -898,7 +900,12 @@ export default function CreateWorkout({ navigation, route }) {
 
             setShowToast(true);
             if (values.clientEmail) {
-                navigation.navigate('Calendar', { clientEmail: values.clientEmail, month: values.scheduledDate?.substring(0,7) ?? null });
+                navigation.navigate('Calendar', {
+                    clientEmail: values.clientEmail,
+                    clientName: values.clientName,
+                    clientTimezone: values.clientTimezone ?? undefined,
+                    month: values.scheduledDate?.substring(0, 7) ?? null,
+                });
             } else {
                 navigation.navigate('Template Workouts');
             }
@@ -924,9 +931,10 @@ export default function CreateWorkout({ navigation, route }) {
 
                                 <ClientSearch selectedEmail={values.clientEmail} selectedName={values.clientName}
                                     coachEmail={user.email} authFetch={authFetch}
-                                    onSelect={(email, name) => {
+                                    onSelect={(email, name, timezone) => {
                                         setFieldValue('clientEmail', email);
                                         setFieldValue('clientName', name);
+                                        setFieldValue('clientTimezone', timezone ?? null);
                                         if (!email) setFieldValue('scheduledDate', null);
                                     }} />
 

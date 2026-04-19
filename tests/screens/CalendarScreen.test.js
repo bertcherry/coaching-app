@@ -143,6 +143,11 @@ const MISSED_WORKOUT = {
     id: 'sw-3', workoutId: 'w-3', workoutName: 'Cardio',
     scheduledDate: `${YEAR}-${MONTH_STR}-05`, status: 'missed',
 };
+// Month-only (unscheduled) workout — scheduledDate is YYYY-MM, not YYYY-MM-DD
+const UNSCHEDULED_WORKOUT = {
+    id: 'sw-5', workoutId: 'w-5', workoutName: 'Mobility Flow',
+    scheduledDate: `${YEAR}-${MONTH_STR}`, status: 'scheduled',
+};
 
 beforeEach(() => {
     jest.clearAllMocks();
@@ -514,5 +519,55 @@ describe('CalendarScreen — coach vs client', () => {
                 expect.stringContaining(encodeURIComponent('client@example.com')),
             );
         });
+    });
+});
+
+// ─── Month param initialisation ───────────────────────────────────────────────
+
+describe('CalendarScreen — month param initialisation', () => {
+    it('fetches the param month immediately without a prior fetch for the current month', async () => {
+        const futureYear  = NOW.getFullYear() + 1;
+        const futureMonth = `${futureYear}-03`;
+        scheduleResponse([]);
+
+        render(<CalendarScreen navigation={mockNavigation} route={makeRoute({ month: futureMonth })} />);
+
+        await waitFor(() => expect(mockAuthFetch).toHaveBeenCalled());
+
+        // Every call to authFetch should reference the target month, not the current one
+        mockAuthFetch.mock.calls.forEach(([url]) => {
+            expect(url).toContain(`month=${futureMonth}`);
+        });
+    });
+});
+
+// ─── Unscheduled workout display ──────────────────────────────────────────────
+
+describe('CalendarScreen — unscheduled workout display', () => {
+    async function renderWithUnscheduled() {
+        scheduleResponse([UNSCHEDULED_WORKOUT]);
+        render(<CalendarScreen navigation={mockNavigation} route={makeRoute()} />);
+        await waitFor(() => screen.getByText('Mobility Flow'));
+    }
+
+    it('shows the workout name in the Unscheduled section', async () => {
+        await renderWithUnscheduled();
+        expect(screen.getByText('Mobility Flow')).toBeTruthy();
+    });
+
+    it('does not show a "scheduled" status label next to the workout name', async () => {
+        await renderWithUnscheduled();
+        // The word "scheduled" must not appear as a separate status label
+        // (the workout name itself should not contain it)
+        const statusTexts = screen.queryAllByText('scheduled');
+        expect(statusTexts).toHaveLength(0);
+    });
+
+    it('navigates to Workout Preview when tapped', async () => {
+        await renderWithUnscheduled();
+        fireEvent.press(screen.getByText('Mobility Flow'));
+        expect(mockNavigate).toHaveBeenCalledWith('Workout Preview', expect.objectContaining({
+            scheduledWorkoutId: 'sw-5',
+        }));
     });
 });

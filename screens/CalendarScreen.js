@@ -935,30 +935,23 @@ const UnscheduledSection = ({ workouts, isCoach, onWorkoutPress, onWorkoutLongPr
                     No unscheduled workouts this month
                 </Text>
             ) : (
-                workouts.map(w => {
-                    const statusLabel = STATUS_LABEL[w.status] ?? w.status;
-                    return (
-                        <Pressable
-                            key={w.id}
-                            style={[
-                                styles.weekListItem,
-                                { borderLeftColor: STATUS_COLOR[w.status] ?? STATUS_COLOR.scheduled },
-                            ]}
-                            onPress={() => onWorkoutPress(w)}
-                            onLongPress={() => onWorkoutLongPress(w)}
-                            delayLongPress={400}
-                            accessibilityRole="button"
-                            accessibilityLabel={`${w.workoutName}, unscheduled, ${statusLabel}`}
-                            accessibilityHint="Tap to open. Long press for actions."
-                        >
-                            <View style={styles.weekListItemContent}>
-                                <Text style={styles.weekListItemName}>{w.workoutName}</Text>
-                                <Text style={styles.weekListItemStatus}>{statusLabel}</Text>
-                            </View>
-                            <Feather name="chevron-right" size={16} color={theme.textTertiary} accessible={false} />
-                        </Pressable>
-                    );
-                })
+                workouts.map(w => (
+                    <Pressable
+                        key={w.id}
+                        style={[styles.weekListItem, styles.weekListItemUnscheduled]}
+                        onPress={() => onWorkoutPress(w)}
+                        onLongPress={() => onWorkoutLongPress(w)}
+                        delayLongPress={400}
+                        accessibilityRole="button"
+                        accessibilityLabel={`${w.workoutName}, unscheduled`}
+                        accessibilityHint="Tap to open. Long press for actions."
+                    >
+                        <View style={styles.weekListItemContent}>
+                            <Text style={styles.weekListItemName}>{w.workoutName}</Text>
+                        </View>
+                        <Feather name="chevron-right" size={16} color={theme.textTertiary} accessible={false} />
+                    </Pressable>
+                ))
             )}
         </View>
     );
@@ -1147,10 +1140,14 @@ export default function CalendarScreen({ navigation, route }) {
     };
 
     // ── Month navigation state ───────────────────────────────────────────────
+    // Initialise directly from the route param so the very first fetch targets
+    // the right month — avoids a spurious fetch for the current month followed
+    // by a correction that could surface a transient error alert.
 
     const now = new Date();
-    const [year,  setYear]  = React.useState(now.getFullYear());
-    const [month, setMonth] = React.useState(now.getMonth());
+    const _routeMonth = route?.params?.month;
+    const [year,  setYear]  = React.useState(() => _routeMonth ? parseInt(_routeMonth.split('-')[0], 10) : now.getFullYear());
+    const [month, setMonth] = React.useState(() => _routeMonth ? parseInt(_routeMonth.split('-')[1], 10) - 1 : now.getMonth());
 
     // ── Week navigation state ────────────────────────────────────────────────
 
@@ -1303,7 +1300,7 @@ export default function CalendarScreen({ navigation, route }) {
     const handleCreateNew = () => {
         const date = addDayTarget;
         setAddDayTarget(null);
-        navigation.navigate('Create Workout', { clientEmail, clientName, scheduledDate: date });
+        navigation.navigate('Create Workout', { clientEmail, clientName, clientTimezone, scheduledDate: date });
     };
 
     // Month param for month view (YYYY-MM)
@@ -1322,6 +1319,7 @@ export default function CalendarScreen({ navigation, route }) {
         navigation.navigate('Create Workout', {
             clientEmail,
             clientName,
+            clientTimezone,
             scheduledDate: currentMonthParam,
         });
     };
@@ -1562,57 +1560,50 @@ export default function CalendarScreen({ navigation, route }) {
                     onScroll={(e) => scrollY.setValue(e.nativeEvent.contentOffset.y)}
                     scrollEventThrottle={16}
                 >
-                    {/* Day-of-week row */}
-                    <View
-                        style={styles.dowRow}
-                        accessible={false}
-                        importantForAccessibility="no-hide-descendants"
-                    >
-                        {DOW_LABELS.map(label => (
-                            <Text key={label} style={styles.dowLabel}>{label}</Text>
-                        ))}
-                    </View>
+                    {/* Centered calendar block: DOW headers + month grid */}
+                    <View style={styles.calendarCenter}>
+                        <View
+                            style={styles.dowRow}
+                            accessible={false}
+                            importantForAccessibility="no-hide-descendants"
+                        >
+                            {DOW_LABELS.map(label => (
+                                <Text key={label} style={styles.dowLabel}>{label}</Text>
+                            ))}
+                        </View>
 
-                    {/* Month grid */}
-                    <View style={styles.grid} accessibilityRole="grid" accessibilityLabel={headerLabel}>
-                        {monthGrid.map(({ dateStr, currentMonth }) => {
-                            const isValidDrop = dragTargetDate === dateStr
-                                && dateStr >= clientTodayStr
-                                && draggingWorkout?.scheduledDate !== dateStr;
-                            return (
-                                <MonthDayCell
-                                    key={dateStr}
-                                    dateStr={dateStr}
-                                    currentMonth={currentMonth}
-                                    workouts={workoutsByDate[dateStr] ?? []}
-                                    isToday={dateStr === clientTodayStr}
-                                    isPast={dateStr < clientTodayStr}
-                                    isCoach={isCoach}
-                                    onWorkoutPress={handleWorkoutPress}
-                                    onWorkoutLongPress={setActionWorkout}
-                                    onAddWorkoutPress={setAddDayTarget}
-                                    isDragTarget={dragTargetDate === dateStr}
-                                    isDragTargetValid={isValidDrop}
-                                    onCellLayout={(ds, layout) => { cellLayoutsRef.current[ds] = layout; }}
-                                    onDragStart={handleDragStart}
-                                    onDragUpdate={handleDragUpdate}
-                                    onDragEnd={handleDragEnd}
-                                    ghostX={ghostX}
-                                    ghostY={ghostY}
-                                />
-                            );
-                        })}
+                        <View style={styles.grid} accessibilityRole="grid" accessibilityLabel={headerLabel}>
+                            {monthGrid.map(({ dateStr, currentMonth }) => {
+                                const isValidDrop = dragTargetDate === dateStr
+                                    && dateStr >= clientTodayStr
+                                    && draggingWorkout?.scheduledDate !== dateStr;
+                                return (
+                                    <MonthDayCell
+                                        key={dateStr}
+                                        dateStr={dateStr}
+                                        currentMonth={currentMonth}
+                                        workouts={workoutsByDate[dateStr] ?? []}
+                                        isToday={dateStr === clientTodayStr}
+                                        isPast={dateStr < clientTodayStr}
+                                        isCoach={isCoach}
+                                        onWorkoutPress={handleWorkoutPress}
+                                        onWorkoutLongPress={setActionWorkout}
+                                        onAddWorkoutPress={setAddDayTarget}
+                                        isDragTarget={dragTargetDate === dateStr}
+                                        isDragTargetValid={isValidDrop}
+                                        onCellLayout={(ds, layout) => { cellLayoutsRef.current[ds] = layout; }}
+                                        onDragStart={handleDragStart}
+                                        onDragUpdate={handleDragUpdate}
+                                        onDragEnd={handleDragEnd}
+                                        ghostX={ghostX}
+                                        ghostY={ghostY}
+                                    />
+                                );
+                            })}
+                        </View>
                     </View>
 
                     <Legend />
-
-                    <UnscheduledSection
-                        workouts={unscheduledWorkouts}
-                        isCoach={isCoach}
-                        onWorkoutPress={handleWorkoutPress}
-                        onWorkoutLongPress={setActionWorkout}
-                        onAddUnscheduled={isCoach ? handleAddUnscheduled : undefined}
-                    />
 
                     {isCoach && (
                         <Text
@@ -1623,6 +1614,14 @@ export default function CalendarScreen({ navigation, route }) {
                             Long-press any upcoming day to add a workout
                         </Text>
                     )}
+
+                    <UnscheduledSection
+                        workouts={unscheduledWorkouts}
+                        isCoach={isCoach}
+                        onWorkoutPress={handleWorkoutPress}
+                        onWorkoutLongPress={setActionWorkout}
+                        onAddUnscheduled={isCoach ? handleAddUnscheduled : undefined}
+                    />
                     <View style={{ height: 60 }} accessible={false} importantForAccessibility="no" />
                 </ScrollView>
 
@@ -1830,12 +1829,15 @@ function makeStyles(theme) { return StyleSheet.create({
     viewToggleText:       { fontSize: 14, color: theme.accentText, fontWeight: '600' },
     viewToggleTextActive: { color: '#000', fontWeight: '700' },
 
+    // ── Month calendar centering wrapper ──
+    calendarCenter: { alignItems: 'center', width: '100%' },
+
     // ── Day-of-week row (month view) — decorative, hidden from AT ──
-    dowRow:   { flexDirection: 'row', paddingHorizontal: 16, marginBottom: 2 },
+    dowRow:   { flexDirection: 'row', width: NUM_COLS * DAY_CELL_SIZE, marginBottom: 2 },
     dowLabel: { width: DAY_CELL_SIZE, textAlign: 'center', color: theme.textSecondary, fontSize: 12, fontWeight: '600' },
 
     // ── Month grid ──
-    grid:             { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16 },
+    grid:             { flexDirection: 'row', flexWrap: 'wrap', width: NUM_COLS * DAY_CELL_SIZE },
     dayCell:          { width: DAY_CELL_SIZE, minHeight: DAY_CELL_SIZE, paddingBottom: 4, borderTopWidth: 0.5, borderTopColor: theme.divider },
     dayCellOtherMonth: { opacity: 0.3 },
 
@@ -1876,7 +1878,8 @@ function makeStyles(theme) { return StyleSheet.create({
     weekListDayHeaderToday: {},
     weekListDayLabel:       { fontSize: 15, fontWeight: '700', color: theme.textPrimary },
     weekListDayLabelToday:  { color: theme.accentText },
-    weekListItem:           { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.surface, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 12, borderLeftWidth: 3, marginBottom: 6, minHeight: 44 },
+    weekListItem:             { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.surface, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 12, borderLeftWidth: 3, marginBottom: 6, minHeight: 44 },
+    weekListItemUnscheduled:  { borderLeftColor: theme.divider },
     weekListItemContent:    { flex: 1 },
     weekListItemName:       { fontSize: 15, color: theme.textPrimary, fontWeight: '600' },
     weekListItemStatus:     { fontSize: 12, color: theme.textSecondary, marginTop: 2, textTransform: 'capitalize' },
