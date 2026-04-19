@@ -391,6 +391,63 @@ describe('CalendarScreen — missed workout sheet (client)', () => {
     });
 });
 
+// ─── Coach WorkoutActionSheet — copy / move ───────────────────────────────────
+
+describe('CalendarScreen — coach WorkoutActionSheet copy and move', () => {
+    const COACH_WORKOUT = {
+        id: 'sw-10', workoutId: 'w-10', workoutName: 'Push Day',
+        scheduledDate: `${YEAR}-${MONTH_STR}-20`, status: 'scheduled',
+        clientEmail: 'otherclient@example.com',
+    };
+
+    async function renderCoachWithWorkout() {
+        mockUser = { ...mockUser, isCoach: true };
+        scheduleResponse([COACH_WORKOUT]);
+        render(<CalendarScreen navigation={mockNavigation} route={makeRoute({ clientEmail: 'otherclient@example.com' })} />);
+        await waitFor(() => screen.getByText('Push Day'));
+        // Long-press the workout pill to open the action sheet
+        fireEvent(screen.getByText('Push Day'), 'longPress');
+        await waitFor(() => screen.getByLabelText('Copy workout to another date'));
+    }
+
+    it('shows action sheet when coach long-presses a workout', async () => {
+        await renderCoachWithWorkout();
+        expect(screen.getByLabelText('Skip workout')).toBeTruthy();
+        expect(screen.getByLabelText('Move workout to a different date')).toBeTruthy();
+        expect(screen.getByLabelText('Copy workout to another date')).toBeTruthy();
+    });
+
+    it('closes the action sheet and opens DatePickerModal when Copy is pressed', async () => {
+        await renderCoachWithWorkout();
+        fireEvent.press(screen.getByLabelText('Copy workout to another date'));
+        await waitFor(() => {
+            expect(screen.getByText('Copy workout to…')).toBeTruthy();
+            // Action sheet should be gone
+            expect(screen.queryByLabelText('Skip workout')).toBeNull();
+        });
+    });
+
+    it('closes the action sheet and opens DatePickerModal when Move is pressed', async () => {
+        await renderCoachWithWorkout();
+        fireEvent.press(screen.getByLabelText('Move workout to a different date'));
+        await waitFor(() => {
+            expect(screen.getByText('Move workout to…')).toBeTruthy();
+            // Action sheet should be gone
+            expect(screen.queryByLabelText('Copy workout to another date')).toBeNull();
+        });
+    });
+
+    it('closes the action sheet and opens SkipModal when Skip is pressed', async () => {
+        await renderCoachWithWorkout();
+        fireEvent.press(screen.getByLabelText('Skip workout'));
+        await waitFor(() => {
+            expect(screen.getByText('Skip workout?')).toBeTruthy();
+            // Action sheet should be gone
+            expect(screen.queryByLabelText('Move workout to a different date')).toBeNull();
+        });
+    });
+});
+
 // ─── completedWorkoutId param → optimistic calendar update ───────────────────
 
 describe('CalendarScreen — optimistic completion update', () => {

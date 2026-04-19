@@ -1746,9 +1746,9 @@ export default function CalendarScreen({ navigation, route }) {
                 <WorkoutActionSheet
                     workout={actionWorkout}
                     onClose={() => setActionWorkout(null)}
-                    onSkip={() => setSkipWorkout(actionWorkout)}
-                    onCopy={() => setCopyWorkout(actionWorkout)}
-                    onMove={() => setMoveWorkout(actionWorkout)}
+                    onSkip={() => { const w = actionWorkout; setActionWorkout(null); setSkipWorkout(w); }}
+                    onCopy={() => { const w = actionWorkout; setActionWorkout(null); setCopyWorkout(w); }}
+                    onMove={() => { const w = actionWorkout; setActionWorkout(null); setMoveWorkout(w); }}
                 />
             ) : null}
 
@@ -1927,9 +1927,9 @@ function makeStyles(theme) { return StyleSheet.create({
     modalSubtitle:            { fontSize: 14, color: theme.textSecondary, marginBottom: 16 },
     modalInput:               { backgroundColor: theme.surfaceElevated, borderWidth: 1, borderColor: theme.accentText, borderRadius: 8, padding: 12, color: theme.textPrimary, fontSize: 15, minHeight: 80, textAlignVertical: 'top', marginBottom: 20 },
     modalActions:             { flexDirection: 'row', gap: 12 },
-    modalButtonPrimary:       { flex: 1, backgroundColor: theme.accent, borderRadius: 8, paddingVertical: 12, alignItems: 'center', minHeight: 48 },
+    modalButtonPrimary:       { flex: 1, backgroundColor: theme.accent, borderRadius: 8, paddingVertical: 12, alignItems: 'center', justifyContent: 'center', minHeight: 48 },
     modalButtonPrimaryText:   { color: '#000', fontWeight: '700', fontSize: 16 },
-    modalButtonSecondary:     { flex: 1, borderWidth: 1, borderColor: theme.surfaceBorder, borderRadius: 8, paddingVertical: 12, alignItems: 'center', minHeight: 48 },
+    modalButtonSecondary:     { flex: 1, borderWidth: 1, borderColor: theme.surfaceBorder, borderRadius: 8, paddingVertical: 12, alignItems: 'center', justifyContent: 'center', minHeight: 48 },
     modalButtonSecondaryText: { color: theme.textSecondary, fontSize: 16 },
     modalButtonDisabled:      { opacity: 0.4 },
 
