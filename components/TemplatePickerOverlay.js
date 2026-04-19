@@ -35,7 +35,7 @@ const ConfirmStep = ({ workout, clientName, scheduledDate, onBack, onConfirm }) 
     return (
         <View style={styles.confirmContainer}>
             <Pressable style={styles.backRow} onPress={onBack}>
-                <Feather name="arrow-left" size={18} color={theme.accent} />
+                <Feather name="arrow-left" size={18} color={theme.accentText} />
                 <Text style={styles.backText}>Back to search</Text>
             </Pressable>
 
@@ -279,7 +279,7 @@ function makeStyles(theme) {
         // Confirm step
         confirmContainer: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 20 },
         backRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 20 },
-        backText: { color: theme.accent, fontSize: 14 },
+        backText: { color: theme.accentText, fontSize: 14 },
         confirmTitle: { fontSize: 18, fontWeight: 'bold', color: theme.textPrimary, marginBottom: 16 },
         confirmCard: { backgroundColor: theme.surfaceElevated, borderRadius: 8, padding: 16, borderLeftWidth: 3, borderLeftColor: theme.accent, marginBottom: 16 },
         confirmWorkoutName: { fontSize: 16, fontWeight: '600', color: theme.textPrimary },

@@ -59,7 +59,7 @@ export default function SignInScreen() {
                                 autoCapitalize='none'
                                 style={[styles.input, { borderColor: theme.inputBorder, backgroundColor: theme.inputBackground, color: theme.inputText }]}
                             />
-                            <ErrorMessage name='email' render={msg => <Text style={[styles.errorText, { color: theme.accent }]}>{msg}</Text>} />
+                            <ErrorMessage name='email' render={msg => <Text style={[styles.errorText, { color: theme.accentText }]}>{msg}</Text>} />
                             <TextInput
                                 value={values.password}
                                 onChangeText={handleChange('password')}
@@ -69,7 +69,7 @@ export default function SignInScreen() {
                                 secureTextEntry={true}
                                 style={[styles.input, { borderColor: theme.inputBorder, backgroundColor: theme.inputBackground, color: theme.inputText }]}
                             />
-                            <ErrorMessage name='password' render={msg => <Text style={[styles.errorText, { color: theme.accent }]}>{msg}</Text>} />
+                            <ErrorMessage name='password' render={msg => <Text style={[styles.errorText, { color: theme.accentText }]}>{msg}</Text>} />
                             <CustomButton onPress={handleSubmit} text="Sign In" />
                         </>
                     )}

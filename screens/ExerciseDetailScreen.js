@@ -322,7 +322,7 @@ export default function ExerciseDetailScreen({ route, navigation }) {
 
                 {pickedAsset && (
                     <View style={styles.pickedCard}>
-                        <Feather name="film" size={22} color={theme.accent} />
+                        <Feather name="film" size={22} color={theme.textPrimary} />
                         <View style={styles.pickedCardInfo}>
                             <Text style={styles.pickedCardName} numberOfLines={1}>
                                 {pickedAsset.fileName ?? 'video.mp4'}
@@ -413,7 +413,7 @@ function makeStyles(theme) {
         video:          { flex: 1 },
 
         fieldLabel:    { fontSize: 12, color: theme.textSecondary, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 },
-        required:      { color: theme.accent },
+        required:      { color: theme.accentText },
         textInput:     { borderWidth: 1, borderColor: theme.inputBorder, backgroundColor: theme.inputBackground, color: theme.inputText, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 15 },
         textArea:      { minHeight: 90, paddingTop: 10 },
 

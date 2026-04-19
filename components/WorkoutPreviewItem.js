@@ -155,7 +155,7 @@ export default function WorkoutPreviewItem({
             {/* Coach notes — shown as guidance below exercise row */}
             {coachNotes ? (
                 <View style={styles.coachNotesContainer}>
-                    <Feather name="message-square" size={12} color={theme.accent} style={{ marginRight: 6, marginTop: 1, flexShrink: 0 }} />
+                    <Feather name="message-square" size={12} color={theme.textSecondary} style={{ marginRight: 6, marginTop: 1, flexShrink: 0 }} />
                     <Text style={styles.coachNotesText}>{coachNotes}</Text>
                 </View>
             ) : null}
@@ -174,7 +174,7 @@ export default function WorkoutPreviewItem({
                         {/* Recommendations as helper text above set rows */}
                         {(recommendedWeight || recommendedRpe) && (
                             <View style={styles.recBanner}>
-                                <Feather name="info" size={12} color={theme.accent} style={{ marginRight: 6 }} />
+                                <Feather name="info" size={12} color={theme.accentText} style={{ marginRight: 6 }} />
                                 <Text style={styles.recBannerText}>
                                     Coach rec:{recommendedWeight ? ` ${recommendedWeight} ${unitDefault ?? 'lbs'}` : ''}{recommendedRpe ? `  ·  RPE ${recommendedRpe}` : ''}
                                 </Text>
@@ -218,7 +218,7 @@ function makeStyles(theme) {
         loadingText:     { padding: 20, fontSize: 14, color: theme.textSecondary },
         actionButtons:   { flexDirection: 'row', alignItems: 'center', gap: 6, paddingRight: 8, paddingTop: 4 },
         iconButton:      { width: 34, height: 34, justifyContent: 'center', alignItems: 'center', borderColor: theme.surfaceBorder, borderWidth: 1, borderRadius: 8 },
-        iconButtonActive:{ borderColor: theme.accent, backgroundColor: theme.accentSubtle },
+        iconButtonActive:{ borderColor: theme.accentText, backgroundColor: theme.accentSubtle },
         iconButtonDone:  { borderColor: theme.success, backgroundColor: theme.surface },
         noVideoTag:      { width: 34, height: 34, justifyContent: 'center', alignItems: 'center' },
 
@@ -234,7 +234,7 @@ function makeStyles(theme) {
         setsHeaderCheck: { marginRight: 4 },
         setsHeader:      { fontSize: 11, color: theme.textSecondary, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.6 },
         setsHeaderDone:  { color: theme.success },
-        recBanner:     { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.accentSubtle, borderWidth: 0.5, borderColor: theme.accent, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 5 },
-        recBannerText: { fontSize: 12, color: theme.accent, fontStyle: 'italic' },
+        recBanner:     { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.accentSubtle, borderWidth: 0.5, borderColor: theme.accentText, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 5 },
+        recBannerText: { fontSize: 12, color: theme.accentText, fontStyle: 'italic' },
     });
 }

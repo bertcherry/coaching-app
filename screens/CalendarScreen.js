@@ -456,7 +456,7 @@ const WorkoutActionSheet = ({ workout, onClose, onSkip, onCopy, onMove }) => {
                             accessibilityLabel="Skip workout"
                             accessibilityHint="Mark this workout as skipped with an optional reason"
                         >
-                            <Feather name="slash" size={20} color={theme.accent} accessible={false} />
+                            <Feather name="slash" size={20} color={theme.textPrimary} accessible={false} />
                             <View style={styles.sheetActionTextBlock}>
                                 <Text style={styles.sheetActionText}>Skip</Text>
                                 <Text style={styles.sheetActionSub}>Mark as skipped with optional reason</Text>
@@ -469,7 +469,7 @@ const WorkoutActionSheet = ({ workout, onClose, onSkip, onCopy, onMove }) => {
                             accessibilityRole="button"
                             accessibilityLabel="Move workout to a different date"
                         >
-                            <Feather name="calendar" size={20} color={theme.accent} accessible={false} />
+                            <Feather name="calendar" size={20} color={theme.textPrimary} accessible={false} />
                             <View style={styles.sheetActionTextBlock}>
                                 <Text style={styles.sheetActionText}>Move</Text>
                                 <Text style={styles.sheetActionSub}>Reschedule to a different date</Text>
@@ -484,7 +484,7 @@ const WorkoutActionSheet = ({ workout, onClose, onSkip, onCopy, onMove }) => {
                     accessibilityRole="button"
                     accessibilityLabel="Copy workout to another date"
                 >
-                    <Feather name="copy" size={20} color={theme.accent} accessible={false} />
+                    <Feather name="copy" size={20} color={theme.textPrimary} accessible={false} />
                     <View style={styles.sheetActionTextBlock}>
                         <Text style={styles.sheetActionText}>Copy to date…</Text>
                         <Text style={styles.sheetActionSub}>Duplicate on a different day</Text>
@@ -545,7 +545,7 @@ const MissedWorkoutSheet = ({ workout, onClose, onSkip, onRescheduleToday, onRes
                         accessibilityLabel="Mark as skipped"
                         accessibilityHint="Add a note about why this workout was skipped"
                     >
-                        <Feather name="slash" size={20} color={theme.accent} accessible={false} />
+                        <Feather name="slash" size={20} color={theme.textPrimary} accessible={false} />
                         <View style={styles.sheetActionTextBlock}>
                             <Text style={styles.sheetActionText}>Mark as skipped</Text>
                             <Text style={styles.sheetActionSub}>Add a note about why it was skipped</Text>
@@ -559,7 +559,7 @@ const MissedWorkoutSheet = ({ workout, onClose, onSkip, onRescheduleToday, onRes
                         accessibilityLabel="Reschedule to today"
                         accessibilityHint="Move this workout to today"
                     >
-                        <Feather name="rotate-ccw" size={20} color={theme.accent} accessible={false} />
+                        <Feather name="rotate-ccw" size={20} color={theme.textPrimary} accessible={false} />
                         <View style={styles.sheetActionTextBlock}>
                             <Text style={styles.sheetActionText}>Reschedule to today</Text>
                             <Text style={styles.sheetActionSub}>Move this workout to today</Text>
@@ -573,7 +573,7 @@ const MissedWorkoutSheet = ({ workout, onClose, onSkip, onRescheduleToday, onRes
                         accessibilityLabel="Reschedule to another date"
                         accessibilityHint="Pick a future date to move this workout to"
                     >
-                        <Feather name="calendar" size={20} color={theme.accent} accessible={false} />
+                        <Feather name="calendar" size={20} color={theme.textPrimary} accessible={false} />
                         <View style={styles.sheetActionTextBlock}>
                             <Text style={styles.sheetActionText}>Reschedule to another date</Text>
                             <Text style={styles.sheetActionSub}>Pick a different day</Text>
@@ -635,7 +635,7 @@ const AddWorkoutSheet = ({ dateStr, clientName, onClose, onCreateNew, onUseTempl
                     accessibilityRole="button"
                     accessibilityLabel="Create a new workout from scratch"
                 >
-                    <Feather name="plus-circle" size={20} color={theme.accent} accessible={false} />
+                    <Feather name="plus-circle" size={20} color={theme.textPrimary} accessible={false} />
                     <View style={styles.sheetActionTextBlock}>
                         <Text style={styles.sheetActionText}>Create new workout</Text>
                         <Text style={styles.sheetActionSub}>Build a fresh workout for this date</Text>
@@ -648,7 +648,7 @@ const AddWorkoutSheet = ({ dateStr, clientName, onClose, onCreateNew, onUseTempl
                     accessibilityRole="button"
                     accessibilityLabel="Use an existing workout template"
                 >
-                    <Feather name="copy" size={20} color={theme.accent} accessible={false} />
+                    <Feather name="copy" size={20} color={theme.textPrimary} accessible={false} />
                     <View style={styles.sheetActionTextBlock}>
                         <Text style={styles.sheetActionText}>Use a template</Text>
                         <Text style={styles.sheetActionSub}>Pick from existing workouts and assign here</Text>
@@ -924,7 +924,7 @@ const UnscheduledSection = ({ workouts, isCoach, onWorkoutPress, onWorkoutLongPr
                         accessibilityRole="button"
                         accessibilityLabel="Add unscheduled workout for this month"
                     >
-                        <Feather name="plus" size={16} color={theme.accent} accessible={false} />
+                        <Feather name="plus" size={16} color={theme.accentText} accessible={false} />
                         <Text style={styles.unscheduledAddText}>Add</Text>
                     </Pressable>
                 )}
@@ -1506,7 +1506,7 @@ export default function CalendarScreen({ navigation, route }) {
                     <Feather
                         name="grid"
                         size={14}
-                        color={calendarView === 'month' ? '#000' : theme.accent}
+                        color={calendarView === 'month' ? '#000' : theme.accentText}
                         accessible={false}
                     />
                     <Text style={[styles.viewToggleText, calendarView === 'month' && styles.viewToggleTextActive]}>
@@ -1523,7 +1523,7 @@ export default function CalendarScreen({ navigation, route }) {
                     <Feather
                         name="list"
                         size={14}
-                        color={calendarView === 'week' ? '#000' : theme.accent}
+                        color={calendarView === 'week' ? '#000' : theme.accentText}
                         accessible={false}
                     />
                     <Text style={[styles.viewToggleText, calendarView === 'week' && styles.viewToggleTextActive]}>
@@ -1810,13 +1810,13 @@ function makeStyles(theme) { return StyleSheet.create({
     headerButton: { minWidth: 44, minHeight: 44, justifyContent: 'center', alignItems: 'center' },
     headerCenter: { alignItems: 'center', flex: 1 },
     headerTitle:  { fontSize: 20, fontWeight: 'bold', color: theme.textPrimary },
-    headerClient: { fontSize: 13, color: theme.accent, marginTop: 2 },
+    headerClient: { fontSize: 13, color: theme.accentText, marginTop: 2 },
 
     // ── View toggle ──
     viewToggleRow:        { flexDirection: 'row', alignSelf: 'center', backgroundColor: theme.surface, borderRadius: 10, borderWidth: 1, borderColor: theme.divider, overflow: 'hidden', marginBottom: 8, marginTop: 2 },
     viewToggleBtn:        { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 18, paddingVertical: 8, minHeight: 44, justifyContent: 'center' },
     viewToggleBtnActive:  { backgroundColor: theme.accent, borderRadius: 8, margin: 3 },
-    viewToggleText:       { fontSize: 14, color: theme.accent, fontWeight: '600' },
+    viewToggleText:       { fontSize: 14, color: theme.accentText, fontWeight: '600' },
     viewToggleTextActive: { color: '#000', fontWeight: '700' },
 
     // ── Day-of-week row (month view) — decorative, hidden from AT ──
@@ -1850,7 +1850,7 @@ function makeStyles(theme) { return StyleSheet.create({
     weekDayHeader:     { alignItems: 'center', paddingVertical: 6 },
     weekDayHeaderToday: {},
     weekDayName:       { fontSize: 11, color: theme.textSecondary, fontWeight: '600', textTransform: 'uppercase' },
-    weekDayNameToday:  { color: theme.accent },
+    weekDayNameToday:  { color: theme.accentText },
     weekDayNumContainer:      { width: 26, height: 26, borderRadius: 13, justifyContent: 'center', alignItems: 'center', marginTop: 2 },
     weekDayNumContainerToday: { backgroundColor: theme.accent },
     weekDayNum:        { fontSize: 14, fontWeight: 'bold', color: theme.textPrimary },
@@ -1864,7 +1864,7 @@ function makeStyles(theme) { return StyleSheet.create({
     weekListDayHeader:      { marginBottom: 8 },
     weekListDayHeaderToday: {},
     weekListDayLabel:       { fontSize: 15, fontWeight: '700', color: theme.textPrimary },
-    weekListDayLabelToday:  { color: theme.accent },
+    weekListDayLabelToday:  { color: theme.accentText },
     weekListItem:           { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.surface, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 12, borderLeftWidth: 3, marginBottom: 6, minHeight: 44 },
     weekListItemContent:    { flex: 1 },
     weekListItemName:       { fontSize: 15, color: theme.textPrimary, fontWeight: '600' },
@@ -1877,8 +1877,8 @@ function makeStyles(theme) { return StyleSheet.create({
     unscheduledSection: { marginHorizontal: 16, marginTop: 8, marginBottom: 4 },
     unscheduledHeader:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
     unscheduledTitle:   { fontSize: 11, fontWeight: '700', color: theme.textTertiary, textTransform: 'uppercase', letterSpacing: 0.8 },
-    unscheduledAddBtn:  { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 4, paddingHorizontal: 8, borderRadius: 6, borderWidth: 1, borderColor: theme.accent },
-    unscheduledAddText: { fontSize: 13, color: theme.accent, fontWeight: '600' },
+    unscheduledAddBtn:  { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 4, paddingHorizontal: 8, borderRadius: 6, borderWidth: 1, borderColor: theme.accentText },
+    unscheduledAddText: { fontSize: 13, color: theme.accentText, fontWeight: '600' },
     unscheduledEmpty:   { fontSize: 13, color: theme.textTertiary, paddingVertical: 8 },
 
     // ── Legend ──
@@ -1914,7 +1914,7 @@ function makeStyles(theme) { return StyleSheet.create({
     modalCard:                { backgroundColor: theme.surface, borderRadius: 12, padding: 24, width: '100%' },
     modalTitle:               { fontSize: 18, fontWeight: 'bold', color: theme.textPrimary, marginBottom: 4 },
     modalSubtitle:            { fontSize: 14, color: theme.textSecondary, marginBottom: 16 },
-    modalInput:               { backgroundColor: theme.surfaceElevated, borderWidth: 1, borderColor: theme.accent, borderRadius: 8, padding: 12, color: theme.textPrimary, fontSize: 15, minHeight: 80, textAlignVertical: 'top', marginBottom: 20 },
+    modalInput:               { backgroundColor: theme.surfaceElevated, borderWidth: 1, borderColor: theme.accentText, borderRadius: 8, padding: 12, color: theme.textPrimary, fontSize: 15, minHeight: 80, textAlignVertical: 'top', marginBottom: 20 },
     modalActions:             { flexDirection: 'row', gap: 12 },
     modalButtonPrimary:       { flex: 1, backgroundColor: theme.accent, borderRadius: 8, paddingVertical: 12, alignItems: 'center', minHeight: 48 },
     modalButtonPrimaryText:   { color: '#000', fontWeight: '700', fontSize: 16 },
@@ -1931,11 +1931,11 @@ function makeStyles(theme) { return StyleSheet.create({
     miniCalCellWrap: { flex: 1, alignItems: 'center' },
     miniCalDayLabel: { fontSize: 11, fontWeight: '600', color: theme.textSecondary, textAlign: 'center', paddingVertical: 4 },
     miniCalCell:             { width: 34, height: 34, justifyContent: 'center', alignItems: 'center', borderRadius: 17 },
-    miniCalCellTodayRing:    { borderWidth: 1.5, borderColor: theme.accent },
+    miniCalCellTodayRing:    { borderWidth: 1.5, borderColor: theme.accentText },
     miniCalCellSourceRing:   { borderWidth: 1.5, borderColor: '#f5a623' },
     miniCalCellSelected:     { backgroundColor: theme.accent },
     miniCalCellText:         { fontSize: 13, color: theme.textPrimary, textAlign: 'center' },
-    miniCalCellToday:        { color: theme.accent, fontWeight: '700' },
+    miniCalCellToday:        { color: theme.accentText, fontWeight: '700' },
     miniCalCellSelectedText: { color: '#000', fontWeight: '700' },
     // Past/blocked: intentionally low contrast to signal unavailability
     miniCalCellPast:         { color: theme.textTertiary },

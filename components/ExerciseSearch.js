@@ -296,7 +296,7 @@ export default function ExerciseSearch({
                                             setShowCreate(true);
                                         }}
                                     >
-                                        <Feather name="plus-circle" size={16} color={theme.accent} />
+                                        <Feather name="plus-circle" size={16} color={theme.accentText} />
                                         <Text style={styles.createFromSearchText}>
                                             Add "{searchValue}" to library
                                         </Text>
@@ -314,7 +314,7 @@ export default function ExerciseSearch({
                                     setShowCreate(true);
                                 }}
                             >
-                                <Feather name="plus" size={15} color={theme.accent} style={{ marginRight: 6 }} />
+                                <Feather name="plus" size={15} color={theme.accentText} style={{ marginRight: 6 }} />
                                 <Text style={styles.createPromptText}>Create a new exercise</Text>
                             </Pressable>
                         )}
@@ -344,10 +344,10 @@ function makeStyles(theme) {
         container:      { flex: 1, marginHorizontal: 10, marginTop: 8 },
         label:          { fontSize: 11, fontWeight: '600', color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4 },
 
-        selectedRow:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: theme.accent, backgroundColor: theme.surface, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10 },
+        selectedRow:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: theme.accentText, backgroundColor: theme.fieldBackground, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10 },
         selectedName:   { fontSize: 15, color: theme.textPrimary, flex: 1 },
 
-        searchPlaceholder:     { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.surfaceBorder, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, color: theme.textPrimary },
+        searchPlaceholder:     { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.fieldBackground, borderWidth: 1, borderColor: theme.surfaceBorder, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, color: theme.textPrimary },
         searchPlaceholderText: { color: theme.textSecondary, fontSize: 15 },
 
         // Modal
@@ -375,11 +375,11 @@ function makeStyles(theme) {
 
         noResults:           { padding: 24, alignItems: 'center', gap: 16 },
         noResultsText:       { color: theme.textTertiary, fontSize: 14, textAlign: 'center' },
-        createFromSearch:    { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: theme.accent },
-        createFromSearchText:{ color: theme.accent, fontSize: 14, fontWeight: '600' },
+        createFromSearch:    { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: theme.accentText },
+        createFromSearchText:{ color: theme.accentText, fontSize: 14, fontWeight: '600' },
 
         createPrompt:     { flexDirection: 'row', alignItems: 'center', padding: 20, borderTopWidth: 0.5, borderTopColor: theme.surfaceBorder, marginTop: 8 },
-        createPromptText: { color: theme.accent, fontSize: 14 },
+        createPromptText: { color: theme.accentText, fontSize: 14 },
 
         // Create exercise modal
         createModalOverlay:  { flex: 1, backgroundColor: theme.overlay, justifyContent: 'flex-end' },
@@ -389,8 +389,8 @@ function makeStyles(theme) {
         createModalSubtitle: { fontSize: 13, color: theme.textTertiary, marginBottom: 20, lineHeight: 18 },
 
         createLabel:    { fontSize: 13, color: theme.textSecondary, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6, marginTop: 12 },
-        required:       { color: theme.accent },
-        createInput:    { borderWidth: 1, borderColor: theme.surfaceBorder, backgroundColor: theme.surfaceElevated, color: theme.inputText, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 15 },
+        required:       { color: theme.accentText },
+        createInput:    { borderWidth: 1, borderColor: theme.surfaceBorder, backgroundColor: theme.fieldBackground, color: theme.textPrimary, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 15 },
         createInputMultiline: { minHeight: 90, textAlignVertical: 'top', paddingTop: 10 },
         createButton:   { backgroundColor: theme.accent, borderRadius: 8, paddingVertical: 14, alignItems: 'center', marginTop: 24 },
         createButtonText: { color: '#000', fontWeight: '700', fontSize: 16 },

@@ -662,7 +662,7 @@ export default function WorkoutPreview({ route, navigation }) {
                             accessibilityRole="button"
                             accessibilityLabel="Reschedule workout"
                         >
-                            <Feather name="calendar" size={16} color={theme.accent} accessible={false} />
+                            <Feather name="calendar" size={16} color={theme.accentText} accessible={false} />
                             <Text style={styles.rescheduleButtonText}>Reschedule Workout</Text>
                         </Pressable>
                     )}
@@ -697,7 +697,7 @@ export default function WorkoutPreview({ route, navigation }) {
                                 accessibilityRole="button"
                                 accessibilityLabel="Reschedule workout"
                             >
-                                <Feather name="calendar" size={16} color={theme.accent} accessible={false} />
+                                <Feather name="calendar" size={16} color={theme.accentText} accessible={false} />
                                 <Text style={styles.rescheduleButtonText}>Reschedule Workout</Text>
                             </Pressable>
                         </>
@@ -826,7 +826,7 @@ function makeStyles(theme) {
         },
         setLabel: {
             fontSize: 12,
-            color: theme.accent,
+            color: theme.accentText,
             fontWeight: '700',
             marginBottom: 6,
         },
@@ -937,7 +937,7 @@ function makeStyles(theme) {
             gap: 8,
             paddingVertical: 14,
             borderWidth: 1,
-            borderColor: theme.accent,
+            borderColor: theme.accentText,
             borderRadius: 12,
         },
         editButtonActive: {
@@ -946,7 +946,7 @@ function makeStyles(theme) {
         },
         editButtonText: {
             fontSize: 15,
-            color: theme.accent,
+            color: theme.accentText,
             fontWeight: '600',
         },
         editButtonTextActive: {
@@ -1017,12 +1017,12 @@ function makeStyles(theme) {
             paddingVertical: 14,
             minHeight: 44,  // WCAG 2.5.5
             borderWidth: 1,
-            borderColor: theme.accent,
+            borderColor: theme.accentText,
             borderRadius: 12,
         },
         rescheduleButtonText: {
             fontSize: 15,
-            color: theme.accent,
+            color: theme.accentText,
             fontWeight: '600',
         },
 
@@ -1089,7 +1089,7 @@ function makeStyles(theme) {
         },
         datePickerCellSourceRing: {
             borderWidth: 1.5,
-            borderColor: theme.accent,
+            borderColor: theme.accentText,
         },
         datePickerCellSelected: {
             backgroundColor: theme.accent,
@@ -1133,7 +1133,7 @@ function makeStyles(theme) {
             borderColor: theme.success,
         },
         rescheduleCard: {
-            borderColor: theme.accent,
+            borderColor: theme.accentText,
         },
         rescheduleButtonPrimary: {
             backgroundColor: theme.accent,

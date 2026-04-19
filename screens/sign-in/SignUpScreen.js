@@ -83,9 +83,9 @@ export default function SignUpScreen() {
         />
         <CustomButton onPress={onRegisterPressed} text="Register"></CustomButton>
         <Text style={[styles.smallText, { color: theme.textSecondary }]}>By registering you confirm agreement to our{' '}
-          <Text style={[styles.link, { color: theme.accent }]} onPress={onTermsOfUsePressed}>Terms of Use</Text> and{' '}
-          <Text style={[styles.link, { color: theme.accent }]} onPress={onPrivacyPressed}>Privacy Policy</Text>. Clients are reminded of their agreement to the{' '}
-          <Text style={[styles.link, { color: theme.accent }]} onPress={onWaiverPressed}>coaching waiver</Text>.
+          <Text style={[styles.link, { color: theme.accentText }]} onPress={onTermsOfUsePressed}>Terms of Use</Text> and{' '}
+          <Text style={[styles.link, { color: theme.accentText }]} onPress={onPrivacyPressed}>Privacy Policy</Text>. Clients are reminded of their agreement to the{' '}
+          <Text style={[styles.link, { color: theme.accentText }]} onPress={onWaiverPressed}>coaching waiver</Text>.
         </Text>
         <CustomButton onPress={onSignInPressed} text="Have an account? Sign in" type="TERTIARY"></CustomButton>
       </ScrollView>

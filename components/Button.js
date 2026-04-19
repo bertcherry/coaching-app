@@ -9,13 +9,13 @@ const CustomButton = ({ onPress, text, type="PRIMARY", bgColor, fgColor}) => {
         <Pressable style={[
             styles.container,
             type === 'PRIMARY' && { backgroundColor: theme.accent },
-            type === 'SECONDARY' && { borderColor: theme.accent, borderWidth: 2 },
+            type === 'SECONDARY' && { borderColor: theme.accentText, borderWidth: 2 },
             bgColor ? {backgroundColor: bgColor} : {}
         ]} onPress={onPress}>
             <Text style={[
                 styles.text,
                 type === 'PRIMARY' && { color: '#000' },
-                type === 'SECONDARY' && { color: theme.accent },
+                type === 'SECONDARY' && { color: theme.accentText },
                 type === 'TERTIARY' && { color: theme.textSecondary },
                 fgColor ? {color: fgColor} : {}
             ]}>{text}</Text>

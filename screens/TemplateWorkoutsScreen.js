@@ -229,13 +229,13 @@ export default function UnscheduledWorkoutsScreen({ navigation }) {
                         clearButtonMode="while-editing"
                     />
                 </View>
-                <Pressable style={[styles.sortButton, { borderColor: theme.accent }]} onPress={toggleSort}>
+                <Pressable style={[styles.sortButton, { borderColor: theme.accentText }]} onPress={toggleSort}>
                     <Feather
                         name={sort === 'recent' ? 'clock' : 'type'}
                         size={16}
                         color={theme.accent}
                     />
-                    <Text style={[styles.sortButtonText, { color: theme.accent }]}>
+                    <Text style={[styles.sortButtonText, { color: theme.accentText }]}>
                         {sort === 'recent' ? 'Newest' : 'A–Z'}
                     </Text>
                 </Pressable>

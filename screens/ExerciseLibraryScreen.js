@@ -213,7 +213,7 @@ export default function ExerciseLibraryScreen({ navigation }) {
             {/* Header */}
             <View style={styles.header}>
                 <View style={styles.headerTitleRow}>
-                    <Feather name="book-open" size={20} color={theme.accent} />
+                    <Feather name="book-open" size={20} color={theme.textPrimary} />
                     <Text style={styles.headerTitle}>Exercise Library</Text>
                 </View>
                 <Text style={styles.headerSubtitle}>

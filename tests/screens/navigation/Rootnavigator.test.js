@@ -34,7 +34,7 @@ jest.mock('../../../context/AuthContext', () => ({
 }));
 
 jest.mock('../../../context/ThemeContext', () => ({
-  useTheme: () => ({ theme: { accent: '#fba8a0' } }),
+  useTheme: () => ({ theme: { accent: '#fba8a0', accentText: '#fba8a0', fieldBackground: '#fff' } }),
 }));
 
 jest.mock('../../../utils/WorkoutSync', () => ({

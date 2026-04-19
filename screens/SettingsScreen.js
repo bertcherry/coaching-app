@@ -118,7 +118,7 @@ const ThemeOption = ({ value, label, icon, current, onSelect, theme }) => {
             style={[
                 styles.themeOption,
                 { backgroundColor: theme.surfaceElevated, borderColor: theme.surfaceBorder },
-                selected && { borderColor: theme.accent, backgroundColor: theme.accentSubtle },
+                selected && { borderColor: theme.accentText, backgroundColor: theme.accentSubtle },
             ]}
             onPress={() => onSelect(value)}
             accessibilityRole="radio"
@@ -147,7 +147,7 @@ const CalendarViewOption = ({ value, label, icon, desc, current, onSelect, theme
             style={[
                 styles.calViewOption,
                 { backgroundColor: theme.surfaceElevated, borderColor: theme.surfaceBorder },
-                selected && { borderColor: theme.accent, backgroundColor: theme.accentSubtle },
+                selected && { borderColor: theme.accentText, backgroundColor: theme.accentSubtle },
             ]}
             onPress={() => onSelect(value)}
             accessibilityRole="radio"
@@ -275,7 +275,7 @@ const UnitPickerModal = ({ visible, current, onClose, onSelect, theme }) => (
                         style={[
                             styles.unitOption,
                             { borderColor: theme.divider, backgroundColor: theme.surface },
-                            current === opt.value && { borderColor: theme.accent, backgroundColor: theme.accentSubtle },
+                            current === opt.value && { borderColor: theme.accentText, backgroundColor: theme.accentSubtle },
                         ]}
                         onPress={() => { onSelect(opt.value); onClose(); }}
                         accessibilityRole="radio"

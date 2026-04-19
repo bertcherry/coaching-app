@@ -87,7 +87,7 @@ export default function AddClientScreen() {
                     <Text style={[styles.smallText, { color: theme.textSecondary }]}>
                         An invitation with their access code has been sent to:
                     </Text>
-                    <Text style={[styles.emailText, { color: theme.accent }]}>{success.email}</Text>
+                    <Text style={[styles.emailText, { color: theme.accentText }]}>{success.email}</Text>
                     <Text style={[styles.smallText, { color: theme.textSecondary }]}>
                         They can sign up using that code. You'll be set as their coach automatically.
                     </Text>

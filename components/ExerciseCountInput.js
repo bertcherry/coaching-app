@@ -33,7 +33,6 @@ export default function ExerciseCountInput({ exercise, fieldBase, handleChange, 
                 <>
                     <View style={styles.typeHeader}>
                         <Text style={styles.inputLabel}>Count type <Text style={styles.req}>*</Text></Text>
-                        {!type && <View style={styles.requiredDot} />}
                     </View>
                     <View style={styles.segmentRow}>
                         {COUNT_TYPES.map(({ label, value }) => {
@@ -57,14 +56,14 @@ export default function ExerciseCountInput({ exercise, fieldBase, handleChange, 
                 <View style={styles.inputRow}>
                     <View style={styles.inputGroup}>
                         <Text style={styles.inputLabel}>Min reps <Text style={styles.req}>*</Text></Text>
-                        <TextInput style={styles.countInput} keyboardType="numeric" placeholder="e.g. 8" placeholderTextColor={theme.textSecondary}
+                        <TextInput style={styles.countInput} keyboardType="numeric" placeholder="e.g. 8" placeholderTextColor={theme.inputPlaceholder}
                             value={exercise.countMin != null ? String(exercise.countMin) : ''}
                             onChangeText={handleChange(`${f}.countMin`)} onBlur={handleBlur(`${f}.countMin`)} />
                     </View>
                     <Text style={styles.rangeDash}>–</Text>
                     <View style={styles.inputGroup}>
                         <Text style={styles.inputLabel}>Max reps</Text>
-                        <TextInput style={[styles.countInput, styles.countInputOptional]} keyboardType="numeric" placeholder="opt." placeholderTextColor={theme.textSecondary}
+                        <TextInput style={[styles.countInput, styles.countInputOptional]} keyboardType="numeric" placeholder="opt." placeholderTextColor={theme.inputPlaceholder}
                             value={exercise.countMax != null ? String(exercise.countMax) : ''}
                             onChangeText={handleChange(`${f}.countMax`)} onBlur={handleBlur(`${f}.countMax`)} />
                     </View>
@@ -75,14 +74,14 @@ export default function ExerciseCountInput({ exercise, fieldBase, handleChange, 
                 <View style={styles.inputRow}>
                     <View style={styles.inputGroup}>
                         <Text style={styles.inputLabel}>Min sec <Text style={styles.req}>*</Text></Text>
-                        <TextInput style={styles.countInput} keyboardType="numeric" placeholder="e.g. 30" placeholderTextColor={theme.textSecondary}
+                        <TextInput style={styles.countInput} keyboardType="numeric" placeholder="e.g. 30" placeholderTextColor={theme.inputPlaceholder}
                             value={exercise.countMin != null ? String(exercise.countMin) : ''}
                             onChangeText={handleChange(`${f}.countMin`)} onBlur={handleBlur(`${f}.countMin`)} />
                     </View>
                     <Text style={styles.rangeDash}>–</Text>
                     <View style={styles.inputGroup}>
                         <Text style={styles.inputLabel}>Max sec</Text>
-                        <TextInput style={[styles.countInput, styles.countInputOptional]} keyboardType="numeric" placeholder="opt." placeholderTextColor={theme.textSecondary}
+                        <TextInput style={[styles.countInput, styles.countInputOptional]} keyboardType="numeric" placeholder="opt." placeholderTextColor={theme.inputPlaceholder}
                             value={exercise.countMax != null ? String(exercise.countMax) : ''}
                             onChangeText={handleChange(`${f}.countMax`)} onBlur={handleBlur(`${f}.countMax`)} />
                     </View>
@@ -93,7 +92,7 @@ export default function ExerciseCountInput({ exercise, fieldBase, handleChange, 
                 <View style={styles.inputRow}>
                     <View style={[styles.inputGroup, { maxWidth: 140 }]}>
                         <Text style={styles.inputLabel}>Time cap (min)</Text>
-                        <TextInput style={[styles.countInput, styles.countInputOptional]} keyboardType="numeric" placeholder="none" placeholderTextColor={theme.textSecondary}
+                        <TextInput style={[styles.countInput, styles.countInputOptional]} keyboardType="numeric" placeholder="none" placeholderTextColor={theme.inputPlaceholder}
                             value={exercise.timeCapSeconds != null ? String(Math.round(exercise.timeCapSeconds / 60)) : ''}
                             onChangeText={(v) => { const m = parseFloat(v); setFieldValue(`${f}.timeCapSeconds`, isNaN(m) ? null : m * 60); }}
                             onBlur={handleBlur(`${f}.timeCapSeconds`)} />
@@ -119,7 +118,7 @@ export default function ExerciseCountInput({ exercise, fieldBase, handleChange, 
 function makeStyles(theme) {
     return StyleSheet.create({
         container: { marginTop: 8 },
-        segmentRow: { flexDirection: 'row', backgroundColor: theme.surfaceElevated, borderRadius: 10, borderWidth: 1, borderColor: theme.surfaceBorder, overflow: 'hidden', marginBottom: 10 },
+        segmentRow: { flexDirection: 'row', backgroundColor: theme.fieldBackground, borderRadius: 10, borderWidth: 1, borderColor: theme.surfaceBorder, overflow: 'hidden', marginBottom: 10 },
         segment: { flex: 1, paddingVertical: 10, alignItems: 'center', justifyContent: 'center' },
         segmentActive: { backgroundColor: theme.accent, borderRadius: 8, margin: 3 },
         segmentText: { fontSize: 14, color: theme.textSecondary, fontWeight: '500' },
@@ -129,13 +128,12 @@ function makeStyles(theme) {
         inputRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 6, marginBottom: 4 },
         inputGroup: { flex: 1 },
         inputLabel: { fontSize: 10, color: theme.textSecondary, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4 },
-        req: { color: theme.accent },
+        req: { color: theme.accentText },
         typeHeader:   { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 },
-        requiredDot:  { width: 6, height: 6, borderRadius: 3, backgroundColor: theme.accent },
-        countInput: { height: 40, backgroundColor: theme.surfaceElevated, borderWidth: 1, borderColor: theme.surfaceBorder, borderRadius: 8, paddingHorizontal: 10, fontSize: 15, color: theme.textPrimary, textAlign: 'center' },
+        countInput: { height: 40, backgroundColor: theme.fieldBackground, borderWidth: 1, borderColor: theme.surfaceBorder, borderRadius: 8, paddingHorizontal: 10, fontSize: 15, color: theme.textPrimary, textAlign: 'center' },
         countInputOptional: { borderStyle: 'dashed', borderColor: theme.surfaceBorder },
         rangeDash: { color: theme.textTertiary, fontSize: 20, paddingBottom: 8, width: 16, textAlign: 'center' },
         preview: { fontSize: 12, color: theme.success, paddingTop: 4, paddingHorizontal: 2, fontStyle: 'italic' },
-        errorText: { fontSize: 12, fontStyle: 'italic', paddingTop: 2, color: theme.accent },
+        errorText: { fontSize: 12, fontStyle: 'italic', paddingTop: 2, color: theme.accentText },
     });
 }

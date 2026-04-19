@@ -225,7 +225,7 @@ export default function SetRow({
                 if (rpeRange)    parts.push(`RPE ${effRecommendedRpe}`);
                 return (
                     <View style={styles.recRow}>
-                        <Feather name="info" size={11} color={theme.accent} style={{ marginRight: 5 }} />
+                        <Feather name="info" size={11} color={theme.accentText} style={{ marginRight: 5 }} />
                         <Text style={styles.recText}>Coach rec: {parts.join('  ·  ')}</Text>
                     </View>
                 );
@@ -337,20 +337,20 @@ function makeStyles(theme) {
         setRowOptional: { borderTopColor: theme.surfaceElevated, opacity: 0.8 },
         setHeader:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
         setLabelRow:    { flexDirection: 'row', alignItems: 'center', gap: 6 },
-        setLabel:       { fontSize: 12, color: theme.accent, fontWeight: '700' },
+        setLabel:       { fontSize: 12, color: theme.accentText, fontWeight: '700' },
         setLabelOptional: { color: theme.textTertiary },
         optionalBadge:  { backgroundColor: theme.surfaceElevated, borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 },
         optionalBadgeText: { fontSize: 10, color: theme.textTertiary, fontStyle: 'italic' },
         prescriptionLabel: { fontSize: 11, color: theme.textSecondary, fontStyle: 'italic' },
 
         recRow:    { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
-        recText:   { fontSize: 11, color: theme.accent, fontStyle: 'italic' },
+        recText:   { fontSize: 11, color: theme.accentText, fontStyle: 'italic' },
 
         unitRow:          { flexDirection: 'row', gap: 5, marginBottom: 6 },
         unitPill:         { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, borderWidth: 1, borderColor: theme.surfaceBorder, backgroundColor: theme.surfaceElevated },
-        unitPillActive:   { borderColor: theme.accent, backgroundColor: theme.accentSubtle },
+        unitPillActive:   { borderColor: theme.accentText, backgroundColor: theme.accentSubtle },
         unitPillText:     { fontSize: 10, color: theme.textSecondary, textTransform: 'lowercase', letterSpacing: 0.3 },
-        unitPillTextActive: { color: theme.accent, fontWeight: '600' },
+        unitPillTextActive: { color: theme.accentText, fontWeight: '600' },
 
         setInputs: { flexDirection: 'row', gap: 8, marginBottom: 6 },
         setInputGroup: { flex: 1, alignItems: 'center' },
@@ -358,9 +358,9 @@ function makeStyles(theme) {
         setInput:      { width: '100%', height: 38, borderWidth: 1, borderColor: theme.surfaceBorder, borderRadius: 6, backgroundColor: theme.surfaceElevated, color: theme.textPrimary, textAlign: 'center', fontSize: 15 },
         setInputOther: { fontSize: 12 },
         setInputSaved: { borderColor: theme.success },
-        setInputPrefilled: { borderColor: theme.accent, borderStyle: 'dashed' },
-        setInputError: { borderColor: theme.accent },
-        inputError:    { fontSize: 10, color: theme.accent, marginTop: 2, textAlign: 'center' },
+        setInputPrefilled: { borderColor: theme.accentText, borderStyle: 'dashed' },
+        setInputError: { borderColor: theme.accentText },
+        inputError:    { fontSize: 10, color: theme.accentText, marginTop: 2, textAlign: 'center' },
 
         setNoteInput: { borderWidth: 1, borderColor: theme.surfaceBorder, borderRadius: 6, backgroundColor: theme.surfaceElevated, color: theme.textPrimary, padding: 8, fontSize: 13, minHeight: 34 },
         savedBadge:   { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 4 },

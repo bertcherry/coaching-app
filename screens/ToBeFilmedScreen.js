@@ -301,7 +301,7 @@ const EditExerciseSheet = ({ exercise, onClose, onSaved, onUploaded, authFetch }
                                 style={styles.pickedCard}
                                 accessibilityLabel={`Selected video: ${pickedAsset.fileName ?? 'video.mp4'}`}
                             >
-                                <Feather name="film" size={22} color={theme.accent} />
+                                <Feather name="film" size={22} color={theme.textPrimary} />
                                 <View style={styles.pickedCardInfo}>
                                     <Text style={styles.pickedCardName} numberOfLines={1}>
                                         {pickedAsset.fileName ?? 'video.mp4'}
@@ -599,7 +599,7 @@ export default function ToBeFilmedScreen() {
             {/* Header */}
             <View style={styles.header}>
                 <View style={styles.headerTitleRow}>
-                    <Feather name="video-off" size={20} color={theme.accent} />
+                    <Feather name="video-off" size={20} color={theme.textPrimary} />
                     <Text style={styles.headerTitle}>To Be Filmed</Text>
                 </View>
                 <Text style={styles.headerSubtitle}>
@@ -726,7 +726,7 @@ function makeStyles(theme) {
 
         // Details fields
         fieldLabel:         { fontSize: 12, color: theme.textSecondary, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 },
-        required:           { color: theme.accent },
+        required:           { color: theme.accentText },
         textInput:          { borderWidth: 1, borderColor: theme.inputBorder, backgroundColor: theme.inputBackground, color: theme.inputText, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 15 },
         textArea:           { minHeight: 90, paddingTop: 10 },
 

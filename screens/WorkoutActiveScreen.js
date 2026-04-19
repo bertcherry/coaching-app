@@ -711,7 +711,7 @@ export default function WorkoutActiveScreen({ route, navigation }) {
                 {/* ── Coach notes ── */}
                 {currentExercise.coachNotes ? (
                     <View style={styles.coachNotes}>
-                        <Feather name="message-square" size={12} color={theme.accent} style={{ marginRight: 6 }} />
+                        <Feather name="message-square" size={12} color={theme.textSecondary} style={{ marginRight: 6 }} />
                         <Text style={styles.coachNotesText}>{currentExercise.coachNotes}</Text>
                     </View>
                 ) : null}
@@ -719,7 +719,7 @@ export default function WorkoutActiveScreen({ route, navigation }) {
                 {/* ── Coach rec ── */}
                 {(recWeight || recRpe) && (
                     <View style={styles.recBanner}>
-                        <Feather name="info" size={12} color={theme.accent} style={{ marginRight: 6 }} />
+                        <Feather name="info" size={12} color={theme.accentText} style={{ marginRight: 6 }} />
                         <Text style={styles.recText}>
                             Coach rec:{recWeight ? ` ${recWeight} ${weightUnit !== 'other' ? weightUnit : ''}` : ''}
                             {recRpe ? `  ·  RPE ${recRpe}` : ''}
@@ -731,7 +731,7 @@ export default function WorkoutActiveScreen({ route, navigation }) {
                 {hasVideo && (
                     <Pressable style={styles.videoToggle} onPress={() => setShowVideo(v => !v)}>
                         <Feather name="film" size={15} color={showVideo ? theme.accent : theme.textSecondary} />
-                        <Text style={[styles.videoToggleText, showVideo && { color: theme.accent }]}>
+                        <Text style={[styles.videoToggleText, showVideo && { color: theme.accentText }]}>
                             {showVideo ? 'Hide demo' : 'Show demo'}
                         </Text>
                     </Pressable>
@@ -925,8 +925,8 @@ function makeStyles(theme) {
         // ── Coach notes / rec ──
         coachNotes: { flexDirection: 'row', alignItems: 'flex-start', backgroundColor: theme.accentSubtle, borderLeftWidth: 2, borderLeftColor: theme.accent, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 4, marginBottom: 10 },
         coachNotesText: { fontSize: 13, color: theme.textSecondary, flex: 1, lineHeight: 18, fontStyle: 'italic' },
-        recBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.accentSubtle, borderWidth: 0.5, borderColor: theme.accent, borderRadius: 6, paddingHorizontal: 10, paddingVertical: 6, marginBottom: 12 },
-        recText: { fontSize: 13, color: theme.accent, fontStyle: 'italic' },
+        recBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.accentSubtle, borderWidth: 0.5, borderColor: theme.accentText, borderRadius: 6, paddingHorizontal: 10, paddingVertical: 6, marginBottom: 12 },
+        recText: { fontSize: 13, color: theme.accentText, fontStyle: 'italic' },
 
         // ── Video ──
         videoToggle: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
@@ -937,15 +937,15 @@ function makeStyles(theme) {
         // ── Timer ──
         timerModeRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
         modePill: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: theme.surfaceBorder, backgroundColor: theme.surfaceElevated },
-        modePillActive: { borderColor: theme.accent, backgroundColor: theme.accentSubtle },
+        modePillActive: { borderColor: theme.accentText, backgroundColor: theme.accentSubtle },
         modePillText: { fontSize: 12, color: theme.textSecondary },
-        modePillTextActive: { color: theme.accent, fontWeight: '600' },
+        modePillTextActive: { color: theme.accentText, fontWeight: '600' },
         timerContainer: { alignItems: 'center', backgroundColor: theme.surface, borderRadius: 16, padding: 28, marginBottom: 16, borderWidth: 1, borderColor: theme.surfaceBorder },
         timerPhaseLabel: { fontSize: 11, fontWeight: '700', color: theme.textTertiary, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 8 },
         timerDisplay: { fontSize: 64, fontWeight: '200', color: theme.textPrimary, fontVariant: ['tabular-nums'] },
         timerBanner: { marginTop: 12, backgroundColor: theme.accentSubtle, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8 },
         timerBannerMax: { backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.success },
-        timerBannerText: { fontSize: 13, color: theme.accent, textAlign: 'center' },
+        timerBannerText: { fontSize: 13, color: theme.accentText, textAlign: 'center' },
         timerStartButton: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 20, backgroundColor: theme.success, borderRadius: 10, paddingHorizontal: 28, paddingVertical: 12 },
         timerStartText: { fontSize: 16, fontWeight: '700', color: '#000' },
         timerAdvanceButton: { marginTop: 12, borderWidth: 1, borderColor: theme.surfaceBorder, borderRadius: 10, paddingHorizontal: 20, paddingVertical: 10 },
@@ -958,9 +958,9 @@ function makeStyles(theme) {
         setInputsCard: { backgroundColor: theme.surface, borderRadius: 12, padding: 16, marginBottom: 16, borderWidth: 0.5, borderColor: theme.surfaceBorder },
         unitRow: { flexDirection: 'row', gap: 6, marginBottom: 12 },
         unitPill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, borderWidth: 1, borderColor: theme.surfaceBorder, backgroundColor: theme.surfaceElevated },
-        unitPillActive: { borderColor: theme.accent, backgroundColor: theme.accentSubtle },
+        unitPillActive: { borderColor: theme.accentText, backgroundColor: theme.accentSubtle },
         unitPillText: { fontSize: 11, color: theme.textSecondary, textTransform: 'lowercase' },
-        unitPillTextActive: { color: theme.accent, fontWeight: '600' },
+        unitPillTextActive: { color: theme.accentText, fontWeight: '600' },
         inputRow: { flexDirection: 'row', gap: 10, marginBottom: 12 },
         inputGroup: { flex: 1, alignItems: 'center' },
         inputLabel: { fontSize: 10, color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4, textAlign: 'center' },

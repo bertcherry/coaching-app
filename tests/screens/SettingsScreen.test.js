@@ -36,7 +36,7 @@ jest.mock('../../screens/CalendarScreen', () => ({
 const mockTheme = {
     background: '#000', surface: '#111', surfaceElevated: '#222',
     surfaceBorder: '#333', textPrimary: '#fff', textSecondary: '#aaa',
-    textTertiary: '#666', divider: '#444', accent: '#fba8a0',
+    textTertiary: '#666', divider: '#444', accent: '#fba8a0', accentText: '#fba8a0', fieldBackground: '#fff',
     accentSubtle: '#3a2020', inputBackground: '#111', inputText: '#fff',
     inputBorder: '#333', inputPlaceholder: '#666', overlay: 'rgba(0,0,0,0.5)',
     mode: 'dark',

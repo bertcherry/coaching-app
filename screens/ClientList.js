@@ -78,7 +78,7 @@ export default function ClientList() {
                 <Text style={[styles.clientEmail, { color: theme.textSecondary }]}>{item.email}</Text>
             </View>
             {!item.emailConfirmed && (
-                <Text style={[styles.pendingBadge, { color: theme.accent, borderColor: theme.accent }]}>Pending</Text>
+                <Text style={[styles.pendingBadge, { color: theme.accentText, borderColor: theme.accentText }]}>Pending</Text>
             )}
             <Text style={[styles.chevron, { color: theme.textTertiary }]}>›</Text>
         </TouchableOpacity>
@@ -92,7 +92,7 @@ export default function ClientList() {
             {loading ? (
                 <ActivityIndicator size="large" color={theme.accent} style={styles.loader} />
             ) : error ? (
-                <Text style={[styles.errorText, { color: theme.accent }]}>{error}</Text>
+                <Text style={[styles.errorText, { color: theme.accentText }]}>{error}</Text>
             ) : clients.length === 0 ? (
                 <Text style={[styles.emptyText, { color: theme.textSecondary }]}>No clients yet. Add one to get started.</Text>
             ) : (

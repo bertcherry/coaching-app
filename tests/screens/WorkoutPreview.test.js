@@ -92,7 +92,7 @@ jest.mock('../../context/AuthContext', () => ({
 const mockTheme = {
     background: '#000', surface: '#111', surfaceElevated: '#222', surfaceBorder: '#333',
     textPrimary: '#fff', textSecondary: '#aaa', textTertiary: '#666', divider: '#444',
-    accent: '#fba8a0', accentSubtle: '#3a2020', success: '#7bb533',
+    accent: '#fba8a0', accentText: '#fba8a0', fieldBackground: '#fff', accentSubtle: '#3a2020', success: '#7bb533',
     overlay: 'rgba(0,0,0,0.5)', mode: 'dark',
 };
 jest.mock('../../context/ThemeContext', () => ({

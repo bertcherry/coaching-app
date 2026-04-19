@@ -34,7 +34,7 @@ export const dark = {
     background:         '#000000',
     surface:            '#0d0d0d',
     surfaceElevated:    '#1a1a1a',
-    surfaceBorder:      '#222222',
+    surfaceBorder:      '#666666',   // raised from #222 → 3.66:1 on black (WCAG 1.4.11)
     // Text
     textPrimary:        '#fae9e9',
     textSecondary:      '#aaaaaa',
@@ -42,6 +42,7 @@ export const dark = {
     textInverse:        '#000000',
     // Brand
     accent:             brand.rose,
+    accentText:         brand.rose,  // same as accent in dark — already 13:1 on dark surfaces
     accentPressed:      brand.roseDark,
     accentSubtle:       'rgba(251,168,160,0.12)',
     success:            brand.green,
@@ -50,6 +51,7 @@ export const dark = {
     inputText:          '#000000',
     inputBorder:        brand.rose,
     inputPlaceholder:   '#888888',
+    fieldBackground:    '#1a1a1a',   // numeric/small inputs — same as surfaceElevated
     // Navigation / header
     headerBackground:   '#1a1a1a',
     // Misc
@@ -66,7 +68,7 @@ export const light = {
     background:         '#faf5f5',  // warm off-white with a hint of rose
     surface:            '#ffffff',
     surfaceElevated:    '#fff0ef',  // very pale rose
-    surfaceBorder:      '#f0d8d6',  // soft rose border
+    surfaceBorder:      '#9a7a78',   // raised from #f0d8d6 → 3.54:1 on light bg (WCAG 1.4.11)
     // Text
     textPrimary:        '#1a0e0e',  // near-black with warm undertone
     textSecondary:      '#6b4e4d',  // muted rose-brown
@@ -74,6 +76,7 @@ export const light = {
     textInverse:        '#ffffff',
     // Brand
     accent:             brand.rose,
+    accentText:         '#b83832',  // 5.44:1 on light bg — use for text/icon color (WCAG 1.4.3)
     accentPressed:      brand.roseDark,
     accentSubtle:       'rgba(251,168,160,0.15)',
     success:            brand.green,
@@ -82,6 +85,7 @@ export const light = {
     inputText:          '#1a0e0e',
     inputBorder:        brand.rose,
     inputPlaceholder:   '#b89a99',
+    fieldBackground:    '#ffffff',   // numeric/small inputs — white in light mode
     // Navigation / header
     headerBackground:   '#fae9e9',
     // Misc

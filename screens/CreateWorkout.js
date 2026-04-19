@@ -214,7 +214,7 @@ const ClientSearch = ({ selectedEmail, selectedName, onSelect, coachEmail, authF
             <Text style={styles.fieldLabel}>Client <Text style={styles.optionalLabel}>(optional)</Text></Text>
             {selectedEmail ? (
                 <Pressable style={styles.selectButton} onPress={() => setShowModal(true)}>
-                    <Feather name="user" size={15} color={theme.accent} />
+                    <Feather name="user" size={15} color={theme.textPrimary} />
                     <Text style={styles.selectButtonText}>{selectedName}</Text>
                     <Feather name="chevron-down" size={16} color={theme.textTertiary} />
                 </Pressable>
@@ -301,7 +301,7 @@ const DateField = ({ value, onChange, onBlur, fieldName }) => {
             <Text style={styles.fieldLabel}>Scheduled Date <Text style={styles.optionalLabel}>(optional)</Text></Text>
             {value ? (
                 <Pressable style={styles.selectButton} onPress={()=>setShowPicker(true)}>
-                    <Feather name="calendar" size={15} color={theme.accent} />
+                    <Feather name="calendar" size={15} color={theme.textPrimary} />
                     <Text style={styles.selectButtonText}>
                         {valueIsMonthOnly ? `${displayValue} (month only)` : displayValue}
                     </Text>
@@ -376,7 +376,7 @@ const HistoryBanner = ({ history }) => {
     if(!parts.length)  return null;
     return (
         <View style={styles.historyBanner}>
-            <Feather name="clock" size={12} color={theme.accent} style={{marginRight:6}} />
+            <Feather name="clock" size={12} color={theme.accentText} style={{marginRight:6}} />
             <Text style={styles.historyBannerText}>Last logged: {parts.join(' · ')}</Text>
         </View>
     );
@@ -464,8 +464,6 @@ const ExerciseCard = React.memo(({
         setFieldValue(`${fieldBase}.setConfigs`, syncWeight(exercise.setConfigs, exercise.recommendedWeight));
     }, [exercise.recommendedWeight]);
 
-    const hasAdvData = !!(exercise.recommendedRpe || exercise.recommendedWeight || exercise.coachNotes);
-
     return (
         <>
             <View style={[styles.exerciseCard, isDragging && styles.exerciseCardDragging]}>
@@ -522,7 +520,6 @@ const ExerciseCard = React.memo(({
                 <Pressable style={styles.advancedToggle} onPress={()=>setShowAdvanced(v=>!v)}>
                     <Feather name={showAdvanced?'chevron-up':'chevron-down'} size={14} color={theme.textTertiary} />
                     <Text style={styles.advancedToggleText}>{showAdvanced?'Hide recommendations & notes':'Add recommendations & notes'}</Text>
-                    {hasAdvData && <View style={styles.advancedDot} />}
                 </Pressable>
 
                 {showAdvanced && (
@@ -584,8 +581,7 @@ const ExerciseCard = React.memo(({
                         <Text style={styles.advancedToggleText}>
                             {showPerSet ? 'Remove per-set targets' : 'Set per-set weight & RPE'}
                         </Text>
-                        {exercise.setConfigs?.length > 0 && <View style={styles.advancedDot} />}
-                    </Pressable>
+                                    </Pressable>
 
                 {showPerSet && Array.isArray(exercise.setConfigs) && exercise.setConfigs.length > 0 && (
                     <View style={styles.setConfigsContainer}>
@@ -751,7 +747,7 @@ const SectionCard = ({
                                 </View>
                             ))}
                             <Pressable style={styles.addExerciseButton} onPress={()=>pushEx(emptyExercise())}>
-                                <Feather name="plus" size={15} color={theme.accent} />
+                                <Feather name="plus" size={15} color={theme.accentText} />
                                 <Text style={styles.addExerciseButtonText}>Add Exercise</Text>
                             </Pressable>
                         </View>
@@ -959,7 +955,7 @@ export default function CreateWorkout({ navigation, route }) {
                                                 />
                                             ))}
                                             <Pressable style={styles.addSectionButton} onPress={()=>push({timed:false,circuit:true,data:[emptyExercise()]})}>
-                                                <Feather name="plus-circle" size={18} color={theme.accent} />
+                                                <Feather name="plus-circle" size={18} color={theme.accentText} />
                                                 <Text style={styles.addSectionButtonText}>Add Section</Text>
                                             </Pressable>
                                         </View>
@@ -968,7 +964,7 @@ export default function CreateWorkout({ navigation, route }) {
 
                                 {Object.keys(errors).length > 0 && (
                                     <View style={styles.validationSummary}>
-                                        <Feather name="alert-circle" size={14} color={theme.accent} style={{marginRight:8}} />
+                                        <Feather name="alert-circle" size={14} color={theme.accentText} style={{marginRight:8}} />
                                         <Text style={styles.validationSummaryText}>Please fix the highlighted fields above before saving.</Text>
                                     </View>
                                 )}
@@ -1023,15 +1019,15 @@ function makeStyles(theme) { return StyleSheet.create({
     // All label text theme.textSecondary or above for WCAG AA contrast
     fieldBlock:    { marginBottom: 16 },
     fieldLabel:    { fontSize: 13, fontWeight: '600', color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 8 },
-    req:           { color: theme.accent },
+    req:           { color: theme.accentText },
     optionalLabel: { color: theme.textSecondary, fontWeight: 'normal', textTransform: 'none', letterSpacing: 0, fontSize: 12 },
     inputLabel:    { fontSize: 11, fontWeight: '600', color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4 },
     inputLabelSub: { textTransform: 'none', fontWeight: 'normal', color: theme.textSecondary, letterSpacing: 0, fontSize: 10 },
-    errorText:     { fontSize: 12, fontStyle: 'italic', color: theme.accent, marginTop: 4, paddingHorizontal: 2 },
+    errorText:     { fontSize: 12, fontStyle: 'italic', color: theme.accentText, marginTop: 4, paddingHorizontal: 2 },
 
     textInput: { backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.surfaceBorder, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, color: theme.textPrimary },
 
-    selectButton:      { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.accent, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12 },
+    selectButton:      { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.accentText, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12 },
     selectButtonText:  { flex: 1, fontSize: 15, color: theme.textPrimary },
     selectButtonEmpty: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.surfaceBorder, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12 },
     selectButtonEmptyText: { fontSize: 15, color: theme.textSecondary },
@@ -1053,7 +1049,7 @@ function makeStyles(theme) { return StyleSheet.create({
     dateMonthLabelBtn:      { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
     dateMonthLabelBtnSelected: { backgroundColor: theme.accent + '22' },
     dateModalMonth:         { color: theme.textPrimary, fontWeight: '600', fontSize: 16 },
-    dateModalMonthSelected: { color: theme.accent },
+    dateModalMonthSelected: { color: theme.accentText },
     dateModalMonthPast:     { color: theme.textSecondary },
     dateMonthHint:          { fontSize: 11, color: theme.textTertiary, textAlign: 'center', marginTop: -4, marginBottom: 8 },
     dateGrid:         { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 8 },
@@ -1065,7 +1061,7 @@ function makeStyles(theme) { return StyleSheet.create({
     dateCellText:     { color: theme.textPrimary, fontSize: 13 },
     dateCellSelectedText: { color: '#000', fontWeight: 'bold' },
     dateCellPastText: { color: theme.textTertiary },
-    dateCellToday:    { color: theme.accent, fontWeight: 'bold' },
+    dateCellToday:    { color: theme.accentText, fontWeight: 'bold' },
     dateCellOtherText:{ color: theme.textSecondary },
     dateClearButton:  { alignItems: 'center', paddingVertical: 8 },
     dateClearText:    { color: theme.textSecondary, fontSize: 14 },
@@ -1079,8 +1075,8 @@ function makeStyles(theme) { return StyleSheet.create({
     confirmActions:   { flexDirection: 'row', gap: 12 },
     confirmCancel:    { flex: 1, borderWidth: 1, borderColor: theme.surfaceBorder, borderRadius: 8, paddingVertical: 12, alignItems: 'center' },
     confirmCancelText:{ color: theme.textSecondary, fontSize: 15 },
-    confirmConfirm:   { flex: 1, backgroundColor: theme.accentSubtle, borderWidth: 1, borderColor: theme.accent, borderRadius: 8, paddingVertical: 12, alignItems: 'center' },
-    confirmConfirmText:{ color: theme.accent, fontSize: 15, fontWeight: '600' },
+    confirmConfirm:   { flex: 1, backgroundColor: theme.accentSubtle, borderWidth: 1, borderColor: theme.accentText, borderRadius: 8, paddingVertical: 12, alignItems: 'center' },
+    confirmConfirmText:{ color: theme.accentText, fontSize: 15, fontWeight: '600' },
 
     sectionCard:      { backgroundColor: theme.surface, borderRadius: 12, borderWidth: 1, borderColor: theme.divider, marginBottom: 16, overflow: 'hidden' },
     sectionCardHeader:{ flexDirection: 'row', alignItems: 'center', padding: 14, borderBottomWidth: 0.5, borderBottomColor: theme.divider, gap: 8 },
@@ -1094,7 +1090,7 @@ function makeStyles(theme) { return StyleSheet.create({
 
     timedRestRow:   { flexDirection: 'row', gap: 12, padding: 14, borderBottomWidth: 0.5, borderBottomColor: theme.divider },
     timedRestField: { flex: 1 },
-    timedRestInput: { backgroundColor: theme.surfaceElevated, borderWidth: 1, borderColor: theme.surfaceBorder, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, fontSize: 15, color: theme.textPrimary, textAlign: 'center' },
+    timedRestInput: { backgroundColor: theme.fieldBackground, borderWidth: 1, borderColor: theme.surfaceBorder, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, fontSize: 15, color: theme.textPrimary, textAlign: 'center' },
 
     exerciseCard:        { borderTopWidth: 0.5, borderTopColor: theme.divider, paddingHorizontal: 14, paddingTop: 12, paddingBottom: 8 },
     exerciseCardDragging:{ opacity: 0.35 },
@@ -1106,41 +1102,40 @@ function makeStyles(theme) { return StyleSheet.create({
     removeButtonDisabled:{ opacity: 0.35 },
 
     historyBanner:    { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.accentSubtle, borderWidth: 0.5, borderColor: theme.accentSubtle, borderRadius: 6, paddingHorizontal: 10, paddingVertical: 6, marginBottom: 10 },
-    historyBannerText:{ fontSize: 12, color: theme.accent, flex: 1 },
+    historyBannerText:{ fontSize: 12, color: theme.accentText, flex: 1 },
     histLoadRow:      { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
     histLoadText:     { fontSize: 12, color: theme.textSecondary },
 
     setsRow:         { flexDirection: 'row', alignItems: 'flex-end', gap: 6, marginBottom: 4 },
     setsField:       { width: 80 },
-    setsInput:       { height: 40, backgroundColor: theme.surfaceElevated, borderWidth: 1, borderColor: theme.surfaceBorder, borderRadius: 8, textAlign: 'center', fontSize: 15, color: theme.textPrimary },
+    setsInput:       { height: 40, backgroundColor: theme.fieldBackground, borderWidth: 1, borderColor: theme.surfaceBorder, borderRadius: 8, textAlign: 'center', fontSize: 15, color: theme.textPrimary },
     setsInputOptional:{ borderStyle: 'dashed', borderColor: theme.surfaceBorder },
     setsDash:        { color: theme.textTertiary, fontSize: 20, paddingBottom: 8, width: 16, textAlign: 'center' },
     countSection:    { marginTop: 4, marginBottom: 4 },
 
     advancedToggle:     { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8 },
     advancedToggleText: { fontSize: 12, color: theme.textSecondary },
-    advancedDot:        { width: 6, height: 6, borderRadius: 3, backgroundColor: theme.accent },
     advancedContainer:  { backgroundColor: theme.surface, borderRadius: 8, padding: 12, gap: 10, marginBottom: 8, borderWidth: 0.5, borderColor: theme.divider },
     advancedRow:        { flexDirection: 'row', gap: 12 },
     advancedField:      { flex: 1 },
-    advancedInput:      { backgroundColor: theme.surfaceElevated, borderWidth: 1, borderColor: theme.surfaceBorder, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, fontSize: 15, color: theme.textPrimary, textAlign: 'center' },
+    advancedInput:      { backgroundColor: theme.fieldBackground, borderWidth: 1, borderColor: theme.surfaceBorder, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, fontSize: 15, color: theme.textPrimary, textAlign: 'center' },
     advancedNotesBlock: { gap: 6 },
-    notesInput:         { backgroundColor: theme.surfaceElevated, borderWidth: 1, borderColor: theme.surfaceBorder, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 13, color: theme.textPrimary, minHeight: 72, textAlignVertical: 'top' },
+    notesInput:         { backgroundColor: theme.fieldBackground, borderWidth: 1, borderColor: theme.surfaceBorder, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 13, color: theme.textPrimary, minHeight: 72, textAlignVertical: 'top' },
 
     setConfigsContainer: { borderWidth: 0.5, borderColor: theme.divider, borderRadius: 8, marginBottom: 8, overflow: 'hidden' },
     setConfigHeader:     { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 5, backgroundColor: theme.surfaceElevated },
-    setConfigHeaderText: { fontSize: 10, fontWeight: '600', color: theme.textTertiary, textTransform: 'uppercase', letterSpacing: 0.4 },
+    setConfigHeaderText: { fontSize: 10, fontWeight: '600', color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: 0.4 },
     setConfigRow:        { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderTopWidth: 0.5, borderTopColor: theme.divider },
     setConfigRowFirst:   { borderTopWidth: 0 },
-    setConfigNum:        { fontSize: 13, fontWeight: '700', color: theme.accent },
+    setConfigNum:        { fontSize: 13, fontWeight: '700', color: theme.accentText },
     setConfigNumOpt:     { color: theme.textTertiary },
     setConfigOptLabel:   { fontSize: 9, color: theme.textTertiary, fontStyle: 'italic', marginTop: 1 },
-    setConfigInput:      { flex: 1, height: 32, backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.surfaceBorder, borderRadius: 6, textAlign: 'center', fontSize: 13, color: theme.textPrimary },
+    setConfigInput:      { flex: 1, height: 32, backgroundColor: theme.fieldBackground, borderWidth: 1, borderColor: theme.surfaceBorder, borderRadius: 6, textAlign: 'center', fontSize: 13, color: theme.textPrimary },
 
     addExerciseButton:     { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 12, marginHorizontal: 14, borderTopWidth: 0.5, borderTopColor: theme.divider },
-    addExerciseButtonText: { fontSize: 14, color: theme.accent, fontWeight: '600' },
-    addSectionButton:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderWidth: 1, borderColor: theme.accent, borderStyle: 'dashed', borderRadius: 10, paddingVertical: 14, marginBottom: 12 },
-    addSectionButtonText:  { fontSize: 15, color: theme.accent, fontWeight: '600' },
+    addExerciseButtonText: { fontSize: 14, color: theme.accentText, fontWeight: '600' },
+    addSectionButton:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderWidth: 1, borderColor: theme.accentText, borderStyle: 'dashed', borderRadius: 10, paddingVertical: 14, marginBottom: 12 },
+    addSectionButtonText:  { fontSize: 15, color: theme.accentText, fontWeight: '600' },
 
     dropZone:    { height: 3, backgroundColor: theme.accent, borderRadius: 2, marginHorizontal: 14, marginVertical: 2 },
 
@@ -1149,13 +1144,13 @@ function makeStyles(theme) { return StyleSheet.create({
     dragCancelButton:    { paddingHorizontal: 12, paddingVertical: 6, backgroundColor: 'rgba(0,0,0,0.15)', borderRadius: 6 },
     dragCancelButtonText:{ fontSize: 13, color: '#000', fontWeight: '700' },
 
-    undoBar:        { position: 'absolute', bottom: 56, left: 16, right: 16, flexDirection: 'row', alignItems: 'center', backgroundColor: theme.surfaceElevated, borderWidth: 1, borderColor: theme.accent, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, gap: 10 },
+    undoBar:        { position: 'absolute', bottom: 56, left: 16, right: 16, flexDirection: 'row', alignItems: 'center', backgroundColor: theme.surfaceElevated, borderWidth: 1, borderColor: theme.accentText, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, gap: 10 },
     undoBarText:    { flex: 1, fontSize: 13, color: theme.textPrimary, lineHeight: 18 },
     undoButton:     { paddingHorizontal: 12, paddingVertical: 6, backgroundColor: theme.accent, borderRadius: 6 },
     undoButtonText: { fontSize: 13, color: '#000', fontWeight: '700' },
 
     validationSummary:     { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.accentSubtle, borderWidth: 1, borderColor: theme.accentSubtle, borderRadius: 8, padding: 12, marginBottom: 12 },
-    validationSummaryText: { fontSize: 13, color: theme.accent, flex: 1 },
+    validationSummaryText: { fontSize: 13, color: theme.accentText, flex: 1 },
 
     saveButton:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: theme.success, borderRadius: 12, paddingVertical: 16, marginTop: 8 },
     saveButtonText: { fontSize: 18, fontWeight: '700', color: '#000' },

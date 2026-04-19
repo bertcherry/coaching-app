@@ -20,7 +20,7 @@ export default function SignOutModal({ visible, onClose }) {
       onRequestClose={onClose}
     >
       <View style={[styles.overlay, { backgroundColor: theme.overlay }]}>
-        <View style={[styles.dialog, { backgroundColor: theme.surfaceElevated, borderColor: theme.accent }]}>
+        <View style={[styles.dialog, { backgroundColor: theme.surfaceElevated, borderColor: theme.accentText }]}>
           <Text style={[styles.title, { color: theme.textPrimary }]}>Sign Out</Text>
           <Text style={[styles.message, { color: theme.textSecondary }]}>Are you sure you want to sign out?</Text>
           <View style={styles.buttons}>

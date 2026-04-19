@@ -29,8 +29,8 @@ export default function AppDrawerContent(props) {
 
       {/* Sign Out */}
       <Pressable style={styles.item} onPress={() => setModalVisible(true)}>
-        <Feather name="log-out" size={18} color={theme.accent} style={styles.itemIcon} />
-        <Text style={[styles.itemText, { color: theme.accent }]}>Sign Out</Text>
+        <Feather name="log-out" size={18} color={theme.accentText} style={styles.itemIcon} />
+        <Text style={[styles.itemText, { color: theme.accentText }]}>Sign Out</Text>
       </Pressable>
 
       <SignOutModal
