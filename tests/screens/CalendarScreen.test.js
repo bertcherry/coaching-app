@@ -24,6 +24,7 @@ import CalendarScreen from '../../screens/CalendarScreen';
 jest.mock('react-native-reanimated', () => {
     const { View } = require('react-native');
     return {
+        __esModule: true,
         default: { View },
         useSharedValue: (v) => ({ value: v }),
         useAnimatedStyle: () => ({}),
@@ -136,6 +137,10 @@ const WORKOUT_A = {
 const WORKOUT_B = {
     id: 'sw-2', workoutId: 'w-2', workoutName: 'Lower Body',
     scheduledDate: `${YEAR}-${MONTH_STR}-12`, status: 'completed',
+};
+const MISSED_WORKOUT = {
+    id: 'sw-3', workoutId: 'w-3', workoutName: 'Cardio',
+    scheduledDate: `${YEAR}-${MONTH_STR}-05`, status: 'missed',
 };
 
 beforeEach(() => {
@@ -285,6 +290,103 @@ describe('CalendarScreen — workout press', () => {
         fireEvent.press(screen.getByText('Upper Body'));
 
         expect(mockMarkRead).toHaveBeenCalledWith('sw-1');
+    });
+});
+
+// ─── Missed workout sheet ─────────────────────────────────────────────────────
+
+describe('CalendarScreen — missed workout sheet (client)', () => {
+    async function renderWithMissed() {
+        scheduleResponse([MISSED_WORKOUT]);
+        render(<CalendarScreen navigation={mockNavigation} route={makeRoute()} />);
+        await waitFor(() => screen.getByText('Cardio'));
+        fireEvent(screen.getByText('Cardio'), 'longPress');
+    }
+
+    it('shows MissedWorkoutSheet when client long-presses a missed workout', async () => {
+        await renderWithMissed();
+        expect(screen.getByLabelText('Mark as skipped')).toBeTruthy();
+        expect(screen.getByLabelText('Reschedule to today')).toBeTruthy();
+        expect(screen.getByLabelText('Reschedule to another date')).toBeTruthy();
+    });
+
+    it('shows MissedWorkoutSheet for a coach viewing their own calendar', async () => {
+        mockUser = { ...mockUser, isCoach: true };
+        // Route has no clientEmail override → clientEmail falls back to user.email → own calendar
+        scheduleResponse([MISSED_WORKOUT]);
+        render(<CalendarScreen navigation={mockNavigation} route={{ params: { clientTimezone: 'UTC' } }} />);
+        await waitFor(() => screen.getByText('Cardio'));
+        fireEvent(screen.getByText('Cardio'), 'longPress');
+        expect(screen.getByLabelText('Reschedule to today')).toBeTruthy();
+    });
+
+    it('does not show MissedWorkoutSheet when coach is viewing a different client', async () => {
+        mockUser = { ...mockUser, isCoach: true };
+        // clientEmail differs from user.email → not own calendar
+        scheduleResponse([MISSED_WORKOUT]);
+        render(<CalendarScreen navigation={mockNavigation} route={makeRoute({ clientEmail: 'otherclient@example.com' })} />);
+        await waitFor(() => screen.getByText('Cardio'));
+        fireEvent(screen.getByText('Cardio'), 'longPress');
+        expect(screen.queryByLabelText('Reschedule to today')).toBeNull();
+        expect(screen.getByLabelText('Skip workout')).toBeTruthy();
+    });
+
+    it('closes the sheet when Cancel is pressed', async () => {
+        await renderWithMissed();
+        fireEvent.press(screen.getByLabelText('Cancel'));
+        await waitFor(() => {
+            expect(screen.queryByLabelText('Reschedule to today')).toBeNull();
+        });
+    });
+
+    it('opens SkipModal when Mark as skipped is pressed', async () => {
+        await renderWithMissed();
+        fireEvent.press(screen.getByLabelText('Mark as skipped'));
+        await waitFor(() => {
+            expect(screen.getByText('Mark as skipped?')).toBeTruthy();
+        });
+    });
+
+    it('posts to /schedule/skip and closes modal after confirming skip', async () => {
+        mockAuthFetch
+            .mockResolvedValueOnce({ ok: true, json: async () => ({ workouts: [MISSED_WORKOUT] }) })
+            .mockResolvedValue({ ok: true });
+
+        await renderWithMissed();
+        fireEvent.press(screen.getByLabelText('Mark as skipped'));
+        await waitFor(() => screen.getByText('Mark as skipped?'));
+
+        fireEvent.press(screen.getByLabelText('Confirm skip'));
+        await waitFor(() => {
+            expect(mockAuthFetch).toHaveBeenCalledWith(
+                expect.stringContaining('/schedule/skip'),
+                expect.objectContaining({ method: 'POST' }),
+            );
+        });
+        expect(screen.queryByText('Mark as skipped?')).toBeNull();
+    });
+
+    it('calls move API with today when Reschedule to today is pressed', async () => {
+        mockAuthFetch
+            .mockResolvedValueOnce({ ok: true, json: async () => ({ workouts: [MISSED_WORKOUT] }) })
+            .mockResolvedValue({ ok: true });
+
+        await renderWithMissed();
+        fireEvent.press(screen.getByLabelText('Reschedule to today'));
+        await waitFor(() => {
+            expect(mockAuthFetch).toHaveBeenCalledWith(
+                expect.stringContaining('/schedule/move'),
+                expect.objectContaining({ method: 'POST' }),
+            );
+        });
+    });
+
+    it('opens DatePickerModal when Reschedule to another date is pressed', async () => {
+        await renderWithMissed();
+        fireEvent.press(screen.getByLabelText('Reschedule to another date'));
+        await waitFor(() => {
+            expect(screen.getByText('Move workout to…')).toBeTruthy();
+        });
     });
 });
 

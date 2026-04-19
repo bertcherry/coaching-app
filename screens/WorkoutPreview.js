@@ -21,6 +21,29 @@ function getTodayStr() {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+function toISO(date) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function parseISODate(str) {
+    const [y, m, d] = str.split('-').map(Number);
+    return new Date(y, m - 1, d);
+}
+
+function monthLabel(year, month) {
+    return new Date(year, month, 1).toLocaleString('default', { month: 'long', year: 'numeric' });
+}
+
+function getMonthGrid(year, month) {
+    const firstDay = new Date(year, month, 1);
+    const startDate = new Date(year, month, 1 - firstDay.getDay());
+    return Array.from({ length: 42 }, (_, i) => {
+        const d = new Date(startDate);
+        d.setDate(startDate.getDate() + i);
+        return { dateStr: toISO(d), currentMonth: d.getMonth() === month };
+    });
+}
+
 function formatScheduledDate(dateStr) {
     if (!dateStr) return '';
     if (dateStr.length === 7) {
@@ -220,10 +243,185 @@ const Item = ({ workoutId, clientId, unitDefault, onSetSaved, ...item }) => {
     );
 };
 
+// ─── Date picker modal ────────────────────────────────────────────────────────
+
+const DOW_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+
+const DatePickerModal = ({ minDate, sourceDate, onClose, onConfirm }) => {
+    const { theme } = useTheme();
+    const styles = makeStyles(theme);
+    const now = new Date();
+    const [pickerYear,  setPickerYear]  = React.useState(now.getFullYear());
+    const [pickerMonth, setPickerMonth] = React.useState(now.getMonth());
+    const [selected,    setSelected]    = React.useState(null);
+
+    const rows = React.useMemo(() => {
+        const grid = getMonthGrid(pickerYear, pickerMonth);
+        const r = [];
+        for (let i = 0; i < grid.length; i += 7) r.push(grid.slice(i, i + 7));
+        return r;
+    }, [pickerYear, pickerMonth]);
+
+    const prevMonth = () => {
+        if (pickerMonth === 0) { setPickerMonth(11); setPickerYear(y => y - 1); }
+        else setPickerMonth(m => m - 1);
+    };
+    const nextMonth = () => {
+        if (pickerMonth === 11) { setPickerMonth(0); setPickerYear(y => y + 1); }
+        else setPickerMonth(m => m + 1);
+    };
+
+    return (
+        <Modal
+            transparent
+            animationType="fade"
+            onRequestClose={onClose}
+            accessibilityViewIsModal={true}
+        >
+            <View style={styles.overlayBackdrop}>
+                <View style={styles.datePickerCard}>
+                    <Text style={styles.datePickerTitle} accessibilityRole="header">
+                        Reschedule to…
+                    </Text>
+
+                    <View style={styles.datePickerNavRow}>
+                        <Pressable onPress={prevMonth} style={styles.datePickerNavBtn} accessibilityRole="button" accessibilityLabel="Previous month" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                            <Feather name="chevron-left" size={20} color={theme.textPrimary} accessible={false} />
+                        </Pressable>
+                        <Text style={styles.datePickerMonthLabel}>{monthLabel(pickerYear, pickerMonth)}</Text>
+                        <Pressable onPress={nextMonth} style={styles.datePickerNavBtn} accessibilityRole="button" accessibilityLabel="Next month" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                            <Feather name="chevron-right" size={20} color={theme.textPrimary} accessible={false} />
+                        </Pressable>
+                    </View>
+
+                    <View style={styles.datePickerDowRow}>
+                        {DOW_LABELS.map(l => (
+                            <Text key={l} style={styles.datePickerDowLabel} accessible={false}>{l}</Text>
+                        ))}
+                    </View>
+
+                    {rows.map((row, ri) => (
+                        <View key={ri} style={styles.datePickerRow}>
+                            {row.map(({ dateStr, currentMonth }) => {
+                                const isPast     = minDate ? dateStr < minDate : false;
+                                const isBlocked  = isPast || !currentMonth;
+                                const isSelected = dateStr === selected;
+                                const isToday    = dateStr === getTodayStr();
+                                const isSource   = sourceDate ? dateStr === sourceDate : false;
+                                const dayNum     = parseInt(dateStr.split('-')[2], 10);
+                                return (
+                                    <View key={dateStr} style={styles.datePickerCellWrap}>
+                                        <Pressable
+                                            style={[
+                                                styles.datePickerCell,
+                                                isToday   && !isSelected && styles.datePickerCellTodayRing,
+                                                isSource  && !isSelected && styles.datePickerCellSourceRing,
+                                                isSelected && styles.datePickerCellSelected,
+                                            ]}
+                                            onPress={() => !isBlocked && setSelected(dateStr)}
+                                            disabled={isBlocked}
+                                            hitSlop={{ top: 5, bottom: 5, left: 5, right: 5 }}
+                                            accessibilityRole="button"
+                                            accessibilityLabel={isToday ? `${dayNum}, today` : isSource ? `${dayNum}, original date` : String(dayNum)}
+                                            accessibilityState={{ selected: isSelected, disabled: isBlocked }}
+                                        >
+                                            <Text style={[
+                                                styles.datePickerCellText,
+                                                isToday    && styles.datePickerCellTodayText,
+                                                isSelected && styles.datePickerCellSelectedText,
+                                                isPast     && styles.datePickerCellPastText,
+                                                !currentMonth && styles.datePickerCellOtherMonth,
+                                            ]}>
+                                                {dayNum}
+                                            </Text>
+                                        </Pressable>
+                                    </View>
+                                );
+                            })}
+                        </View>
+                    ))}
+
+                    <View style={styles.overlayActions}>
+                        <Pressable style={styles.overlayButtonSecondary} onPress={onClose} accessibilityRole="button" accessibilityLabel="Cancel">
+                            <Text style={styles.overlayButtonSecondaryText}>Cancel</Text>
+                        </Pressable>
+                        <Pressable
+                            style={[styles.overlayButtonPrimary, styles.rescheduleButtonPrimary, !selected && styles.datePickerConfirmDisabled]}
+                            onPress={() => selected && onConfirm(selected)}
+                            disabled={!selected}
+                            accessibilityRole="button"
+                            accessibilityLabel="Confirm date"
+                            accessibilityState={{ disabled: !selected }}
+                        >
+                            <Text style={styles.overlayButtonPrimaryText}>Confirm</Text>
+                        </Pressable>
+                    </View>
+                </View>
+            </View>
+        </Modal>
+    );
+};
+
+// ─── Skip modal ───────────────────────────────────────────────────────────────
+
+const SkipModal = ({ onClose, onConfirm }) => {
+    const { theme } = useTheme();
+    const styles = makeStyles(theme);
+    const [reason, setReason] = React.useState('');
+    return (
+        <Modal
+            transparent
+            animationType="fade"
+            onRequestClose={onClose}
+            accessibilityViewIsModal={true}
+        >
+            <KeyboardAvoidingView
+                style={styles.overlayBackdrop}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            >
+                <View style={styles.skipModalCard}>
+                    <Text style={styles.skipModalTitle} accessibilityRole="header">
+                        Mark as skipped?
+                    </Text>
+                    <TextInput
+                        style={styles.skipModalInput}
+                        value={reason}
+                        onChangeText={setReason}
+                        placeholder="Why was it skipped? (optional)"
+                        placeholderTextColor={theme.textTertiary}
+                        multiline
+                        returnKeyType="done"
+                        accessibilityLabel="Skip reason"
+                        accessibilityHint="Optional. Describe why this workout was skipped."
+                    />
+                    <View style={styles.overlayActions}>
+                        <Pressable
+                            style={styles.overlayButtonSecondary}
+                            onPress={onClose}
+                            accessibilityRole="button"
+                            accessibilityLabel="Cancel"
+                        >
+                            <Text style={styles.overlayButtonSecondaryText}>Cancel</Text>
+                        </Pressable>
+                        <Pressable
+                            style={styles.overlayButtonPrimary}
+                            onPress={() => onConfirm(reason)}
+                            accessibilityRole="button"
+                            accessibilityLabel="Confirm mark as skipped"
+                        >
+                            <Text style={styles.overlayButtonPrimaryText}>Mark Skipped</Text>
+                        </Pressable>
+                    </View>
+                </View>
+            </KeyboardAvoidingView>
+        </Modal>
+    );
+};
+
 // ─── WorkoutPreview ───────────────────────────────────────────────────────────
 
 export default function WorkoutPreview({ route, navigation }) {
-    const { id, scheduledWorkoutId, scheduledDate, initialStatus } = route.params;
+    const { id, scheduledWorkoutId, scheduledDate, initialStatus, viewerIsAthlete } = route.params;
     const { user, accessToken, authFetch } = useAuth();
     const { theme } = useTheme();
     const styles = makeStyles(theme);
@@ -239,7 +437,9 @@ export default function WorkoutPreview({ route, navigation }) {
     const [workoutData, setWorkoutData] = React.useState(undefined);
     const [showFinishOverlay, setShowFinishOverlay] = React.useState(false);
     const [showRescheduleOverlay, setShowRescheduleOverlay] = React.useState(false);
-    const [workoutStatus, setWorkoutStatus] = React.useState(initialStatus ?? 'scheduled'); // 'scheduled' | 'completed'
+    const [showSkipModal,       setShowSkipModal]       = React.useState(false);
+    const [showRescheduleModal, setShowRescheduleModal] = React.useState(false);
+    const [workoutStatus, setWorkoutStatus] = React.useState(initialStatus ?? 'scheduled');
     // For clients: in edit mode they can log sets on a completed workout
     const [editMode, setEditMode] = React.useState(false);
     // Track if any set has been saved so we can warn before leaving
@@ -330,6 +530,41 @@ export default function WorkoutPreview({ route, navigation }) {
         });
     };
 
+    const handleRescheduleConfirmPicker = async (newDate) => {
+        setShowRescheduleModal(false);
+        if (scheduledWorkoutId) {
+            try {
+                await authFetch('https://coaching-app.bert-m-cherry.workers.dev/schedule/move', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: scheduledWorkoutId, newDate, today: getTodayStr() }),
+                });
+                if (workoutStatus === 'skipped' || workoutStatus === 'missed') {
+                    setWorkoutStatus('scheduled');
+                }
+            } catch (e) {
+                console.error('Could not reschedule workout:', e);
+            }
+        }
+    };
+
+    const handleSkipConfirm = async (reason) => {
+        setShowSkipModal(false);
+        setWorkoutStatus('skipped');
+        if (scheduledWorkoutId) {
+            try {
+                await authFetch('https://coaching-app.bert-m-cherry.workers.dev/schedule/skip', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: scheduledWorkoutId, reason }),
+                });
+            } catch (e) {
+                console.error('Could not skip workout:', e);
+                setWorkoutStatus(initialStatus);
+            }
+        }
+    };
+
     const handleFinishConfirm = async () => {
         setShowFinishOverlay(false);
         setWorkoutStatus('completed');
@@ -414,6 +649,24 @@ export default function WorkoutPreview({ route, navigation }) {
                         </Pressable>
                     )}
                 </>
+            ) : workoutStatus === 'skipped' ? (
+                <>
+                    <View style={styles.skippedBadge}>
+                        <Feather name="slash" size={18} color={theme.textSecondary} accessible={false} />
+                        <Text style={styles.skippedText}>Workout skipped</Text>
+                    </View>
+                    {viewerIsAthlete && scheduledWorkoutId && (
+                        <Pressable
+                            style={styles.rescheduleButton}
+                            onPress={() => setShowRescheduleModal(true)}
+                            accessibilityRole="button"
+                            accessibilityLabel="Reschedule workout"
+                        >
+                            <Feather name="calendar" size={16} color={theme.accent} accessible={false} />
+                            <Text style={styles.rescheduleButtonText}>Reschedule Workout</Text>
+                        </Pressable>
+                    )}
+                </>
             ) : (
                 <>
                     <Pressable style={styles.startButton} onPress={handleStartWorkout}>
@@ -427,6 +680,28 @@ export default function WorkoutPreview({ route, navigation }) {
                         <Feather name="check-circle" size={20} color="#000" />
                         <Text style={styles.finishButtonText}>Workout Finished</Text>
                     </Pressable>
+                    {viewerIsAthlete && scheduledWorkoutId && (
+                        <>
+                            <Pressable
+                                style={styles.skipButton}
+                                onPress={() => setShowSkipModal(true)}
+                                accessibilityRole="button"
+                                accessibilityLabel="Mark as skipped"
+                            >
+                                <Feather name="slash" size={16} color={theme.textSecondary} accessible={false} />
+                                <Text style={styles.skipButtonText}>Mark as Skipped</Text>
+                            </Pressable>
+                            <Pressable
+                                style={styles.rescheduleButton}
+                                onPress={() => setShowRescheduleModal(true)}
+                                accessibilityRole="button"
+                                accessibilityLabel="Reschedule workout"
+                            >
+                                <Feather name="calendar" size={16} color={theme.accent} accessible={false} />
+                                <Text style={styles.rescheduleButtonText}>Reschedule Workout</Text>
+                            </Pressable>
+                        </>
+                    )}
                 </>
             )}
         </View>
@@ -453,6 +728,22 @@ export default function WorkoutPreview({ route, navigation }) {
                 onDismiss={() => setShowFinishOverlay(false)}
                 onConfirm={handleFinishConfirm}
             />
+
+            {showSkipModal && (
+                <SkipModal
+                    onClose={() => setShowSkipModal(false)}
+                    onConfirm={handleSkipConfirm}
+                />
+            )}
+
+            {showRescheduleModal && (
+                <DatePickerModal
+                    minDate={getTodayStr()}
+                    sourceDate={scheduledDate?.length === 10 ? scheduledDate : undefined}
+                    onClose={() => setShowRescheduleModal(false)}
+                    onConfirm={handleRescheduleConfirmPicker}
+                />
+            )}
 
             <RescheduleOverlay
                 visible={showRescheduleOverlay}
@@ -660,6 +951,168 @@ function makeStyles(theme) {
         },
         editButtonTextActive: {
             color: theme.textSecondary,
+        },
+        skippedBadge: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            paddingVertical: 16,
+            borderWidth: 1,
+            borderColor: theme.surfaceBorder,
+            borderRadius: 12,
+        },
+        skippedText: {
+            fontSize: 16,
+            color: theme.textSecondary,
+            fontWeight: '600',
+        },
+        skipButton: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            paddingVertical: 14,
+            minHeight: 44,  // WCAG 2.5.5
+            borderWidth: 1,
+            borderColor: theme.surfaceBorder,
+            borderRadius: 12,
+        },
+        skipButtonText: {
+            fontSize: 15,
+            color: theme.textSecondary,
+            fontWeight: '600',
+        },
+
+        // ── Skip modal ──
+        skipModalCard: {
+            backgroundColor: theme.surface,
+            borderRadius: 16,
+            padding: 28,
+            width: '100%',
+        },
+        skipModalTitle: {
+            fontSize: 20,
+            fontWeight: 'bold',
+            color: theme.textPrimary,
+            marginBottom: 16,
+        },
+        skipModalInput: {
+            borderWidth: 1,
+            borderColor: theme.surfaceBorder,
+            borderRadius: 8,
+            backgroundColor: theme.surfaceElevated,
+            color: theme.textPrimary,
+            padding: 12,
+            fontSize: 15,
+            minHeight: 80,
+            marginBottom: 20,
+            textAlignVertical: 'top',
+        },
+        rescheduleButton: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            paddingVertical: 14,
+            minHeight: 44,  // WCAG 2.5.5
+            borderWidth: 1,
+            borderColor: theme.accent,
+            borderRadius: 12,
+        },
+        rescheduleButtonText: {
+            fontSize: 15,
+            color: theme.accent,
+            fontWeight: '600',
+        },
+
+        // ── Date picker modal ──
+        datePickerCard: {
+            backgroundColor: theme.surface,
+            borderRadius: 16,
+            padding: 20,
+            width: '100%',
+        },
+        datePickerTitle: {
+            fontSize: 18,
+            fontWeight: 'bold',
+            color: theme.textPrimary,
+            marginBottom: 12,
+            textAlign: 'center',
+        },
+        datePickerNavRow: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: 8,
+        },
+        datePickerNavBtn: {
+            minWidth: 44,
+            minHeight: 44,
+            justifyContent: 'center',
+            alignItems: 'center',
+        },
+        datePickerMonthLabel: {
+            fontSize: 15,
+            fontWeight: '600',
+            color: theme.textPrimary,
+        },
+        datePickerDowRow: {
+            flexDirection: 'row',
+            marginBottom: 4,
+        },
+        datePickerDowLabel: {
+            flex: 1,
+            textAlign: 'center',
+            fontSize: 11,
+            fontWeight: '600',
+            color: theme.textSecondary,  // textTertiary fails 4.5:1 on dark surface
+        },
+        datePickerRow: {
+            flexDirection: 'row',
+            marginBottom: 2,
+        },
+        datePickerCellWrap: {
+            flex: 1,
+            alignItems: 'center',
+        },
+        datePickerCell: {
+            width: 34,
+            height: 34,
+            borderRadius: 17,
+            justifyContent: 'center',
+            alignItems: 'center',
+        },
+        datePickerCellTodayRing: {
+            borderWidth: 1.5,
+            borderColor: theme.textPrimary,
+        },
+        datePickerCellSourceRing: {
+            borderWidth: 1.5,
+            borderColor: theme.accent,
+        },
+        datePickerCellSelected: {
+            backgroundColor: theme.accent,
+        },
+        datePickerCellText: {
+            fontSize: 13,
+            color: theme.textPrimary,
+        },
+        datePickerCellTodayText: {
+            fontWeight: '700',
+        },
+        datePickerCellSelectedText: {
+            color: '#000',
+            fontWeight: '700',
+        },
+        datePickerCellPastText: {
+            color: theme.textTertiary,
+        },
+        datePickerCellOtherMonth: {
+            color: 'transparent',
+        },
+        datePickerConfirmDisabled: {
+            opacity: 0.4,
         },
 
         // ── Finish overlay ──

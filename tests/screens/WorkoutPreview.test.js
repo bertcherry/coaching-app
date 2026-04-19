@@ -129,6 +129,7 @@ function makeRoute(overrides = {}) {
             scheduledWorkoutId: 'sw-1',
             scheduledDate: '2026-04-17',
             initialStatus: 'scheduled',
+            viewerIsAthlete: true,
             ...overrides,
         },
     };
@@ -362,6 +363,150 @@ describe('WorkoutPreview — Start Workout navigation', () => {
             workoutId: 'workout-1',
             scheduledWorkoutId: 'sw-1',
         }));
+    });
+});
+
+// ─── Missed workout — Mark as Skipped ────────────────────────────────────────
+
+describe('WorkoutPreview — missed workout skip', () => {
+    it('shows Mark as Skipped button for client on missed workout', async () => {
+        render(<WorkoutPreview navigation={makeNavigation()} route={makeRoute({ initialStatus: 'missed' })} />);
+        await waitFor(() => screen.getAllByTestId('exercise-name'));
+        expect(screen.getByLabelText('Mark as skipped')).toBeTruthy();
+    });
+
+    it('does not show Mark as Skipped button when coach is viewing a client workout', async () => {
+        mockUser = { email: 'coach@test.com', isCoach: true, unitDefault: 'imperial' };
+        render(<WorkoutPreview navigation={makeNavigation()} route={makeRoute({ initialStatus: 'missed', viewerIsAthlete: false })} />);
+        await waitFor(() => screen.getAllByTestId('exercise-name'));
+        expect(screen.queryByLabelText('Mark as skipped')).toBeNull();
+    });
+
+    it('shows Mark as Skipped button on a scheduled workout', async () => {
+        render(<WorkoutPreview navigation={makeNavigation()} route={makeRoute({ initialStatus: 'scheduled' })} />);
+        await waitFor(() => screen.getAllByTestId('exercise-name'));
+        expect(screen.getByLabelText('Mark as skipped')).toBeTruthy();
+    });
+
+    it('shows Reschedule Workout button on a scheduled workout', async () => {
+        render(<WorkoutPreview navigation={makeNavigation()} route={makeRoute({ initialStatus: 'scheduled' })} />);
+        await waitFor(() => screen.getAllByTestId('exercise-name'));
+        expect(screen.getByLabelText('Reschedule workout')).toBeTruthy();
+    });
+
+    it('shows Reschedule Workout button on a skipped workout', async () => {
+        render(<WorkoutPreview navigation={makeNavigation()} route={makeRoute({ initialStatus: 'skipped' })} />);
+        await waitFor(() => screen.getAllByTestId('exercise-name'));
+        expect(screen.getByLabelText('Reschedule workout')).toBeTruthy();
+    });
+
+    it('does not show action buttons when viewerIsAthlete is false', async () => {
+        render(<WorkoutPreview navigation={makeNavigation()} route={makeRoute({ initialStatus: 'scheduled', viewerIsAthlete: false })} />);
+        await waitFor(() => screen.getAllByTestId('exercise-name'));
+        expect(screen.queryByLabelText('Mark as skipped')).toBeNull();
+        expect(screen.queryByLabelText('Reschedule workout')).toBeNull();
+    });
+
+    it('opens date picker when Reschedule Workout is pressed', async () => {
+        render(<WorkoutPreview navigation={makeNavigation()} route={makeRoute({ initialStatus: 'scheduled' })} />);
+        await waitFor(() => screen.getAllByTestId('exercise-name'));
+        fireEvent.press(screen.getByLabelText('Reschedule workout'));
+        expect(screen.getByText('Reschedule to…')).toBeTruthy();
+    });
+
+    it('calls move API and closes modal after confirming reschedule', async () => {
+        render(<WorkoutPreview navigation={makeNavigation()} route={makeRoute({ initialStatus: 'scheduled' })} />);
+        await waitFor(() => screen.getAllByTestId('exercise-name'));
+        fireEvent.press(screen.getByLabelText('Reschedule workout'));
+        await waitFor(() => screen.getByText('Reschedule to…'));
+
+        // Pick today — its accessibilityLabel is "<dayNum>, today"
+        const todayBtn = screen.getAllByRole('button').find(
+            el => el.props.accessibilityLabel?.includes('today') &&
+                  !el.props.accessibilityLabel?.includes('month'),
+        );
+        fireEvent.press(todayBtn);
+        fireEvent.press(screen.getByLabelText('Confirm date'));
+
+        await waitFor(() => {
+            expect(mockAuthFetch).toHaveBeenCalledWith(
+                expect.stringContaining('/schedule/move'),
+                expect.objectContaining({ method: 'POST' }),
+            );
+        });
+        expect(screen.queryByText('Reschedule to…')).toBeNull();
+    });
+
+    it('opens skip modal when Mark as Skipped is pressed', async () => {
+        render(<WorkoutPreview navigation={makeNavigation()} route={makeRoute({ initialStatus: 'missed' })} />);
+        await waitFor(() => screen.getAllByTestId('exercise-name'));
+        fireEvent.press(screen.getByLabelText('Mark as skipped'));
+        expect(screen.getByText('Mark as skipped?')).toBeTruthy();
+    });
+
+    it('closes skip modal without change when Cancel is pressed', async () => {
+        render(<WorkoutPreview navigation={makeNavigation()} route={makeRoute({ initialStatus: 'missed' })} />);
+        await waitFor(() => screen.getAllByTestId('exercise-name'));
+        fireEvent.press(screen.getByLabelText('Mark as skipped'));
+        fireEvent.press(screen.getByLabelText('Cancel'));
+        await waitFor(() => {
+            expect(screen.queryByText('Mark as skipped?')).toBeNull();
+        });
+        // Buttons should still show missed-state UI (Start/Finish still visible)
+        expect(screen.getByText('Start Workout')).toBeTruthy();
+    });
+
+    it('posts to /schedule/skip and shows Workout skipped badge after confirming', async () => {
+        render(<WorkoutPreview navigation={makeNavigation()} route={makeRoute({ initialStatus: 'missed' })} />);
+        await waitFor(() => screen.getAllByTestId('exercise-name'));
+
+        fireEvent.press(screen.getByLabelText('Mark as skipped'));
+        fireEvent.press(screen.getByLabelText('Confirm mark as skipped'));
+
+        await waitFor(() => {
+            expect(mockAuthFetch).toHaveBeenCalledWith(
+                expect.stringContaining('/schedule/skip'),
+                expect.objectContaining({ method: 'POST' }),
+            );
+        });
+        await waitFor(() => {
+            expect(screen.getByText('Workout skipped')).toBeTruthy();
+        });
+        expect(screen.queryByText('Start Workout')).toBeNull();
+        expect(screen.queryByLabelText('Mark as skipped')).toBeNull();
+    });
+
+    it('sends the typed reason in the skip request body', async () => {
+        render(<WorkoutPreview navigation={makeNavigation()} route={makeRoute({ initialStatus: 'missed' })} />);
+        await waitFor(() => screen.getAllByTestId('exercise-name'));
+
+        fireEvent.press(screen.getByLabelText('Mark as skipped'));
+        fireEvent.changeText(screen.getByLabelText('Skip reason'), 'Sick day');
+        fireEvent.press(screen.getByLabelText('Confirm mark as skipped'));
+
+        await waitFor(() => {
+            expect(mockAuthFetch).toHaveBeenCalledWith(
+                expect.stringContaining('/schedule/skip'),
+                expect.objectContaining({
+                    body: expect.stringContaining('Sick day'),
+                }),
+            );
+        });
+    });
+
+    it('reverts to missed status if the skip API call fails', async () => {
+        mockAuthFetch.mockRejectedValue(new Error('Network error'));
+        render(<WorkoutPreview navigation={makeNavigation()} route={makeRoute({ initialStatus: 'missed' })} />);
+        await waitFor(() => screen.getAllByTestId('exercise-name'));
+
+        fireEvent.press(screen.getByLabelText('Mark as skipped'));
+        fireEvent.press(screen.getByLabelText('Confirm mark as skipped'));
+
+        await waitFor(() => {
+            // Status should revert — Mark as Skipped button visible again
+            expect(screen.getByLabelText('Mark as skipped')).toBeTruthy();
+        });
+        expect(screen.queryByText('Workout skipped')).toBeNull();
     });
 });
 

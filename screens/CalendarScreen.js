@@ -505,6 +505,95 @@ const WorkoutActionSheet = ({ workout, onClose, onSkip, onCopy, onMove }) => {
     );
 };
 
+// ─── Missed workout sheet (client-only) ──────────────────────────────────────
+// Shown when a client long-presses a missed workout. Offers three paths:
+//   1. Mark as skipped with a note
+//   2. Reschedule to today
+//   3. Reschedule to a future date
+//   4. Exit without changes (Cancel)
+
+const MissedWorkoutSheet = ({ workout, onClose, onSkip, onRescheduleToday, onRescheduleOther }) => {
+    const { theme } = useTheme();
+    const styles = makeStyles(theme);
+    const dateDisplay = friendlyDate(workout.scheduledDate);
+    return (
+        <Modal
+            transparent
+            animationType="slide"
+            onRequestClose={onClose}
+            accessibilityViewIsModal={true}
+        >
+            <Pressable
+                style={styles.sheetOverlay}
+                onPress={onClose}
+                accessibilityRole="button"
+                accessibilityLabel="Close menu"
+            >
+                <Pressable
+                    style={styles.sheetContainer}
+                    onPress={e => e.stopPropagation()}
+                    accessible={false}
+                >
+                    <View style={styles.sheetHandle} accessible={false} importantForAccessibility="no" />
+                    <Text style={styles.sheetTitle}>{workout.workoutName}</Text>
+                    <Text style={styles.sheetDate}>{dateDisplay} · Missed</Text>
+
+                    <Pressable
+                        style={styles.sheetAction}
+                        onPress={onSkip}
+                        accessibilityRole="button"
+                        accessibilityLabel="Mark as skipped"
+                        accessibilityHint="Add a note about why this workout was skipped"
+                    >
+                        <Feather name="slash" size={20} color={theme.accent} accessible={false} />
+                        <View style={styles.sheetActionTextBlock}>
+                            <Text style={styles.sheetActionText}>Mark as skipped</Text>
+                            <Text style={styles.sheetActionSub}>Add a note about why it was skipped</Text>
+                        </View>
+                    </Pressable>
+
+                    <Pressable
+                        style={styles.sheetAction}
+                        onPress={onRescheduleToday}
+                        accessibilityRole="button"
+                        accessibilityLabel="Reschedule to today"
+                        accessibilityHint="Move this workout to today"
+                    >
+                        <Feather name="rotate-ccw" size={20} color={theme.accent} accessible={false} />
+                        <View style={styles.sheetActionTextBlock}>
+                            <Text style={styles.sheetActionText}>Reschedule to today</Text>
+                            <Text style={styles.sheetActionSub}>Move this workout to today</Text>
+                        </View>
+                    </Pressable>
+
+                    <Pressable
+                        style={styles.sheetAction}
+                        onPress={onRescheduleOther}
+                        accessibilityRole="button"
+                        accessibilityLabel="Reschedule to another date"
+                        accessibilityHint="Pick a future date to move this workout to"
+                    >
+                        <Feather name="calendar" size={20} color={theme.accent} accessible={false} />
+                        <View style={styles.sheetActionTextBlock}>
+                            <Text style={styles.sheetActionText}>Reschedule to another date</Text>
+                            <Text style={styles.sheetActionSub}>Pick a different day</Text>
+                        </View>
+                    </Pressable>
+
+                    <Pressable
+                        style={styles.sheetCancel}
+                        onPress={onClose}
+                        accessibilityRole="button"
+                        accessibilityLabel="Cancel"
+                    >
+                        <Text style={styles.sheetCancelText}>Cancel</Text>
+                    </Pressable>
+                </Pressable>
+            </Pressable>
+        </Modal>
+    );
+};
+
 // ─── Add workout sheet ────────────────────────────────────────────────────────
 
 const AddWorkoutSheet = ({ dateStr, clientName, onClose, onCreateNew, onUseTemplate }) => {
@@ -582,7 +671,7 @@ const AddWorkoutSheet = ({ dateStr, clientName, onClose, onCreateNew, onUseTempl
 
 // ─── Skip modal ───────────────────────────────────────────────────────────────
 
-const SkipModal = ({ workout, onClose, onConfirm }) => {
+const SkipModal = ({ workout, onClose, onConfirm, title = 'Skip workout?' }) => {
     const { theme } = useTheme();
     const styles = makeStyles(theme);
     const [reason, setReason] = React.useState('');
@@ -596,7 +685,7 @@ const SkipModal = ({ workout, onClose, onConfirm }) => {
             <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
                 <View style={styles.modalCard}>
                     <Text style={styles.modalTitle} accessibilityRole="header">
-                        Skip workout?
+                        {title}
                     </Text>
                     <Text style={styles.modalSubtitle}>{workout?.workoutName}</Text>
                     <TextInput
@@ -1017,6 +1106,9 @@ export default function CalendarScreen({ navigation, route }) {
     const isCoach = user?.isCoach ?? false;
 
     const clientEmail    = route?.params?.clientEmail ?? user?.email;
+    // True when the logged-in user is the subject of this calendar (their own workouts).
+    // A coach viewing a client's calendar will have clientEmail !== user.email.
+    const isViewingOwnCalendar = clientEmail === user?.email;
     const clientName     = route?.params?.clientName  ?? `${user?.fname ?? ''} ${user?.lname ?? ''}`.trim();
     // clientTimezone: IANA timezone string passed in by CoachNavigation when
     // navigating from ClientList. Falls back to the viewing device's timezone
@@ -1193,6 +1285,7 @@ export default function CalendarScreen({ navigation, route }) {
             scheduledWorkoutId: workout.id,
             scheduledDate: workout.scheduledDate,
             initialStatus: workout.status,
+            viewerIsAthlete: isViewingOwnCalendar,
         });
     };
 
@@ -1630,7 +1723,15 @@ export default function CalendarScreen({ navigation, route }) {
             )}
 
             {/* ── Modals ── */}
-            {actionWorkout && (
+            {actionWorkout && isViewingOwnCalendar && actionWorkout.status === 'missed' ? (
+                <MissedWorkoutSheet
+                    workout={actionWorkout}
+                    onClose={() => setActionWorkout(null)}
+                    onSkip={() => { const w = actionWorkout; setActionWorkout(null); setSkipWorkout(w); }}
+                    onRescheduleToday={() => handleMoveConfirm(clientTodayStr, actionWorkout)}
+                    onRescheduleOther={() => { const w = actionWorkout; setActionWorkout(null); setMoveWorkout(w); }}
+                />
+            ) : actionWorkout ? (
                 <WorkoutActionSheet
                     workout={actionWorkout}
                     onClose={() => setActionWorkout(null)}
@@ -1638,7 +1739,7 @@ export default function CalendarScreen({ navigation, route }) {
                     onCopy={() => setCopyWorkout(actionWorkout)}
                     onMove={() => setMoveWorkout(actionWorkout)}
                 />
-            )}
+            ) : null}
 
             {addDayTarget && !showTemplatePicker && (
                 <AddWorkoutSheet
@@ -1655,6 +1756,7 @@ export default function CalendarScreen({ navigation, route }) {
                     workout={skipWorkout}
                     onClose={() => setSkipWorkout(null)}
                     onConfirm={handleSkipConfirm}
+                    title={skipWorkout.status === 'missed' ? 'Mark as skipped?' : 'Skip workout?'}
                 />
             )}
 
