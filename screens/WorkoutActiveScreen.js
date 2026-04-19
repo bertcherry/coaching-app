@@ -31,7 +31,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { useTheme } from '../context/ThemeContext';
 import { useScrollY } from '../context/ScrollContext';
-import { enqueueRecord, syncQueue } from '../utils/WorkoutSync';
+import { enqueueRecord, syncQueue, getLocalWorkoutHistory } from '../utils/WorkoutSync';
 import 'react-native-get-random-values';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -255,7 +255,7 @@ function ActiveDemoVideo({ streamId, styles }) {
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
 export default function WorkoutActiveScreen({ route, navigation }) {
-    const { workoutData, workoutId, scheduledWorkoutId } = route.params;
+    const { workoutData, workoutId, scheduledWorkoutId, scheduledDate, clientEmail: clientEmailParam, viewerIsAthlete } = route.params;
     const { user, accessToken, authFetch } = useAuth();
     const { theme } = useTheme();
     const styles = makeStyles(theme);
@@ -648,6 +648,24 @@ export default function WorkoutActiveScreen({ route, navigation }) {
         if (accessToken) syncQueue(accessToken);
     }
 
+    async function handleBackToPreview() {
+        const localHistory = await getLocalWorkoutHistory(workoutId);
+        const clientEmail  = clientEmailParam ?? user?.email;
+
+        // Pop back past WorkoutActive to WorkoutPreview, replacing its params so
+        // it opens in completed state with local history immediately available.
+        navigation.navigate('Workout Preview', {
+            id: workoutId,
+            scheduledWorkoutId,
+            scheduledDate,
+            initialStatus: 'completed',
+            viewerIsAthlete: viewerIsAthlete ?? true,
+            clientEmail,
+            localHistory: Object.keys(localHistory).length > 0 ? localHistory : undefined,
+            calendarRefresh: true,
+        });
+    }
+
     // ── Completed state ─────────────────────────────────────────────────────
 
     if (workoutDone) {
@@ -656,7 +674,7 @@ export default function WorkoutActiveScreen({ route, navigation }) {
                 <Feather name="award" size={64} color={theme.success} style={styles.doneIcon} />
                 <Text style={styles.doneTitle}>Workout complete!</Text>
                 <Text style={styles.doneSubtitle}>Your sets have been saved locally and will sync shortly.</Text>
-                <Pressable style={styles.doneButton} onPress={() => navigation.goBack()}>
+                <Pressable style={styles.doneButton} onPress={handleBackToPreview}>
                     <Text style={styles.doneButtonText}>Back to preview</Text>
                 </Pressable>
             </View>

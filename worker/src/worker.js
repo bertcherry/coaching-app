@@ -11,7 +11,7 @@ import {
     handleUpdateStreamId,
     handleGetStreamUploadUrl,
 } from './demos';
-import { handleHistoryBatch, handleExerciseSummary } from './history';
+import { handleHistoryBatch, handleExerciseSummary, handleWorkoutHistory } from './history';
 import { handleUpdateName, handleUpdateEmail, handleUpdatePassword, handleUpdateUnit, handleUpdateNotificationSettings, handleGetNotificationSettings } from './profile';
 import { handleGetSchedule } from './schedule';
 import { emitNotification, handleRegisterPushToken, handleGetUnread, handleMarkRead } from './notifications';
@@ -338,6 +338,7 @@ export default {
             '/schedule':                             handleGetSchedule,
             '/workouts/templates':                   handleGetTemplates,
             '/history/exercise-summary':             handleExerciseSummary,
+            '/history/workout':                      handleWorkoutHistory,
             '/notifications/unread':                 handleGetUnread,
             '/profile/notification-settings':        handleGetNotificationSettings,
         };

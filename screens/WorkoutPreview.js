@@ -415,14 +415,15 @@ const SkipModal = ({ onClose, onConfirm }) => {
 // ─── WorkoutPreview ───────────────────────────────────────────────────────────
 
 export default function WorkoutPreview({ route, navigation }) {
-    const { id, scheduledWorkoutId, scheduledDate, initialStatus, viewerIsAthlete } = route.params;
+    const { id, scheduledWorkoutId, scheduledDate, initialStatus, viewerIsAthlete, clientEmail: clientEmailParam, localHistory, calendarRefresh, workoutName } = route.params;
     const { user, accessToken, authFetch } = useAuth();
     const { theme } = useTheme();
     const styles = makeStyles(theme);
     const scrollY = useScrollY();
     const headerHeight = useHeaderHeight();
 
-    const isCoach = user?.isCoach ?? false;
+    // The email of the athlete whose history we display/fetch
+    const clientEmail = clientEmailParam ?? user?.email;
 
     useFocusEffect(React.useCallback(() => {
         scrollY.setValue(0);
@@ -434,8 +435,11 @@ export default function WorkoutPreview({ route, navigation }) {
     const [showSkipModal,       setShowSkipModal]       = React.useState(false);
     const [showRescheduleModal, setShowRescheduleModal] = React.useState(false);
     const [workoutStatus, setWorkoutStatus] = React.useState(initialStatus ?? 'scheduled');
-    // For clients: in edit mode they can log sets on a completed workout
+    // Edit mode: clients and coaches can review/edit logged data on completed workouts
     const [editMode, setEditMode] = React.useState(false);
+    // Logged sets for completed workout: keyed by `${exerciseId}-${setNumber}`
+    // Seeded immediately from localHistory (AsyncStorage) so summary shows before sync
+    const [completedHistory, setCompletedHistory] = React.useState(localHistory ?? null);
     // Track if any set has been saved so we can warn before leaving
     const hasSavedSets = React.useRef(false);
     const pendingAction = React.useRef(null);
@@ -460,6 +464,17 @@ export default function WorkoutPreview({ route, navigation }) {
         return unsubscribe;
     }, [navigation, workoutStatus]);
 
+    // Set nav header title
+    React.useEffect(() => {
+        navigation.setOptions({ title: 'Workout Summary' });
+    }, []);
+
+    // Signal CalendarScreen to mark this workout completed without a full refetch
+    React.useEffect(() => {
+        if (!calendarRefresh || !scheduledWorkoutId) return;
+        navigation.navigate('Calendar', { completedWorkoutId: scheduledWorkoutId });
+    }, []);
+
     React.useEffect(() => {
         const getWorkout = async () => {
             try {
@@ -481,6 +496,32 @@ export default function WorkoutPreview({ route, navigation }) {
     React.useEffect(() => {
         if (accessToken) syncQueue(accessToken);
     }, [accessToken]);
+
+    // Fetch logged history when viewing a completed workout
+    React.useEffect(() => {
+        if (workoutStatus !== 'completed' || !accessToken || !clientEmail) return;
+        let cancelled = false;
+        (async () => {
+            try {
+                const res = await authFetch(
+                    `https://coaching-app.bert-m-cherry.workers.dev/history/workout?workoutId=${encodeURIComponent(id)}&clientEmail=${encodeURIComponent(clientEmail)}`
+                );
+                if (!res.ok || cancelled) return;
+                const { records } = await res.json();
+                if (cancelled) return;
+                // Merge: start from localHistory so unsynced sets are present,
+                // then overwrite with server records (source of truth once synced)
+                const map = { ...(localHistory ?? {}) };
+                for (const r of records) {
+                    map[`${r.exerciseId}-${r.set}`] = r;
+                }
+                setCompletedHistory(map);
+            } catch {
+                // Non-fatal — summary panel will just show empty
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [workoutStatus, accessToken, clientEmail, id]);
 
     const maybePromptReschedule = (action) => {
         const isToday = !scheduledDate || scheduledDate === getTodayStr();
@@ -592,25 +633,33 @@ export default function WorkoutPreview({ route, navigation }) {
         );
     }
 
-    // Clients can log sets on a completed workout only while in editMode
-    const loggingEnabled = workoutStatus !== 'completed' || (!isCoach && editMode);
+    // Anyone can edit logged sets on a completed workout while in editMode
+    const loggingEnabled = workoutStatus !== 'completed' || editMode;
 
     const renderItem = ({ item }) => (
         <WorkoutPreviewItem
             {...item}
             workoutId={id}
-            clientId={user?.email}
+            clientId={clientEmail}
             unitDefault={user?.unitDefault}
             onSetSaved={handleSetSaved}
             readOnly={!loggingEnabled}
+            isCompleted={workoutStatus === 'completed'}
+            completedHistory={completedHistory}
         />
     );
 
     const renderSectionHeader = ({ section: { title } }) => (
-        <View>
-            <Text style={styles.headingText}>{title}</Text>
+        <View style={styles.sectionHeader}>
+            <Text style={styles.sectionHeaderText}>{title}</Text>
         </View>
     );
+
+    const renderListHeader = () => workoutName ? (
+        <View style={styles.workoutTitleContainer}>
+            <Text style={styles.workoutTitleText}>{workoutName}</Text>
+        </View>
+    ) : null;
 
     const handleStartWorkout = () => {
         maybePromptReschedule(() => {
@@ -618,6 +667,9 @@ export default function WorkoutPreview({ route, navigation }) {
                 workoutData,
                 workoutId: id,
                 scheduledWorkoutId,
+                scheduledDate,
+                clientEmail,
+                viewerIsAthlete,
             });
         });
     };
@@ -630,18 +682,15 @@ export default function WorkoutPreview({ route, navigation }) {
                         <Feather name="check-circle" size={18} color={theme.success} />
                         <Text style={styles.completedText}>Workout completed</Text>
                     </View>
-                    {/* Clients can edit logged data after completion */}
-                    {!isCoach && (
-                        <Pressable
-                            style={[styles.editButton, editMode && styles.editButtonActive]}
-                            onPress={() => setEditMode(v => !v)}
-                        >
-                            <Feather name={editMode ? 'x' : 'edit-2'} size={16} color={editMode ? theme.textPrimary : theme.accent} />
-                            <Text style={[styles.editButtonText, editMode && styles.editButtonTextActive]}>
-                                {editMode ? 'Done editing' : 'Edit workout'}
-                            </Text>
-                        </Pressable>
-                    )}
+                    <Pressable
+                        style={[styles.editButton, editMode && styles.editButtonActive]}
+                        onPress={() => setEditMode(v => !v)}
+                    >
+                        <Feather name={editMode ? 'x' : 'edit-2'} size={16} color={editMode ? theme.textSecondary : theme.accentText} />
+                        <Text style={[styles.editButtonText, editMode && styles.editButtonTextActive]}>
+                            {editMode ? 'Done editing' : 'Edit workout'}
+                        </Text>
+                    </Pressable>
                 </>
             ) : workoutStatus === 'skipped' ? (
                 <>
@@ -708,6 +757,7 @@ export default function WorkoutPreview({ route, navigation }) {
                 keyExtractor={(item) => item.id}
                 renderItem={renderItem}
                 renderSectionHeader={renderSectionHeader}
+                ListHeaderComponent={renderListHeader}
                 ListFooterComponent={renderFooter}
                 keyboardDismissMode="on-drag"
                 automaticallyAdjustKeyboardInsets={true}
@@ -763,6 +813,29 @@ function makeStyles(theme) {
             fontWeight: 'bold',
             color: theme.textPrimary,
             textAlign: 'center',
+        },
+        workoutTitleContainer: {
+            paddingHorizontal: 20,
+            paddingTop: 20,
+            paddingBottom: 4,
+        },
+        workoutTitleText: {
+            fontSize: 22,
+            fontWeight: '700',
+            color: theme.textPrimary,
+        },
+        sectionHeader: {
+            paddingHorizontal: 20,
+            paddingTop: 16,
+            paddingBottom: 4,
+            backgroundColor: theme.background,
+        },
+        sectionHeaderText: {
+            fontSize: 12,
+            fontWeight: '700',
+            color: theme.textSecondary,
+            textTransform: 'uppercase',
+            letterSpacing: 0.8,
         },
         itemContainer: {
             flexDirection: 'row',

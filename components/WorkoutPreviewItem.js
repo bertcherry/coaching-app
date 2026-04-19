@@ -42,8 +42,10 @@ export default function WorkoutPreviewItem({
     countType, countMin, countMax, timeCapSeconds,
     recommendedRpe, recommendedWeight,
     coachNotes,
-    setConfigs, // per-set coach targets [{ weight, rpe, countMin }]
-    readOnly,   // when true: hides the log-sets button (edit icon)
+    setConfigs,       // per-set coach targets [{ weight, rpe, countMin }]
+    readOnly,         // when true: hides the log-sets button (edit icon)
+    isCompleted,      // workout is completed — show summary, hide video
+    completedHistory, // map of `${exerciseId}-${setNumber}` → history record
 }) {
     const { theme } = useTheme();
     const styles = makeStyles(theme);
@@ -100,7 +102,7 @@ export default function WorkoutPreviewItem({
         Array.from({ length: requiredSets }, (_, i) => i + 1).every(n => savedSetNums.has(n));
 
     const setsLabel = hasRange
-        ? `${resolvedSetsMin}–${resolvedSetsMax} sets (+${resolvedSetsMax - resolvedSetsMin} optional)`
+        ? `${resolvedSetsMin}–${resolvedSetsMax} sets`
         : resolvedSetsMin ? `${resolvedSetsMin} set${resolvedSetsMin !== 1 ? 's' : ''}` : null;
 
     const displayName = demo?.name ?? name ?? 'Unknown exercise';
@@ -134,12 +136,11 @@ export default function WorkoutPreviewItem({
                 </View>
 
                 <View style={styles.actionButtons}>
-                    {hasVideo && (
+                    {hasVideo && !isCompleted && (
                         <Pressable style={[styles.iconButton, showVideo && styles.iconButtonActive]} onPress={() => setShowVideo(v => !v)}>
                             <Feather name="film" size={15} color={showVideo ? theme.accent : theme.textPrimary} />
                         </Pressable>
                     )}
-                    {!hasVideo && <View style={styles.noVideoTag}><Feather name="video-off" size={12} color={theme.surfaceBorder} /></View>}
                     {!readOnly && (
                         <Pressable
                             style={[styles.iconButton, showLogs && styles.iconButtonActive, requiredComplete && styles.iconButtonDone]}
@@ -148,32 +149,59 @@ export default function WorkoutPreviewItem({
                             <Feather
                                 name={requiredComplete && !showLogs ? 'check' : 'edit-3'}
                                 size={15}
-                                color={requiredComplete ? theme.success : showLogs ? theme.accent : theme.textPrimary}
+                                color={requiredComplete ? theme.success : showLogs ? theme.accentText : theme.textPrimary}
                             />
                         </Pressable>
                     )}
                 </View>
             </View>
 
-            {/* Coach notes — shown as guidance below exercise row */}
-            {coachNotes ? (
+            {/* Coach notes — hidden on completed view */}
+            {coachNotes && !isCompleted ? (
                 <View style={styles.coachNotesContainer}>
                     <Feather name="message-square" size={12} color={theme.textSecondary} style={{ marginRight: 6, marginTop: 1, flexShrink: 0 }} />
                     <Text style={styles.coachNotesText}>{coachNotes}</Text>
                 </View>
             ) : null}
 
-            {showVideo && hasVideo && <VideoPlayer streamId={demo.streamId} />}
+            {/* Completed workout summary — always visible, hidden when edit panel is open */}
+            {isCompleted && !showLogs && completedHistory && (() => {
+                const setNums = Array.from({ length: totalSets }, (_, i) => i + 1);
+                const loggedSets = setNums
+                    .map(n => ({ n, record: completedHistory[`${id}-${n}`] }))
+                    .filter(({ record }) => record);
+                if (loggedSets.length === 0) return null;
+                return (
+                    <View style={styles.completedSummary}>
+                        {loggedSets.map(({ n, record }) => {
+                            const parts = [];
+                            if (record.weight != null) parts.push(`${record.weight} ${record.weightUnit ?? ''}`);
+                            else if (record.weightUnit) parts.push(record.weightUnit);
+                            if (record.reps != null) parts.push(`${record.reps} ${countType === 'Timed' ? 'sec' : 'reps'}`);
+                            if (record.rpe  != null) parts.push(`RPE ${record.rpe}`);
+                            return (
+                                <View key={n} style={styles.summaryRow}>
+                                    <Text style={styles.summarySetLabel}>Set {n}</Text>
+                                    <Text style={styles.summaryValues}>{parts.join('  ·  ') || '—'}</Text>
+                                    {record.note ? <Text style={styles.summaryNote}>{record.note}</Text> : null}
+                                </View>
+                            );
+                        })}
+                    </View>
+                );
+            })()}
+
+            {showVideo && hasVideo && !isCompleted && <VideoPlayer streamId={demo.streamId} />}
 
             {showLogs && (
                 <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.logsContainer}>
                     <View style={styles.logsHeader}>
-                        <View style={styles.setsHeaderRow}>
-                            {requiredComplete && <Feather name="check" size={13} color={theme.success} style={styles.setsHeaderCheck} />}
-                            <Text style={[styles.setsHeader, requiredComplete && styles.setsHeaderDone]}>
-                                {setsLabel ?? `${totalSets} sets`} · {formatPrescription({ countType, countMin, countMax, timeCapSeconds })}
-                            </Text>
-                        </View>
+                        {requiredComplete && (
+                            <View style={styles.setsHeaderRow}>
+                                <Feather name="check" size={13} color={theme.success} style={styles.setsHeaderCheck} />
+                                <Text style={[styles.setsHeader, styles.setsHeaderDone]}>All sets logged</Text>
+                            </View>
+                        )}
                         {/* Recommendations as helper text above set rows */}
                         {(recommendedWeight || recommendedRpe) && (
                             <View style={styles.recBanner}>
@@ -201,6 +229,7 @@ export default function WorkoutPreviewItem({
                             recommendedWeight={recommendedWeight ?? null}
                             recommendedRpe={recommendedRpe ?? null}
                             setConfig={Array.isArray(setConfigs) ? (setConfigs[setNumber - 1] ?? null) : null}
+                            loggedRecord={completedHistory?.[`${id}-${setNumber}`] ?? null}
                             onSave={handleSetSaved}
                         />
                     ))}
@@ -230,6 +259,12 @@ function makeStyles(theme) {
 
         videoContainer: { flex: 1, justifyContent: 'center', backgroundColor: theme.background },
         video:          { alignSelf: 'center', width: 320, height: 200 },
+
+        completedSummary: { marginHorizontal: 16, marginBottom: 8, gap: 4 },
+        summaryRow:       { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6, paddingVertical: 3, borderTopWidth: 0.5, borderTopColor: theme.surfaceBorder },
+        summarySetLabel:  { fontSize: 11, fontWeight: '700', color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: 0.4, minWidth: 38 },
+        summaryValues:    { fontSize: 13, color: theme.textPrimary, flex: 1 },
+        summaryNote:      { fontSize: 12, color: theme.textSecondary, fontStyle: 'italic', width: '100%', paddingLeft: 44 },
 
         logsContainer: { backgroundColor: theme.surface, marginHorizontal: 8, marginBottom: 8, borderRadius: 8, padding: 10, borderWidth: 0.5, borderColor: theme.surfaceBorder },
         logsHeader:    { marginBottom: 8, gap: 6 },

@@ -1103,6 +1103,15 @@ export default function CalendarScreen({ navigation, route }) {
     useFocusEffect(React.useCallback(() => {
         scrollY.setValue(0);
     }, [scrollY]));
+
+    // Optimistically mark a workout completed when navigating back from WorkoutActive
+    const completedWorkoutId = route?.params?.completedWorkoutId;
+    React.useEffect(() => {
+        if (!completedWorkoutId) return;
+        updateWorkout(completedWorkoutId, { status: 'completed' });
+        // Clear the param so re-focusing doesn't re-apply it
+        navigation.setParams({ completedWorkoutId: undefined });
+    }, [completedWorkoutId]);
     const isCoach = user?.isCoach ?? false;
 
     const clientEmail    = route?.params?.clientEmail ?? user?.email;
@@ -1286,6 +1295,8 @@ export default function CalendarScreen({ navigation, route }) {
             scheduledDate: workout.scheduledDate,
             initialStatus: workout.status,
             viewerIsAthlete: isViewingOwnCalendar,
+            clientEmail: workout.clientEmail ?? clientEmail,
+            workoutName: workout.workoutName,
         });
     };
 

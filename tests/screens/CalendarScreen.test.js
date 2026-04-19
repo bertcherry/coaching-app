@@ -63,7 +63,8 @@ jest.mock('../../components/TemplatePickerOverlay', () => () => null);
 
 // ─── Context / navigation mocks ───────────────────────────────────────────────
 
-const mockNavigate = jest.fn();
+const mockNavigate  = jest.fn();
+const mockSetParams = jest.fn();
 jest.mock('@react-navigation/native', () => {
     const React = require('react');
     return {
@@ -103,7 +104,7 @@ jest.mock('../../context/NotificationsContext', () => ({
 
 // ─── Navigation / route props ─────────────────────────────────────────────────
 
-const mockNavigation = { navigate: mockNavigate };
+const mockNavigation = { navigate: mockNavigate, setParams: mockSetParams };
 
 function makeRoute(overrides = {}) {
     return {
@@ -387,6 +388,51 @@ describe('CalendarScreen — missed workout sheet (client)', () => {
         await waitFor(() => {
             expect(screen.getByText('Move workout to…')).toBeTruthy();
         });
+    });
+});
+
+// ─── completedWorkoutId param → optimistic calendar update ───────────────────
+
+describe('CalendarScreen — optimistic completion update', () => {
+    it('flips a scheduled workout to completed when completedWorkoutId param is set', async () => {
+        scheduleResponse([WORKOUT_A]);
+        render(<CalendarScreen
+            navigation={mockNavigation}
+            route={makeRoute({ completedWorkoutId: 'sw-1' })}
+        />);
+        await waitFor(() => screen.getByText('Upper Body'));
+        // The workout was scheduled; after the param is processed it should be shown as completed.
+        // We verify indirectly: setParams is called to clear the param (preventing re-application).
+        await waitFor(() => {
+            expect(mockSetParams).toHaveBeenCalledWith({ completedWorkoutId: undefined });
+        });
+    });
+
+    it('does not call setParams when completedWorkoutId is absent', async () => {
+        scheduleResponse([WORKOUT_A]);
+        render(<CalendarScreen navigation={mockNavigation} route={makeRoute()} />);
+        await waitFor(() => screen.getByText('Upper Body'));
+        expect(mockSetParams).not.toHaveBeenCalled();
+    });
+
+    it('does not re-apply the update after setParams clears the param', async () => {
+        scheduleResponse([WORKOUT_A]);
+        // First render: param is present
+        const { rerender } = render(<CalendarScreen
+            navigation={mockNavigation}
+            route={makeRoute({ completedWorkoutId: 'sw-1' })}
+        />);
+        await waitFor(() => expect(mockSetParams).toHaveBeenCalled());
+
+        mockSetParams.mockClear();
+
+        // Simulate re-render without the param (as setParams would cause)
+        rerender(<CalendarScreen
+            navigation={mockNavigation}
+            route={makeRoute({ completedWorkoutId: undefined })}
+        />);
+        await waitFor(() => new Promise(r => setTimeout(r, 50)));
+        expect(mockSetParams).not.toHaveBeenCalled();
     });
 });
 

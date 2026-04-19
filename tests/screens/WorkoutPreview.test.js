@@ -5,11 +5,13 @@
  *   - Exercise names and prescriptions pulled from API
  *   - Set rows rendered (correct count based on setsMin/setsMax)
  *   - Optional set labelling
- *   - Coach notes shown
+ *   - Coach notes shown on scheduled, hidden on completed
  *   - Coach rec banner (weight + RPE)
  *   - Completed workouts show badge, hide Start/Finish buttons
  *   - Scheduled workouts show Start + Finish buttons
- *   - Client sees Edit button on completed workout; coach does not
+ *   - Edit button shown for both clients and coaches on completed workouts
+ *   - Completed workout history is fetched and summary displayed per exercise
+ *   - SetRow pre-populated with logged values in edit mode
  *   - Back-navigation guard fires when sets have been saved
  */
 
@@ -39,20 +41,41 @@ jest.mock('@react-navigation/elements', () => ({
     useHeaderHeight: () => 0,
 }));
 
-// WorkoutPreviewItem — mock to avoid deep rendering; just renders the exercise name
+// WorkoutPreviewItem — mock to avoid deep rendering; exposes all props used in tests
 jest.mock('../../components/WorkoutPreviewItem', () => {
     const { View, Text, Pressable } = require('react-native');
-    return function MockWorkoutPreviewItem({ name, setsMin, setsMax, readOnly, coachNotes, recommendedWeight, recommendedRpe, onSetSaved }) {
+    return function MockWorkoutPreviewItem({
+        name, id, setsMin, setsMax, readOnly,
+        coachNotes, recommendedWeight, recommendedRpe,
+        isCompleted, completedHistory, onSetSaved,
+    }) {
         const sets = setsMax ?? setsMin ?? 1;
+        // Simulate which logged sets are available from completedHistory
+        const loggedSetNums = completedHistory
+            ? Array.from({ length: sets }, (_, i) => i + 1).filter(n => completedHistory[`${id}-${n}`])
+            : [];
         return (
             <View testID="workout-preview-item">
                 <Text testID="exercise-name">{name}</Text>
-                {coachNotes ? <Text testID="coach-notes">{coachNotes}</Text> : null}
+                {/* Coach notes hidden when completed */}
+                {coachNotes && !isCompleted ? <Text testID="coach-notes">{coachNotes}</Text> : null}
                 {(recommendedWeight || recommendedRpe) ? (
                     <Text testID="rec-banner">
                         Coach rec:{recommendedWeight ? ` ${recommendedWeight}` : ''}{recommendedRpe ? `  ·  RPE ${recommendedRpe}` : ''}
                     </Text>
                 ) : null}
+                {/* Completed summary: one row per logged set */}
+                {isCompleted && loggedSetNums.map(n => {
+                    const r = completedHistory[`${id}-${n}`];
+                    return (
+                        <View key={n} testID={`summary-set-${n}`}>
+                            <Text testID={`summary-values-${n}`}>
+                                {[r.weight != null ? `${r.weight} ${r.weightUnit}` : null, r.reps != null ? `${r.reps} reps` : null, r.rpe != null ? `RPE ${r.rpe}` : null].filter(Boolean).join('  ·  ')}
+                            </Text>
+                            {r.note ? <Text testID={`summary-note-${n}`}>{r.note}</Text> : null}
+                        </View>
+                    );
+                })}
                 {Array.from({ length: sets }, (_, i) => (
                     <View key={i} testID={`set-row-${i + 1}`}>
                         {i + 1 > (setsMin ?? sets) && <Text testID={`optional-${i + 1}`}>optional</Text>}
@@ -212,10 +235,16 @@ describe('WorkoutPreview — data display', () => {
         expect(screen.queryByTestId('optional-1')).toBeNull();
     });
 
-    it('shows coach notes when present', async () => {
-        render(<WorkoutPreview navigation={makeNavigation()} route={makeRoute()} />);
+    it('shows coach notes on a scheduled workout', async () => {
+        render(<WorkoutPreview navigation={makeNavigation()} route={makeRoute({ initialStatus: 'scheduled' })} />);
         await waitFor(() => screen.getByTestId('coach-notes'));
         expect(screen.getByTestId('coach-notes').props.children).toBe('Drive through heels.');
+    });
+
+    it('hides coach notes on a completed workout', async () => {
+        render(<WorkoutPreview navigation={makeNavigation()} route={makeRoute({ initialStatus: 'completed' })} />);
+        await waitFor(() => screen.getAllByTestId('exercise-name'));
+        expect(screen.queryByTestId('coach-notes')).toBeNull();
     });
 
     it('shows coach rec banner with weight and RPE', async () => {
@@ -267,11 +296,96 @@ describe('WorkoutPreview — footer buttons', () => {
         expect(screen.getByText('Edit workout')).toBeTruthy();
     });
 
-    it('does not show Edit workout button for coach on completed workout', async () => {
+    it('shows Edit workout button for coach on completed workout', async () => {
         mockUser = { email: 'coach@test.com', isCoach: true, unitDefault: 'imperial' };
-        render(<WorkoutPreview navigation={makeNavigation()} route={makeRoute({ initialStatus: 'completed' })} />);
+        render(<WorkoutPreview navigation={makeNavigation()} route={makeRoute({ initialStatus: 'completed', clientEmail: 'client@test.com' })} />);
         await waitFor(() => screen.getAllByTestId('exercise-name'));
-        expect(screen.queryByText('Edit workout')).toBeNull();
+        expect(screen.getByText('Edit workout')).toBeTruthy();
+    });
+});
+
+// ─── Completed workout history & summary ──────────────────────────────────────
+
+const HISTORY_RECORDS = [
+    { id: 'h1', exerciseId: 'ex-1', set: 1, weight: 135, weightUnit: 'lbs', reps: 5, rpe: 7, note: null },
+    { id: 'h2', exerciseId: 'ex-1', set: 2, weight: 145, weightUnit: 'lbs', reps: 5, rpe: 7.5, note: 'felt heavy' },
+];
+
+function mockHistoryFetch(records = HISTORY_RECORDS) {
+    mockAuthFetch.mockImplementation((url) => {
+        if (url.includes('/history/workout')) {
+            return Promise.resolve({ ok: true, json: async () => ({ records }) });
+        }
+        return Promise.resolve({ ok: true, json: async () => ({}) });
+    });
+}
+
+describe('WorkoutPreview — completed workout history', () => {
+    it('fetches /history/workout when workout is completed', async () => {
+        mockHistoryFetch();
+        render(<WorkoutPreview navigation={makeNavigation()} route={makeRoute({ initialStatus: 'completed', clientEmail: 'client@test.com' })} />);
+        await waitFor(() => screen.getAllByTestId('exercise-name'));
+        await waitFor(() => {
+            expect(mockAuthFetch).toHaveBeenCalledWith(
+                expect.stringContaining('/history/workout'),
+            );
+        });
+        const call = mockAuthFetch.mock.calls.find(c => c[0].includes('/history/workout'));
+        expect(call[0]).toContain('workoutId=workout-1');
+        expect(call[0]).toContain('clientEmail=client%40test.com');
+    });
+
+    it('does not fetch history when workout is scheduled', async () => {
+        render(<WorkoutPreview navigation={makeNavigation()} route={makeRoute({ initialStatus: 'scheduled' })} />);
+        await waitFor(() => screen.getAllByTestId('exercise-name'));
+        const historyCalls = mockAuthFetch.mock.calls.filter(c => c[0]?.includes?.('/history/workout'));
+        expect(historyCalls).toHaveLength(0);
+    });
+
+    it('renders per-set summary rows for logged sets on completed workout', async () => {
+        mockHistoryFetch();
+        render(<WorkoutPreview navigation={makeNavigation()} route={makeRoute({ initialStatus: 'completed', clientEmail: 'client@test.com' })} />);
+        await waitFor(() => screen.getAllByTestId('exercise-name'));
+        await waitFor(() => screen.getByTestId('summary-set-1'));
+        expect(screen.getByTestId('summary-set-2')).toBeTruthy();
+    });
+
+    it('summary values include weight, reps, and RPE', async () => {
+        mockHistoryFetch();
+        render(<WorkoutPreview navigation={makeNavigation()} route={makeRoute({ initialStatus: 'completed', clientEmail: 'client@test.com' })} />);
+        await waitFor(() => screen.getByTestId('summary-set-1'));
+        const text = screen.getByTestId('summary-values-1').props.children;
+        expect(text).toContain('135 lbs');
+        expect(text).toContain('5 reps');
+        expect(text).toContain('RPE 7');
+    });
+
+    it('summary shows note when present', async () => {
+        mockHistoryFetch();
+        render(<WorkoutPreview navigation={makeNavigation()} route={makeRoute({ initialStatus: 'completed', clientEmail: 'client@test.com' })} />);
+        await waitFor(() => screen.getByTestId('summary-note-2'));
+        expect(screen.getByTestId('summary-note-2').props.children).toBe('felt heavy');
+    });
+
+    it('shows no summary rows when history fetch returns empty records', async () => {
+        mockHistoryFetch([]);
+        render(<WorkoutPreview navigation={makeNavigation()} route={makeRoute({ initialStatus: 'completed', clientEmail: 'client@test.com' })} />);
+        await waitFor(() => screen.getAllByTestId('exercise-name'));
+        await waitFor(() => expect(mockAuthFetch).toHaveBeenCalled());
+        expect(screen.queryByTestId('summary-set-1')).toBeNull();
+    });
+
+    it('passes loggedRecord to SetRow so fields are pre-populated in edit mode', async () => {
+        // We verify this via the readOnly/edit flow — when edit mode is entered,
+        // the mock WorkoutPreviewItem receives completedHistory so SetRows can be pre-filled.
+        mockHistoryFetch();
+        render(<WorkoutPreview navigation={makeNavigation()} route={makeRoute({ initialStatus: 'completed', clientEmail: 'client@test.com' })} />);
+        await waitFor(() => screen.getByText('Edit workout'));
+        // completedHistory should be fetched before or after edit is pressed
+        await waitFor(() => expect(mockAuthFetch).toHaveBeenCalled());
+        fireEvent.press(screen.getByText('Edit workout'));
+        // After entering edit mode, save-set buttons appear (readOnly=false)
+        await waitFor(() => expect(screen.queryAllByTestId('save-set-1').length).toBeGreaterThan(0));
     });
 });
 

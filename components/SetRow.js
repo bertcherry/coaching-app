@@ -34,6 +34,7 @@ export default function SetRow({
     recommendedWeight,  // string, may be a range like "135–155" — used as placeholder/hint only
     recommendedRpe,     // number — used as placeholder/hint only
     setConfig,          // { weight, rpe, countMin } — per-set override from coach; takes priority
+    loggedRecord,       // previously saved { weight, weightUnit, reps, rpe, note } — pre-fills edit mode
     onSave,
 }) {
     const { theme } = useTheme();
@@ -74,19 +75,33 @@ export default function SetRow({
         return '';
     }, [effRecommendedRpe]);
 
-    const [weight,     setWeight]     = React.useState(defaultWeight);
-    const [count,      setCount]      = React.useState(defaultCount);
-    const [rpe,        setRpe]        = React.useState(defaultRpe);
-    const [note,       setNote]       = React.useState('');
+    // Resolve initial values from a previously logged record (edit mode) or coach defaults
+    const initFromLog = React.useMemo(() => {
+        if (!loggedRecord) return null;
+        const resolvedUnit = resolveUnit(loggedRecord.weightUnit);
+        return {
+            weight:     loggedRecord.weight != null ? String(loggedRecord.weight) : '',
+            count:      loggedRecord.reps   != null ? String(loggedRecord.reps)   : '',
+            rpe:        loggedRecord.rpe    != null ? String(loggedRecord.rpe)     : '',
+            note:       loggedRecord.note   ?? '',
+            weightUnit: resolvedUnit ?? 'other',
+            otherLoad:  resolvedUnit ? '' : (loggedRecord.weightUnit ?? ''),
+        };
+    }, []); // intentionally empty — only read on mount
+
+    const [weight,     setWeight]     = React.useState(initFromLog?.weight     ?? defaultWeight);
+    const [count,      setCount]      = React.useState(initFromLog?.count      ?? defaultCount);
+    const [rpe,        setRpe]        = React.useState(initFromLog?.rpe        ?? defaultRpe);
+    const [note,       setNote]       = React.useState(initFromLog?.note       ?? '');
     const [saved,      setSaved]      = React.useState(false);
-    const [weightUnit, setWeightUnit] = React.useState(profileUnit); // 'lbs' | 'kg' | 'other'
-    const [otherLoad,  setOtherLoad]  = React.useState(''); // free text when unit === 'other'
+    const [weightUnit, setWeightUnit] = React.useState(initFromLog?.weightUnit ?? profileUnit);
+    const [otherLoad,  setOtherLoad]  = React.useState(initFromLog?.otherLoad  ?? '');
 
     // Track whether the user has manually edited each field so prop-driven updates
     // don't overwrite intentional edits.
-    const weightTouched = React.useRef(false);
-    const countTouched  = React.useRef(false);
-    const rpeTouched    = React.useRef(false);
+    const weightTouched = React.useRef(!!initFromLog);
+    const countTouched  = React.useRef(!!initFromLog);
+    const rpeTouched    = React.useRef(!!initFromLog);
 
     // When computed defaults change (e.g. countMax added, recommendedWeight updated),
     // push the new value into state — unless the user has already touched the field.

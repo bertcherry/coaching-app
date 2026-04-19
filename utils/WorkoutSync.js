@@ -27,7 +27,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 const QUEUE_KEY = 'workout_sync_queue';
 const MAX_FAIL_COUNT = 3;
-const WORKER_URL = 'https://cc-workouts.bert-m-cherry.workers.dev';
+const WORKER_URL = 'https://coaching-app.bert-m-cherry.workers.dev';
 
 // ─── Queue helpers ────────────────────────────────────────────────────────────
 
@@ -94,6 +94,25 @@ export async function getPendingCount() {
 export async function getSyncErrors() {
     const queue = await readQueue();
     return queue.filter(r => r.syncStatus === 'syncError');
+}
+
+/**
+ * Returns a map of `${exerciseId}-${set}` → record for all non-skipped records
+ * in the local queue for a given workoutId, taking the most recent per slot.
+ * Used to pre-populate the completed workout summary before the server syncs.
+ */
+export async function getLocalWorkoutHistory(workoutId) {
+    const queue = await readQueue();
+    const map = {};
+    for (const r of queue) {
+        if (r.workoutId !== workoutId || r.skipped) continue;
+        const key = `${r.exerciseId}-${r.set}`;
+        const existing = map[key];
+        if (!existing || r.enqueuedAt > existing.enqueuedAt) {
+            map[key] = r;
+        }
+    }
+    return map;
 }
 
 // ─── Sync ─────────────────────────────────────────────────────────────────────

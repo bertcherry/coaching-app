@@ -79,9 +79,11 @@ jest.mock('../../context/ScrollContext', () => ({
 
 const mockEnqueueRecord = jest.fn();
 const mockSyncQueue     = jest.fn();
+const mockGetLocalWorkoutHistory = jest.fn();
 jest.mock('../../utils/WorkoutSync', () => ({
-    enqueueRecord: (...args) => mockEnqueueRecord(...args),
-    syncQueue:     (...args) => mockSyncQueue(...args),
+    enqueueRecord:            (...args) => mockEnqueueRecord(...args),
+    syncQueue:                (...args) => mockSyncQueue(...args),
+    getLocalWorkoutHistory:   (...args) => mockGetLocalWorkoutHistory(...args),
 }));
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -158,6 +160,7 @@ beforeEach(() => {
     mockBeforeRemoveListener = null;
     mockUser = { email: 'client@test.com', isCoach: false, unitDefault: 'imperial' };
     mockAuthFetch.mockResolvedValue({ ok: true, json: async () => ({}) });
+    mockGetLocalWorkoutHistory.mockResolvedValue({});
     mockFetch();
     jest.spyOn(Alert, 'alert').mockImplementation(jest.fn());
 });
@@ -525,5 +528,101 @@ describe('WorkoutActiveScreen — finish overlay icons', () => {
         fireEvent.press(screen.getByText('Thanks!'));
         await waitFor(() => screen.getByText('Workout complete!'));
         expect(screen.getByTestId('icon-award')).toBeTruthy();
+    });
+});
+
+// ─── Back to preview navigation ───────────────────────────────────────────────
+
+async function finishWorkout(nav = makeNavigation(), routeOverrides = {}) {
+    render(<WorkoutActiveScreen navigation={nav} route={makeRoute(routeOverrides)} />);
+    await waitFor(() => screen.getByText('Set 1 of 3'));
+    fireEvent.press(screen.getByText('Next'));
+    await waitFor(() => screen.getByText('Set 2 of 3'));
+    fireEvent.press(screen.getByText('Next'));
+    await waitFor(() => screen.getByText('Set 3 of 3'));
+    fireEvent.press(screen.getByText('Next'));
+    await waitFor(() => screen.getByText('Deadlift'));
+    fireEvent.press(screen.getByText('Next'));
+    await waitFor(() => screen.getByText('Set 2 of 2'));
+    fireEvent.press(screen.getByText('Finish workout'));
+    await waitFor(() => screen.getByText('Thanks!'));
+    fireEvent.press(screen.getByText('Thanks!'));
+    await waitFor(() => screen.getByText('Workout complete!'));
+}
+
+describe('WorkoutActiveScreen — back to preview navigation', () => {
+    it('pressing Back to preview navigates to Workout Preview', async () => {
+        const nav = makeNavigation();
+        await finishWorkout(nav);
+        fireEvent.press(screen.getByText('Back to preview'));
+        await waitFor(() => {
+            expect(mockNavigate).toHaveBeenCalledWith('Workout Preview', expect.objectContaining({
+                id: 'workout-1',
+                scheduledWorkoutId: 'sw-1',
+                initialStatus: 'completed',
+            }));
+        });
+    });
+
+    it('navigates with calendarRefresh: true', async () => {
+        await finishWorkout();
+        fireEvent.press(screen.getByText('Back to preview'));
+        await waitFor(() => {
+            expect(mockNavigate).toHaveBeenCalledWith('Workout Preview', expect.objectContaining({
+                calendarRefresh: true,
+            }));
+        });
+    });
+
+    it('reads local queue and passes localHistory when sets are queued', async () => {
+        const localHistory = {
+            'ex-1-1': { exerciseId: 'ex-1', set: 1, weight: 135, weightUnit: 'lbs', reps: 5 },
+        };
+        mockGetLocalWorkoutHistory.mockResolvedValue(localHistory);
+        await finishWorkout();
+        fireEvent.press(screen.getByText('Back to preview'));
+        await waitFor(() => {
+            expect(mockNavigate).toHaveBeenCalledWith('Workout Preview', expect.objectContaining({
+                localHistory,
+            }));
+        });
+    });
+
+    it('passes localHistory as undefined when the queue is empty', async () => {
+        mockGetLocalWorkoutHistory.mockResolvedValue({});
+        await finishWorkout();
+        fireEvent.press(screen.getByText('Back to preview'));
+        await waitFor(() => {
+            const call = mockNavigate.mock.calls.find(c => c[0] === 'Workout Preview');
+            expect(call[1].localHistory).toBeUndefined();
+        });
+    });
+
+    it('passes clientEmail from route params', async () => {
+        await finishWorkout(makeNavigation(), { clientEmail: 'athlete@test.com' });
+        fireEvent.press(screen.getByText('Back to preview'));
+        await waitFor(() => {
+            expect(mockNavigate).toHaveBeenCalledWith('Workout Preview', expect.objectContaining({
+                clientEmail: 'athlete@test.com',
+            }));
+        });
+    });
+
+    it('falls back to user email when no clientEmail param', async () => {
+        await finishWorkout();
+        fireEvent.press(screen.getByText('Back to preview'));
+        await waitFor(() => {
+            expect(mockNavigate).toHaveBeenCalledWith('Workout Preview', expect.objectContaining({
+                clientEmail: 'client@test.com',
+            }));
+        });
+    });
+
+    it('calls getLocalWorkoutHistory with the correct workoutId', async () => {
+        await finishWorkout();
+        fireEvent.press(screen.getByText('Back to preview'));
+        await waitFor(() => {
+            expect(mockGetLocalWorkoutHistory).toHaveBeenCalledWith('workout-1');
+        });
     });
 });

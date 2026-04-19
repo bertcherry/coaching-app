@@ -110,7 +110,17 @@ export async function handleHistoryBatch(request, env) {
     for (const r of records) {
         if (r.clientId !== caller.email) { failed.push(r.id); continue; }
         try {
-            await env.DB.prepare(`INSERT INTO history (id, dateTime, clientId, workoutId, exerciseId, "set", weight, weightUnit, reps, rpe, note, syncedAt, countType, prescribed, prescribedMax, unit, skipped) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (id) DO NOTHING`).bind(r.id, r.dateTime, r.clientId, r.workoutId, r.exerciseId, r.set, r.weight ?? null, r.weightUnit ?? 'lbs', r.reps ?? null, r.rpe ?? null, r.note ?? null, syncedAt, r.countType ?? null, r.prescribed ?? null, r.prescribedMax ?? null, r.unit ?? null, r.skipped ? 1 : 0).run();
+            await env.DB.prepare(`
+                INSERT INTO history (id, dateTime, clientId, workoutId, exerciseId, "set", weight, weightUnit, reps, rpe, note, syncedAt, countType, prescribed, prescribedMax, unit, skipped)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT (id) DO UPDATE SET
+                    weight      = excluded.weight,
+                    weightUnit  = excluded.weightUnit,
+                    reps        = excluded.reps,
+                    rpe         = excluded.rpe,
+                    note        = excluded.note,
+                    syncedAt    = excluded.syncedAt
+            `).bind(r.id, r.dateTime, r.clientId, r.workoutId, r.exerciseId, r.set, r.weight ?? null, r.weightUnit ?? 'lbs', r.reps ?? null, r.rpe ?? null, r.note ?? null, syncedAt, r.countType ?? null, r.prescribed ?? null, r.prescribedMax ?? null, r.unit ?? null, r.skipped ? 1 : 0).run();
             succeeded.push(r.id);
         } catch (err) {
             console.error(`Failed to insert history record ${r.id}:`, err);
@@ -118,4 +128,55 @@ export async function handleHistoryBatch(request, env) {
         }
     }
     return json({ succeeded, failed });
+}
+
+/**
+ * GET /history/workout?workoutId=&clientEmail=
+ *
+ * Returns the most recent logged set per (exerciseId, set) for a given
+ * scheduled workout. Used to display completed workout review and pre-populate
+ * edit fields.
+ *
+ * Response: { records: [{ id, exerciseId, set, weight, weightUnit, reps, rpe, note, dateTime }] }
+ */
+export async function handleWorkoutHistory(request, env) {
+    let caller;
+    try { caller = await requireAuth(request, env); }
+    catch (e) { return e; }
+
+    const url         = new URL(request.url);
+    const workoutId   = url.searchParams.get('workoutId');
+    const clientEmail = url.searchParams.get('clientEmail');
+
+    if (!workoutId || !clientEmail) {
+        return json({ error: 'workoutId and clientEmail are required' }, 400);
+    }
+
+    if (!caller.isCoach && caller.email !== clientEmail) {
+        return json({ error: 'Forbidden' }, 403);
+    }
+    if (caller.isCoach) {
+        const client = await env.DB.prepare(
+            'SELECT email FROM clients WHERE email = ? AND coachedBy = ?'
+        ).bind(clientEmail, caller.email).first();
+        if (!client) return json({ error: 'Client not found' }, 404);
+    }
+
+    // Most recent record per (exerciseId, set) combo
+    const { results } = await env.DB.prepare(`
+        SELECT h.id, h.exerciseId, h."set", h.weight, h.weightUnit, h.reps, h.rpe, h.note, h.dateTime
+        FROM history h
+        INNER JOIN (
+            SELECT exerciseId, "set", MAX(dateTime) AS maxDateTime
+            FROM history
+            WHERE clientId = ? AND workoutId = ? AND (skipped IS NULL OR skipped = 0)
+            GROUP BY exerciseId, "set"
+        ) latest
+          ON h.exerciseId = latest.exerciseId
+         AND h."set"      = latest."set"
+         AND h.dateTime   = latest.maxDateTime
+        WHERE h.clientId = ? AND h.workoutId = ?
+    `).bind(clientEmail, workoutId, clientEmail, workoutId).all();
+
+    return json({ records: results ?? [] });
 }
