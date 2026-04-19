@@ -4,7 +4,7 @@ import {
     Pressable, ActivityIndicator, Alert, ScrollView,
     KeyboardAvoidingView, Platform,
 } from 'react-native';
-import { Video, ResizeMode } from 'expo-av';
+import { VideoView, useVideoPlayer } from 'expo-video';
 import * as ImagePicker from 'expo-image-picker';
 import Feather from '@expo/vector-icons/Feather';
 import { useAuth } from '../context/AuthContext';
@@ -41,6 +41,20 @@ function uploadToStream(uploadURL, asset, onProgress) {
         });
         xhr.send(form);
     });
+}
+
+// ─── Demo video player ────────────────────────────────────────────────────────
+
+function ExerciseDemoVideo({ streamId, styles }) {
+    const player = useVideoPlayer(
+        { uri: `${CF_STREAM_BASE}/${streamId}/manifest/video.m3u8` },
+        p => { p.loop = true; p.muted = true; }
+    );
+    return (
+        <View style={styles.videoContainer}>
+            <VideoView player={player} style={styles.video} nativeControls contentFit="contain" />
+        </View>
+    );
 }
 
 // ─── Main screen ──────────────────────────────────────────────────────────────
@@ -232,16 +246,7 @@ export default function ExerciseDetailScreen({ route, navigation }) {
                 {hasVideo && (
                     <>
                         <Text style={styles.sectionLabel}>Demo Video</Text>
-                        <View style={styles.videoContainer}>
-                            <Video
-                                style={styles.video}
-                                source={{ uri: `${CF_STREAM_BASE}/${exercise.streamId}/manifest/video.mpd` }}
-                                useNativeControls
-                                resizeMode={ResizeMode.CONTAIN}
-                                isLooping
-                                shouldPlay={false}
-                            />
-                        </View>
+                        <ExerciseDemoVideo streamId={exercise.streamId} styles={styles} />
                     </>
                 )}
 

@@ -25,7 +25,7 @@ import {
     ScrollView, Modal, KeyboardAvoidingView, Platform, Alert,
 } from 'react-native';
 import Feather from '@expo/vector-icons/Feather';
-import { Video, ResizeMode } from 'expo-av';
+import { VideoView, useVideoPlayer } from 'expo-video';
 import { useAuth } from '../context/AuthContext';
 import { useFocusEffect } from '@react-navigation/native';
 import { useHeaderHeight } from '@react-navigation/elements';
@@ -235,6 +235,22 @@ const WorkTimer = ({ phase, workMin, workMax, restSeconds, timerMode, upNextName
         </View>
     );
 };
+
+// ─── Demo video player ────────────────────────────────────────────────────────
+
+const CF_STREAM = 'https://customer-fp1q3oe31pc8sz6g.cloudflarestream.com';
+
+function ActiveDemoVideo({ streamId, styles }) {
+    const player = useVideoPlayer(
+        { uri: `${CF_STREAM}/${streamId}/manifest/video.m3u8` },
+        p => { p.loop = true; p.muted = true; p.play(); }
+    );
+    return (
+        <View style={styles.videoContainer}>
+            <VideoView player={player} style={styles.video} nativeControls contentFit="contain" />
+        </View>
+    );
+}
 
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
@@ -737,13 +753,7 @@ export default function WorkoutActiveScreen({ route, navigation }) {
                     </Pressable>
                 )}
                 {showVideo && hasVideo && (
-                    <View style={styles.videoContainer}>
-                        <Video
-                            style={styles.video}
-                            source={{ uri: `https://customer-fp1q3oe31pc8sz6g.cloudflarestream.com/${demo.streamId}/manifest/video.mpd` }}
-                            useNativeControls resizeMode={ResizeMode.CONTAIN} isLooping isMuted shouldPlay
-                        />
-                    </View>
+                    <ActiveDemoVideo streamId={demo.streamId} styles={styles} />
                 )}
 
                 {/* ── Timer (timed sections only) ── */}

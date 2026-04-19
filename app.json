@@ -34,7 +34,8 @@
         {
           "iosDisplayInForeground": true
         }
-      ]
+      ],
+      "expo-video"
     ]
   }
 }

@@ -4,7 +4,7 @@ import {
     StyleSheet, Platform, Pressable, Modal, Animated, Alert,
 } from 'react-native';
 import Feather from '@expo/vector-icons/Feather';
-import { Video, ResizeMode } from 'expo-av';
+import { VideoView, useVideoPlayer } from 'expo-video';
 import { useFocusEffect } from '@react-navigation/native';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { useAuth } from '../context/AuthContext';
@@ -178,19 +178,13 @@ const Item = ({ workoutId, clientId, unitDefault, onSetSaved, ...item }) => {
     );
 
     const VideoPlayer = () => {
-        const videoRef = React.useRef(null);
+        const player = useVideoPlayer(
+            { uri: `https://customer-fp1q3oe31pc8sz6g.cloudflarestream.com/${item.id}/manifest/video.m3u8` },
+            p => { p.loop = true; p.muted = true; p.play(); }
+        );
         return (
             <View style={styles.videoContainer}>
-                <Video
-                    ref={videoRef}
-                    style={styles.video}
-                    source={{ uri: `https://customer-fp1q3oe31pc8sz6g.cloudflarestream.com/${item.id}/manifest/video.mpd` }}
-                    useNativeControls
-                    resizeMode={ResizeMode.CONTAIN}
-                    isLooping
-                    isMuted
-                    shouldPlay
-                />
+                <VideoView player={player} style={styles.video} nativeControls contentFit="contain" />
             </View>
         );
     };

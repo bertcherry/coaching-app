@@ -24,9 +24,9 @@ jest.mock('@expo/vector-icons/Feather', () => {
     return ({ name }) => <View testID={`icon-${name}`} />;
 });
 
-jest.mock('expo-av', () => ({
-    Video: () => null,
-    ResizeMode: { CONTAIN: 'CONTAIN' },
+jest.mock('expo-video', () => ({
+    VideoView: () => null,
+    useVideoPlayer: () => ({}),
 }));
 
 jest.mock('react-native-reanimated', () => ({

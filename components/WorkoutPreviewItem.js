@@ -1,22 +1,25 @@
 import * as React from 'react';
 import { View, Text, StyleSheet, Pressable, KeyboardAvoidingView, Platform } from 'react-native';
 import Feather from '@expo/vector-icons/Feather';
-import { Video, ResizeMode } from 'expo-av';
+import { VideoView, useVideoPlayer } from 'expo-video';
 import SetRow from './SetRow';
 import { useTheme } from '../context/ThemeContext';
 
 const WORKER_URL = 'https://coaching-app.bert-m-cherry.workers.dev';
 
 function streamUrl(streamId) {
-    return `https://customer-fp1q3oe31pc8sz6g.cloudflarestream.com/${streamId}/manifest/video.mpd`;
+    return `https://customer-fp1q3oe31pc8sz6g.cloudflarestream.com/${streamId}/manifest/video.m3u8`;
 }
 
 const VideoPlayer = ({ streamId }) => {
-    const videoRef = React.useRef(null);
+    const player = useVideoPlayer({ uri: streamUrl(streamId) }, p => {
+        p.loop = true;
+        p.muted = true;
+        p.play();
+    });
     return (
         <View style={styles.videoContainer}>
-            <Video ref={videoRef} style={styles.video} source={{ uri: streamUrl(streamId) }}
-                useNativeControls resizeMode={ResizeMode.CONTAIN} isLooping isMuted shouldPlay />
+            <VideoView player={player} style={styles.video} nativeControls contentFit="contain" />
         </View>
     );
 };
