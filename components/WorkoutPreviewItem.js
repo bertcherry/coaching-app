@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { View, Text, StyleSheet, Pressable, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 import Feather from '@expo/vector-icons/Feather';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import SetRow from './SetRow';
@@ -196,7 +196,7 @@ export default function WorkoutPreviewItem({
             {showVideo && hasVideo && !isCompleted && <VideoPlayer streamId={demo.streamId} />}
 
             {showLogs && (
-                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.logsContainer}>
+                <View style={styles.logsContainer}>
                     <View style={styles.logsHeader}>
                         {requiredComplete && (
                             <View style={styles.setsHeaderRow}>
@@ -236,7 +236,7 @@ export default function WorkoutPreviewItem({
                             onSave={handleSetSaved}
                         />
                     ))}
-                </KeyboardAvoidingView>
+                </View>
             )}
         </>
     );

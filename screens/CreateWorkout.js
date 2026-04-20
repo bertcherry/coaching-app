@@ -184,6 +184,7 @@ const ClientSearch = ({ selectedEmail, selectedName, onSelect, coachEmail, authF
     const [searchValue, setSearchValue] = React.useState('');
     const [allClients, setAllClients]   = React.useState([]);
     const [filtered, setFiltered]       = React.useState([]);
+    const searchInputRef                = React.useRef(null);
 
     React.useEffect(() => {
         (async () => {
@@ -204,20 +205,32 @@ const ClientSearch = ({ selectedEmail, selectedName, onSelect, coachEmail, authF
         ).slice(0, 10));
     }, [searchValue, allClients]);
 
+    React.useEffect(() => {
+        if (!showModal) return;
+        const t = setTimeout(() => searchInputRef.current?.focus(), 100);
+        return () => clearTimeout(t);
+    }, [showModal]);
+
     const onSelectClient = (client) => {
         onSelect(client.email, `${client.fname} ${client.lname}`, client.timezone ?? null);
         setShowModal(false); setSearchValue('');
     };
 
+    const handleClose = () => { setShowModal(false); setSearchValue(''); };
+
     return (
         <View style={styles.fieldBlock}>
             <Text style={styles.fieldLabel}>Client <Text style={styles.optionalLabel}>(optional)</Text></Text>
             {selectedEmail ? (
-                <Pressable style={styles.selectButton} onPress={() => setShowModal(true)}>
+                <View style={styles.selectButton}>
                     <Feather name="user" size={15} color={theme.textPrimary} />
-                    <Text style={styles.selectButtonText}>{selectedName}</Text>
-                    <Feather name="chevron-down" size={16} color={theme.textTertiary} />
-                </Pressable>
+                    <Pressable style={{ flex: 1 }} onPress={() => setShowModal(true)} accessibilityRole="button" accessibilityLabel="Change client">
+                        <Text style={styles.selectButtonText}>{selectedName}</Text>
+                    </Pressable>
+                    <Pressable onPress={() => onSelect(null, null, null)} hitSlop={10} accessibilityRole="button" accessibilityLabel="Clear client">
+                        <Feather name="x" size={16} color={theme.textTertiary} />
+                    </Pressable>
+                </View>
             ) : (
                 <Pressable style={styles.selectButtonEmpty} onPress={() => setShowModal(true)}>
                     <Feather name="user" size={15} color={theme.textTertiary} />
@@ -225,14 +238,23 @@ const ClientSearch = ({ selectedEmail, selectedName, onSelect, coachEmail, authF
                 </Pressable>
             )}
             {showModal && (
-                <Modal transparent animationType="slide" onRequestClose={() => setShowModal(false)}>
+                <Modal transparent animationType="slide" onRequestClose={handleClose}>
                     <KeyboardAvoidingView style={styles.bottomSheet} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+                        <Pressable style={StyleSheet.absoluteFillObject} onPress={handleClose} testID="client-sheet-backdrop" />
                         <View style={styles.sheetCard}>
                             <View style={styles.sheetHandle} />
                             <View style={styles.sheetSearchRow}>
                                 <Feather name="search" size={16} color={theme.textTertiary} style={{ marginRight: 8 }} />
-                                <TextInput style={styles.sheetSearchInput} onChangeText={setSearchValue} value={searchValue} placeholder="Search clients..." placeholderTextColor={theme.inputPlaceholder} autoFocus />
-                                <Pressable onPress={() => setShowModal(false)} hitSlop={10}><Feather name="x" size={18} color={theme.textTertiary} /></Pressable>
+                                <TextInput
+                                    ref={searchInputRef}
+                                    style={styles.sheetSearchInput}
+                                    onChangeText={setSearchValue}
+                                    value={searchValue}
+                                    placeholder="Search clients..."
+                                    placeholderTextColor={theme.inputPlaceholder}
+                                    testID="client-search-input"
+                                />
+                                <Pressable onPress={handleClose} hitSlop={10} testID="client-sheet-close"><Feather name="x" size={18} color={theme.textTertiary} /></Pressable>
                             </View>
                             <FlatList data={filtered} keyExtractor={item => item.email} keyboardShouldPersistTaps="handled"
                                 renderItem={({ item }) => (
@@ -300,13 +322,17 @@ const DateField = ({ value, onChange, onBlur, fieldName }) => {
         <View style={styles.fieldBlock}>
             <Text style={styles.fieldLabel}>Scheduled Date <Text style={styles.optionalLabel}>(optional)</Text></Text>
             {value ? (
-                <Pressable style={styles.selectButton} onPress={()=>setShowPicker(true)}>
+                <View style={styles.selectButton}>
                     <Feather name="calendar" size={15} color={theme.textPrimary} />
-                    <Text style={styles.selectButtonText}>
-                        {valueIsMonthOnly ? `${displayValue} (month only)` : displayValue}
-                    </Text>
-                    <Feather name="chevron-down" size={16} color={theme.textTertiary} />
-                </Pressable>
+                    <Pressable style={{ flex: 1 }} onPress={() => setShowPicker(true)} accessibilityRole="button" accessibilityLabel="Change scheduled date">
+                        <Text style={styles.selectButtonText}>
+                            {valueIsMonthOnly ? `${displayValue} (month only)` : displayValue}
+                        </Text>
+                    </Pressable>
+                    <Pressable onPress={() => { onChange(null); }} hitSlop={10} accessibilityRole="button" accessibilityLabel="Clear scheduled date">
+                        <Feather name="x" size={16} color={theme.textTertiary} />
+                    </Pressable>
+                </View>
             ) : (
                 <Pressable style={styles.selectButtonEmpty} onPress={()=>setShowPicker(true)}>
                     <Feather name="calendar" size={15} color={theme.textTertiary} />
@@ -316,8 +342,8 @@ const DateField = ({ value, onChange, onBlur, fieldName }) => {
             <ErrorMessage render={msg=><Text style={styles.errorText}>{msg}</Text>} name={fieldName} />
             {showPicker && (
                 <Modal transparent animationType="fade" onRequestClose={()=>setShowPicker(false)}>
-                    <View style={styles.dateModalOverlay}>
-                        <View style={styles.dateModalCard}>
+                    <Pressable style={styles.dateModalOverlay} onPress={()=>setShowPicker(false)} testID="date-picker-backdrop">
+                        <Pressable style={styles.dateModalCard} onPress={()=>{}}>
                             <View style={styles.dateModalHeader}>
                                 <Pressable onPress={prevM} style={styles.dateNavButton}><Feather name="chevron-left" size={22} color={theme.textPrimary} /></Pressable>
                                 {/* Tapping the month label assigns the workout to the whole month */}
@@ -354,8 +380,8 @@ const DateField = ({ value, onChange, onBlur, fieldName }) => {
                             </View>
                             {value&&<Pressable style={styles.dateClearButton} onPress={()=>{onChange(null);setShowPicker(false);}}><Text style={styles.dateClearText}>Clear date</Text></Pressable>}
                             <Pressable style={styles.dateCloseButton} onPress={()=>setShowPicker(false)}><Text style={styles.dateCloseText}>Close</Text></Pressable>
-                        </View>
-                    </View>
+                        </Pressable>
+                    </Pressable>
                 </Modal>
             )}
         </View>
