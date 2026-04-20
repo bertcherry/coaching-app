@@ -412,6 +412,49 @@ const SkipModal = ({ onClose, onConfirm }) => {
     );
 };
 
+// ─── Delete confirmation overlay ─────────────────────────────────────────────
+
+const DeleteConfirmModal = ({ workoutName: name, onClose, onConfirm }) => {
+    const { theme } = useTheme();
+    const styles = makeStyles(theme);
+    return (
+        <Modal
+            transparent
+            animationType="fade"
+            onRequestClose={onClose}
+            accessibilityViewIsModal={true}
+        >
+            <View style={styles.overlayBackdrop}>
+                <View style={[styles.overlayCard, styles.deleteCard]}>
+                    <Feather name="trash-2" size={28} color={theme.danger} accessible={false} style={styles.overlayIcon} />
+                    <Text style={styles.overlayMessage}>Delete workout?</Text>
+                    <Text style={styles.overlaySubtext}>
+                        {name} will be permanently removed from your schedule.
+                    </Text>
+                    <View style={styles.overlayActions}>
+                        <Pressable
+                            style={styles.overlayButtonSecondary}
+                            onPress={onClose}
+                            accessibilityRole="button"
+                            accessibilityLabel="Cancel delete"
+                        >
+                            <Text style={styles.overlayButtonSecondaryText}>Cancel</Text>
+                        </Pressable>
+                        <Pressable
+                            style={styles.deleteConfirmButton}
+                            onPress={onConfirm}
+                            accessibilityRole="button"
+                            accessibilityLabel="Confirm delete workout"
+                        >
+                            <Text style={styles.deleteConfirmButtonText}>Delete</Text>
+                        </Pressable>
+                    </View>
+                </View>
+            </View>
+        </Modal>
+    );
+};
+
 // ─── WorkoutPreview ───────────────────────────────────────────────────────────
 
 export default function WorkoutPreview({ route, navigation }) {
@@ -434,6 +477,7 @@ export default function WorkoutPreview({ route, navigation }) {
     const [showRescheduleOverlay, setShowRescheduleOverlay] = React.useState(false);
     const [showSkipModal,       setShowSkipModal]       = React.useState(false);
     const [showRescheduleModal, setShowRescheduleModal] = React.useState(false);
+    const [showDeleteModal,     setShowDeleteModal]     = React.useState(false);
     const [workoutStatus, setWorkoutStatus] = React.useState(initialStatus ?? 'scheduled');
     // Edit mode: clients and coaches can review/edit logged data on completed workouts
     const [editMode, setEditMode] = React.useState(false);
@@ -625,6 +669,22 @@ export default function WorkoutPreview({ route, navigation }) {
         if (accessToken) syncQueue(accessToken);
     };
 
+    const handleDeleteConfirm = async () => {
+        setShowDeleteModal(false);
+        try {
+            const res = await authFetch('https://coaching-app.bert-m-cherry.workers.dev/schedule/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: scheduledWorkoutId }),
+            });
+            if (!res.ok) throw new Error(`Delete failed (${res.status})`);
+            navigation.goBack();
+        } catch (e) {
+            console.error('[WorkoutPreview] handleDeleteConfirm error:', e);
+            Alert.alert('Error', 'Could not delete workout. Please try again.');
+        }
+    };
+
     if (workoutData === undefined) {
         return (
             <View style={styles.container}>
@@ -745,6 +805,18 @@ export default function WorkoutPreview({ route, navigation }) {
                             </Pressable>
                         </>
                     )}
+                    {scheduledWorkoutId && (
+                        <Pressable
+                            style={styles.deleteButton}
+                            onPress={() => setShowDeleteModal(true)}
+                            accessibilityRole="button"
+                            accessibilityLabel="Delete workout"
+                            accessibilityHint="Permanently remove this workout from your schedule"
+                        >
+                            <Feather name="trash-2" size={16} color={theme.danger} accessible={false} />
+                            <Text style={styles.deleteButtonText}>Delete Workout</Text>
+                        </Pressable>
+                    )}
                 </>
             )}
         </View>
@@ -795,6 +867,14 @@ export default function WorkoutPreview({ route, navigation }) {
                 onDismiss={handleRescheduleDismiss}
                 onConfirm={handleRescheduleConfirm}
             />
+
+            {showDeleteModal && (
+                <DeleteConfirmModal
+                    workoutName={workoutName}
+                    onClose={() => setShowDeleteModal(false)}
+                    onConfirm={handleDeleteConfirm}
+                />
+            )}
         </KeyboardAvoidingView>
     );
 }
@@ -1246,6 +1326,38 @@ function makeStyles(theme) {
         },
         overlayButtonSecondaryText: {
             color: theme.textSecondary,
+            fontSize: 15,
+        },
+        deleteCard: {
+            borderColor: theme.danger,
+        },
+        deleteButton: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            paddingVertical: 14,
+            paddingHorizontal: 20,
+            borderWidth: 1,
+            borderColor: theme.danger,
+            borderRadius: 12,
+            minHeight: 48,
+        },
+        deleteButtonText: {
+            fontSize: 15,
+            color: theme.danger,
+            fontWeight: '600',
+        },
+        deleteConfirmButton: {
+            flex: 1,
+            backgroundColor: theme.danger,
+            borderRadius: 10,
+            paddingVertical: 14,
+            alignItems: 'center',
+        },
+        deleteConfirmButtonText: {
+            color: '#ffffff',
+            fontWeight: '700',
             fontSize: 15,
         },
 

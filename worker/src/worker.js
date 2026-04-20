@@ -270,6 +270,20 @@ export async function handleScheduleComplete(request, env) {
     return json({ message: 'Workout marked complete', id });
 }
 
+export async function handleDeleteWorkout(request, env) {
+    let caller;
+    try { caller = await requireAuth(request, env); }
+    catch (e) { return e; }
+    const { id } = await request.json();
+    if (!id) return json({ error: 'id is required' }, 400);
+    const workout = await env.DB.prepare('SELECT * FROM scheduled_workouts WHERE id = ?').bind(id).first();
+    if (!workout) return json({ error: 'Workout not found' }, 404);
+    if (!caller.isCoach && workout.clientEmail !== caller.email) return json({ error: 'Forbidden' }, 403);
+    if (workout.status === 'completed') return json({ error: 'Completed workouts cannot be deleted' }, 422);
+    await env.DB.prepare('DELETE FROM scheduled_workouts WHERE id = ?').bind(id).run();
+    return json({ message: 'Workout deleted', id });
+}
+
 // ─── Main router ──────────────────────────────────────────────────────────────
 
 export default {
@@ -337,6 +351,7 @@ export default {
             '/schedule/skip':             handleSkipWorkout,
             '/schedule/copy':             handleCopyWorkout,
             '/schedule/complete':         handleScheduleComplete,
+            '/schedule/delete':           handleDeleteWorkout,
             '/history/batch':             handleHistoryBatch,
             '/workouts/save':             handleSaveWorkout,
             '/notifications/push-token':  handleRegisterPushToken,

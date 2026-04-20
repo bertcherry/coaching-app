@@ -46,6 +46,7 @@ export const dark = {
     accentPressed:      brand.roseDark,
     accentSubtle:       'rgba(251,168,160,0.12)',
     success:            brand.green,
+    danger:             '#ff6b6b',  // 7.57:1 on black — WCAG AAA
     // Inputs
     inputBackground:    '#fae9e9',
     inputText:          '#000000',
@@ -80,6 +81,7 @@ export const light = {
     accentPressed:      brand.roseDark,
     accentSubtle:       'rgba(251,168,160,0.15)',
     success:            brand.green,
+    danger:             '#c0392b',  // 5.07:1 on #faf5f5 — WCAG AA
     // Inputs
     inputBackground:    '#ffffff',
     inputText:          '#1a0e0e',

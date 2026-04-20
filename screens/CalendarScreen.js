@@ -410,7 +410,50 @@ const MonthDayCell = ({
 
 // ─── Workout action sheet ─────────────────────────────────────────────────────
 
-const WorkoutActionSheet = ({ workout, onClose, onSkip, onCopy, onMove }) => {
+const DeleteConfirmModal = ({ workout, onClose, onConfirm }) => {
+    const { theme } = useTheme();
+    const styles = makeStyles(theme);
+    return (
+        <Modal
+            transparent
+            animationType="fade"
+            onRequestClose={onClose}
+            accessibilityViewIsModal={true}
+        >
+            <View style={styles.modalOverlay}>
+                <View style={styles.modalCard}>
+                    <Feather name="trash-2" size={28} color={theme.danger} accessible={false} style={{ marginBottom: 12, alignSelf: 'center' }} />
+                    <Text style={[styles.modalTitle, { textAlign: 'center' }]} accessibilityRole="header">
+                        Delete workout?
+                    </Text>
+                    <Text style={[styles.modalSubtitle, { textAlign: 'center', marginBottom: 24 }]}>
+                        {workout.workoutName} will be permanently removed from the schedule.
+                    </Text>
+                    <View style={styles.modalActions}>
+                        <Pressable
+                            style={styles.modalButtonSecondary}
+                            onPress={onClose}
+                            accessibilityRole="button"
+                            accessibilityLabel="Cancel delete"
+                        >
+                            <Text style={styles.modalButtonSecondaryText}>Cancel</Text>
+                        </Pressable>
+                        <Pressable
+                            style={styles.deleteConfirmButton}
+                            onPress={onConfirm}
+                            accessibilityRole="button"
+                            accessibilityLabel="Confirm delete workout"
+                        >
+                            <Text style={styles.deleteConfirmButtonText}>Delete</Text>
+                        </Pressable>
+                    </View>
+                </View>
+            </View>
+        </Modal>
+    );
+};
+
+const WorkoutActionSheet = ({ workout, onClose, onSkip, onCopy, onMove, onDelete }) => {
     const { theme } = useTheme();
     const styles = makeStyles(theme);
     const dateDisplay = isMonthOnly(workout.scheduledDate)
@@ -475,6 +518,20 @@ const WorkoutActionSheet = ({ workout, onClose, onSkip, onCopy, onMove }) => {
                                 <Text style={styles.sheetActionSub}>Reschedule to a different date</Text>
                             </View>
                         </Pressable>
+
+                        <Pressable
+                            style={styles.sheetAction}
+                            onPress={() => { onDelete(); }}
+                            accessibilityRole="button"
+                            accessibilityLabel="Delete workout"
+                            accessibilityHint="Permanently remove this workout from the schedule"
+                        >
+                            <Feather name="trash-2" size={20} color={theme.danger} accessible={false} />
+                            <View style={styles.sheetActionTextBlock}>
+                                <Text style={[styles.sheetActionText, { color: theme.danger }]}>Delete</Text>
+                                <Text style={styles.sheetActionSub}>Permanently remove from schedule</Text>
+                            </View>
+                        </Pressable>
                     </>
                 )}
 
@@ -512,7 +569,7 @@ const WorkoutActionSheet = ({ workout, onClose, onSkip, onCopy, onMove }) => {
 //   3. Reschedule to a future date
 //   4. Exit without changes (Cancel)
 
-const MissedWorkoutSheet = ({ workout, onClose, onSkip, onRescheduleToday, onRescheduleOther }) => {
+const MissedWorkoutSheet = ({ workout, onClose, onSkip, onRescheduleToday, onRescheduleOther, onDelete }) => {
     const { theme } = useTheme();
     const styles = makeStyles(theme);
     const dateDisplay = friendlyDate(workout.scheduledDate);
@@ -577,6 +634,20 @@ const MissedWorkoutSheet = ({ workout, onClose, onSkip, onRescheduleToday, onRes
                         <View style={styles.sheetActionTextBlock}>
                             <Text style={styles.sheetActionText}>Reschedule to another date</Text>
                             <Text style={styles.sheetActionSub}>Pick a different day</Text>
+                        </View>
+                    </Pressable>
+
+                    <Pressable
+                        style={styles.sheetAction}
+                        onPress={onDelete}
+                        accessibilityRole="button"
+                        accessibilityLabel="Delete workout"
+                        accessibilityHint="Permanently remove this workout from the schedule"
+                    >
+                        <Feather name="trash-2" size={20} color={theme.danger} accessible={false} />
+                        <View style={styles.sheetActionTextBlock}>
+                            <Text style={[styles.sheetActionText, { color: theme.danger }]}>Delete</Text>
+                            <Text style={styles.sheetActionSub}>Permanently remove from schedule</Text>
                         </View>
                     </Pressable>
 
@@ -1173,6 +1244,7 @@ export default function CalendarScreen({ navigation, route }) {
     const [skipWorkout,        setSkipWorkout]        = React.useState(null);
     const [copyWorkout,        setCopyWorkout]        = React.useState(null);
     const [moveWorkout,        setMoveWorkout]        = React.useState(null);
+    const [deleteWorkout,      setDeleteWorkout]      = React.useState(null);
     const [addDayTarget,       setAddDayTarget]       = React.useState(null);
     const [showTemplatePicker, setShowTemplatePicker] = React.useState(false);
 
@@ -1281,6 +1353,8 @@ export default function CalendarScreen({ navigation, route }) {
         setWorkouts(prev => prev.map(w => w.id === id ? { ...w, ...changes } : w));
     const addWorkout = (workout) =>
         setWorkouts(prev => [...prev, workout]);
+    const removeWorkout = (id) =>
+        setWorkouts(prev => prev.filter(w => w.id !== id));
 
     // ── Handlers ─────────────────────────────────────────────────────────────
 
@@ -1407,6 +1481,25 @@ export default function CalendarScreen({ navigation, route }) {
                 status: workout.status,
             });
             Alert.alert('Error', 'Could not move workout. Please try again.');
+        } finally { setSaving(false); }
+    };
+
+    const handleDeleteConfirm = async () => {
+        const workout = deleteWorkout;
+        setDeleteWorkout(null);
+        removeWorkout(workout.id);
+        setSaving(true);
+        try {
+            const res = await authFetch(`${WORKER_URL}/schedule/delete`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: workout.id }),
+            });
+            if (!res.ok) throw new Error(`Delete failed (${res.status})`);
+        } catch (e) {
+            console.error('[CalendarScreen] handleDeleteConfirm error:', e);
+            addWorkout(workout);
+            Alert.alert('Error', 'Could not delete workout. Please try again.');
         } finally { setSaving(false); }
     };
 
@@ -1740,6 +1833,7 @@ export default function CalendarScreen({ navigation, route }) {
                     onSkip={() => { const w = actionWorkout; setActionWorkout(null); setSkipWorkout(w); }}
                     onRescheduleToday={() => handleMoveConfirm(clientTodayStr, actionWorkout)}
                     onRescheduleOther={() => { const w = actionWorkout; setActionWorkout(null); setMoveWorkout(w); }}
+                    onDelete={() => { const w = actionWorkout; setActionWorkout(null); setDeleteWorkout(w); }}
                 />
             ) : actionWorkout ? (
                 <WorkoutActionSheet
@@ -1748,8 +1842,17 @@ export default function CalendarScreen({ navigation, route }) {
                     onSkip={() => { const w = actionWorkout; setActionWorkout(null); setSkipWorkout(w); }}
                     onCopy={() => { const w = actionWorkout; setActionWorkout(null); setCopyWorkout(w); }}
                     onMove={() => { const w = actionWorkout; setActionWorkout(null); setMoveWorkout(w); }}
+                    onDelete={() => { const w = actionWorkout; setActionWorkout(null); setDeleteWorkout(w); }}
                 />
             ) : null}
+
+            {deleteWorkout && (
+                <DeleteConfirmModal
+                    workout={deleteWorkout}
+                    onClose={() => setDeleteWorkout(null)}
+                    onConfirm={handleDeleteConfirm}
+                />
+            )}
 
             {addDayTarget && !showTemplatePicker && (
                 <AddWorkoutSheet
@@ -1935,6 +2038,8 @@ function makeStyles(theme) { return StyleSheet.create({
     modalButtonSecondary:     { flex: 1, borderWidth: 1, borderColor: theme.surfaceBorder, borderRadius: 8, paddingVertical: 12, alignItems: 'center', justifyContent: 'center', minHeight: 48 },
     modalButtonSecondaryText: { color: theme.textSecondary, fontSize: 16 },
     modalButtonDisabled:      { opacity: 0.4 },
+    deleteConfirmButton:      { flex: 1, backgroundColor: theme.danger, borderRadius: 8, paddingVertical: 12, alignItems: 'center', justifyContent: 'center', minHeight: 48 },
+    deleteConfirmButtonText:  { color: '#ffffff', fontWeight: '700', fontSize: 16 },
 
     // ── Mini calendar (date picker) ──
     miniCalHeader:     { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
