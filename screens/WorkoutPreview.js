@@ -152,6 +152,10 @@ const Item = ({ workoutId, clientId, unitDefault, onSetSaved, ...item }) => {
     const [video, setVideo] = React.useState({});
     const [showLogs, setShowLogs] = React.useState(false);
     const [showVideo, setShowVideo] = React.useState(false);
+    const player = useVideoPlayer(
+        { uri: `https://customer-fp1q3oe31pc8sz6g.cloudflarestream.com/${item.id}/manifest/video.m3u8` },
+        p => { p.loop = true; p.muted = true; p.play(); }
+    );
 
     React.useEffect(() => {
         const getVideo = async () => {
@@ -177,18 +181,6 @@ const Item = ({ workoutId, clientId, unitDefault, onSetSaved, ...item }) => {
         </View>
     );
 
-    const VideoPlayer = () => {
-        const player = useVideoPlayer(
-            { uri: `https://customer-fp1q3oe31pc8sz6g.cloudflarestream.com/${item.id}/manifest/video.m3u8` },
-            p => { p.loop = true; p.muted = true; p.play(); }
-        );
-        return (
-            <View style={styles.videoContainer}>
-                <VideoView player={player} style={styles.video} nativeControls contentFit="contain" />
-            </View>
-        );
-    };
-
     return (
         <>
             <View style={styles.itemContainer}>
@@ -205,7 +197,11 @@ const Item = ({ workoutId, clientId, unitDefault, onSetSaved, ...item }) => {
                 </Pressable>
             </View>
 
-            {showVideo && <VideoPlayer />}
+            {showVideo && (
+                <View style={styles.videoContainer}>
+                    <VideoView player={player} style={styles.video} nativeControls contentFit="contain" />
+                </View>
+            )}
 
             {showLogs && (
                 <KeyboardAvoidingView

@@ -12,6 +12,8 @@ function streamUrl(streamId) {
 }
 
 const VideoPlayer = ({ streamId }) => {
+    const { theme } = useTheme();
+    const styles = makeStyles(theme);
     const player = useVideoPlayer({ uri: streamUrl(streamId) }, p => {
         p.loop = true;
         p.muted = true;
@@ -19,7 +21,7 @@ const VideoPlayer = ({ streamId }) => {
     });
     return (
         <View style={styles.videoContainer}>
-            <VideoView player={player} style={styles.video} nativeControls contentFit="contain" />
+            <VideoView player={player} style={styles.video} nativeControls contentFit="contain" testID="video-player" />
         </View>
     );
 };
@@ -138,7 +140,7 @@ export default function WorkoutPreviewItem({
                 <View style={styles.actionButtons}>
                     {hasVideo && !isCompleted && (
                         <Pressable style={[styles.iconButton, showVideo && styles.iconButtonActive]} onPress={() => setShowVideo(v => !v)}>
-                            <Feather name="film" size={15} color={showVideo ? theme.accent : theme.textPrimary} />
+                            <Feather name="film" size={15} color={showVideo ? theme.accentText : theme.surfaceBorder} />
                         </Pressable>
                     )}
                     {!readOnly && (
@@ -218,6 +220,7 @@ export default function WorkoutPreviewItem({
                             key={`${id}-set-${setNumber}`}
                             setNumber={setNumber}
                             isOptional={isOptional}
+                            noBorderTop={setNumber === 1 && !requiredComplete && !(recommendedWeight || recommendedRpe)}
                             exerciseId={id}
                             workoutId={workoutId}
                             clientId={clientId}

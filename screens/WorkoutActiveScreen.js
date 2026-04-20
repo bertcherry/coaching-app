@@ -764,7 +764,7 @@ export default function WorkoutActiveScreen({ route, navigation }) {
                 {/* ── Video toggle ── */}
                 {hasVideo && (
                     <Pressable style={styles.videoToggle} onPress={() => setShowVideo(v => !v)}>
-                        <Feather name="film" size={15} color={showVideo ? theme.accent : theme.textSecondary} />
+                        <Feather name="film" size={15} color={showVideo ? theme.accentText : theme.textSecondary} />
                         <Text style={[styles.videoToggleText, showVideo && { color: theme.accentText }]}>
                             {showVideo ? 'Hide demo' : 'Show demo'}
                         </Text>

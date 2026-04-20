@@ -36,6 +36,7 @@ export default function SetRow({
     setConfig,          // { weight, rpe, countMin } — per-set override from coach; takes priority
     loggedRecord,       // previously saved { weight, weightUnit, reps, rpe, note } — pre-fills edit mode
     onSave,
+    noBorderTop,
 }) {
     const { theme } = useTheme();
     const styles = makeStyles(theme);
@@ -210,7 +211,7 @@ export default function SetRow({
     })();
 
     return (
-        <View style={[styles.setRow, isOptional && styles.setRowOptional]}>
+        <View style={[styles.setRow, isOptional && styles.setRowOptional, noBorderTop && { borderTopWidth: 0 }]}>
             <View style={styles.setHeader}>
                 <View style={styles.setLabelRow}>
                     <Text style={[styles.setLabel, isOptional && styles.setLabelOptional]}>
