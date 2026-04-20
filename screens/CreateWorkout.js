@@ -369,11 +369,13 @@ const DateField = ({ value, onChange, onBlur, fieldName }) => {
                                 {grid.map(({dateStr,current})=>{
                                     const isPast=dateStr<todayStr, isSel=dateStr===value;
                                     return (
-                                        <Pressable key={dateStr} style={[styles.dateCell,isSel&&styles.dateCellSelected,isPast&&styles.dateCellPast,!current&&styles.dateCellOther]}
+                                        <Pressable key={dateStr} style={[styles.dateCell,isPast&&styles.dateCellPast,!current&&styles.dateCellOther]}
                                             onPress={()=>{if(!isPast){onChange(dateStr);setShowPicker(false);onBlur(fieldName);}}} disabled={isPast}>
-                                            <Text style={[styles.dateCellText,isSel&&styles.dateCellSelectedText,isPast&&styles.dateCellPastText,dateStr===todayStr&&styles.dateCellToday,!current&&styles.dateCellOtherText]}>
-                                                {parseInt(dateStr.split('-')[2])}
-                                            </Text>
+                                            <View style={[styles.dateCellCircle,isSel&&styles.dateCellSelected]}>
+                                                <Text style={[styles.dateCellText,isSel&&styles.dateCellSelectedText,isPast&&styles.dateCellPastText,dateStr===todayStr&&styles.dateCellToday,!current&&styles.dateCellOtherText]}>
+                                                    {parseInt(dateStr.split('-')[2])}
+                                                </Text>
+                                            </View>
                                         </Pressable>
                                     );
                                 })}
@@ -1100,7 +1102,8 @@ function makeStyles(theme) { return StyleSheet.create({
     dateMonthHint:          { fontSize: 11, color: theme.textTertiary, textAlign: 'center', marginTop: -4, marginBottom: 8 },
     dateGrid:         { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 8 },
     dateDayLabel:     { width: `${100/7}%`, textAlign: 'center', color: theme.textSecondary, fontSize: 11, marginBottom: 4 },
-    dateCell:         { width: `${100/7}%`, aspectRatio: 1, justifyContent: 'center', alignItems: 'center', borderRadius: 100 },
+    dateCell:         { width: `${100/7}%`, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' },
+    dateCellCircle:   { width: 34, height: 34, borderRadius: 17, justifyContent: 'center', alignItems: 'center' },
     dateCellSelected: { backgroundColor: theme.accent },
     dateCellPast:     { opacity: 0.3 },
     dateCellOther:    { opacity: 0.35 },
