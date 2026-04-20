@@ -895,16 +895,28 @@ export default function CreateWorkout({ navigation, route }) {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ clientEmail: values.clientEmail, workoutId: values.id, workoutName: values.workoutName, scheduledDate: values.scheduledDate ?? null }),
                 });
-                if (!schedRes.ok) { Alert.alert('Error', 'Workout saved but could not schedule.'); return; }
+                if (!schedRes.ok) {
+                    let errMsg = 'Workout saved but could not schedule.';
+                    try {
+                        const errBody = await schedRes.json();
+                        if (errBody?.error) errMsg = errBody.error;
+                    } catch {}
+                    console.error('[schedule/assign] status:', schedRes.status, errMsg);
+                    Alert.alert('Error', errMsg);
+                    return;
+                }
             }
 
             setShowToast(true);
             if (values.clientEmail) {
-                navigation.navigate('Calendar', {
-                    clientEmail: values.clientEmail,
-                    clientName: values.clientName,
-                    clientTimezone: values.clientTimezone ?? undefined,
-                    month: values.scheduledDate?.substring(0, 7) ?? null,
+                navigation.navigate('My Calendar', {
+                    screen: 'Calendar',
+                    params: {
+                        clientEmail: values.clientEmail,
+                        clientName: values.clientName,
+                        clientTimezone: values.clientTimezone ?? undefined,
+                        month: values.scheduledDate?.substring(0, 7) ?? null,
+                    },
                 });
             } else {
                 navigation.navigate('Template Workouts');

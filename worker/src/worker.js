@@ -57,12 +57,12 @@ function todayForTimezone(tz) {
 
 // ─── Workout handlers (unchanged) ─────────────────────────────────────────────
 
-async function handleSaveWorkout(request, env) {
+export async function handleSaveWorkout(request, env) {
     const body = await request.json();
     const { id, workoutName, createdBy, data } = body;
     if (!id || !data) return json({ error: 'id and data are required' }, 400);
     const success = (await env.DB.prepare(
-        'INSERT INTO workouts (id, data, workoutName, createdBy) VALUES (?, ?, ?, ?)'
+        'INSERT OR REPLACE INTO workouts (id, data, workoutName, createdBy) VALUES (?, ?, ?, ?)'
     ).bind(id, JSON.stringify(data), workoutName ?? null, createdBy ?? null).run()).success;
     return success ? json({ message: 'Workout saved', id }) : json({ error: 'Failed to save workout' }, 400);
 }
@@ -145,21 +145,30 @@ export async function handleAssignWorkout(request, env) {
     }
  
     const id = crypto.randomUUID();
-    await env.DB.prepare(
-        `INSERT INTO scheduled_workouts (id, clientEmail, workoutId, workoutName, scheduledDate, status)
-         VALUES (?, ?, ?, ?, ?, 'scheduled')`
-    ).bind(id, clientEmail, workoutId, workoutName, scheduledDate ?? null).run();
+    try {
+        await env.DB.prepare(
+            `INSERT INTO scheduled_workouts (id, clientEmail, workoutId, workoutName, scheduledDate, status)
+             VALUES (?, ?, ?, ?, ?, 'scheduled')`
+        ).bind(id, clientEmail, workoutId, workoutName, scheduledDate ?? null).run();
+    } catch (e) {
+        console.error('[handleAssignWorkout] INSERT failed:', e?.message ?? e, { clientEmail, workoutId, scheduledDate });
+        return json({ error: `Failed to schedule workout: ${e?.message ?? 'unknown error'}` }, 500);
+    }
 
-    await emitNotification(env.DB, env, {
-        recipientEmail: clientEmail,
-        type: 'new_workout',
-        scheduledWorkoutId: id,
-        payload: {
-            workoutName,
-            scheduledDate: scheduledDate ?? null,
-            coachName: `${coach.fname} ${coach.lname}`,
-        },
-    });
+    try {
+        await emitNotification(env.DB, env, {
+            recipientEmail: clientEmail,
+            type: 'new_workout',
+            scheduledWorkoutId: id,
+            payload: {
+                workoutName,
+                scheduledDate: scheduledDate ?? null,
+                coachName: `${coach.fname} ${coach.lname}`,
+            },
+        });
+    } catch (e) {
+        console.error('[handleAssignWorkout] emitNotification failed:', e?.message ?? e);
+    }
 
     return json({ message: 'Workout assigned', id }, 201);
 }

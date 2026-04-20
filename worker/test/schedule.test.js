@@ -2,6 +2,7 @@
  * worker/test/schedule.test.js
  *
  * Tests for schedule endpoints:
+ *   POST /workouts/save       (handleSaveWorkout)
  *   GET  /schedule  (handleGetSchedule)
  *   POST /schedule/assign   (handleAssignWorkout)
  *   POST /schedule/move     (handleMoveWorkout)
@@ -16,7 +17,7 @@
 
 import { env } from 'cloudflare:test';
 import { handleGetSchedule } from '../src/schedule.js';
-import { handleAssignWorkout, handleMoveWorkout, handleSkipWorkout, handleCopyWorkout, handleScheduleComplete } from '../src/worker.js';
+import { handleAssignWorkout, handleMoveWorkout, handleSkipWorkout, handleCopyWorkout, handleScheduleComplete, handleSaveWorkout } from '../src/worker.js';
 import {
     setupSchema, clearData, seedCoach, seedClient, seedWorkout,
     makeToken, coachToken, clientToken,
@@ -356,5 +357,46 @@ describe('POST /schedule/complete', () => {
             'SELECT * FROM notification_events WHERE recipientEmail = ? AND type = ?'
         ).bind('coach@example.com', 'workout_completed').all();
         expect(results).toHaveLength(1);
+    });
+});
+
+// ─── POST /workouts/save ──────────────────────────────────────────────────────
+
+describe('POST /workouts/save', () => {
+    const WORKOUT_PAYLOAD = {
+        id: 'wk-test-1',
+        workoutName: 'Monthly Push Day',
+        createdBy: 'coach@example.com',
+        data: [{ timed: false, circuit: true, data: [{ name: 'Press', setsMin: 3 }] }],
+    };
+
+    it('saves a new workout and returns 200', async () => {
+        const res = await handleSaveWorkout(post('/workouts/save', WORKOUT_PAYLOAD), env);
+        expect(res.status).toBe(200);
+        const body = await res.json();
+        expect(body.id).toBe('wk-test-1');
+    });
+
+    it('re-saving the same id (after a failed schedule/assign) returns 200, not an error', async () => {
+        // First save — succeeds
+        await handleSaveWorkout(post('/workouts/save', WORKOUT_PAYLOAD), env);
+
+        // Second save with same id (simulates user retrying after a failed schedule/assign)
+        const res = await handleSaveWorkout(post('/workouts/save', WORKOUT_PAYLOAD), env);
+        expect(res.status).toBe(200);
+        const body = await res.json();
+        expect(body.id).toBe('wk-test-1');
+    });
+
+    it('re-save updates the workout name in the DB', async () => {
+        await handleSaveWorkout(post('/workouts/save', WORKOUT_PAYLOAD), env);
+        await handleSaveWorkout(post('/workouts/save', { ...WORKOUT_PAYLOAD, workoutName: 'Updated Name' }), env);
+        const row = await env.DB.prepare('SELECT workoutName FROM workouts WHERE id = ?').bind('wk-test-1').first();
+        expect(row.workoutName).toBe('Updated Name');
+    });
+
+    it('returns 400 when id is missing', async () => {
+        const res = await handleSaveWorkout(post('/workouts/save', { workoutName: 'No ID', data: [] }), env);
+        expect(res.status).toBe(400);
     });
 });
