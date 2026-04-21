@@ -137,6 +137,7 @@ function makeNavigation(overrides = {}) {
         navigate: mockNavigate,
         dispatch: mockDispatch,
         goBack:   mockGoBack,
+        setOptions: jest.fn(),
         addListener: jest.fn((event, cb) => {
             if (event === 'beforeRemove') mockBeforeRemoveListener = cb;
             return jest.fn(); // unsubscribe
@@ -647,5 +648,105 @@ describe('WorkoutPreview — finish overlay icons', () => {
     it('confirm button reads "Thanks!"', async () => {
         await openFinishOverlay();
         expect(screen.getByText('Thanks!')).toBeTruthy();
+    });
+});
+
+// ─── Run section button ───────────────────────────────────────────────────────
+
+const TIMED_WORKOUT_API_RESPONSE = [
+    {
+        title: 'Section 1',
+        timed: true,
+        circuit: false,
+        repRest: 30,
+        setRest: 60,
+        data: [{
+            id: 'ex-1', name: 'Plank',
+            setsMin: 2, setsMax: null,
+            countType: 'Timed', countMin: 30, countMax: null,
+            sides: 'single', restBetweenSides: null,
+            recommendedWeight: null, recommendedRpe: null,
+            coachNotes: null, setConfigs: null,
+        }],
+    },
+    {
+        title: 'Section 2',
+        timed: false,
+        circuit: false,
+        data: [{
+            id: 'ex-2', name: 'Squat',
+            setsMin: 3, setsMax: null,
+            countType: 'Reps', countMin: 5, countMax: null,
+            sides: null, restBetweenSides: null,
+            recommendedWeight: null, recommendedRpe: null,
+            coachNotes: null, setConfigs: null,
+        }],
+    },
+];
+
+describe('WorkoutPreview — Run section button', () => {
+    function mockTimedWorkoutFetch() {
+        global.fetch = jest.fn().mockResolvedValue({
+            ok: true,
+            json: async () => TIMED_WORKOUT_API_RESPONSE,
+        });
+    }
+
+    beforeEach(() => { mockTimedWorkoutFetch(); });
+
+    it('shows Run section button on timed sections when scheduled', async () => {
+        render(<WorkoutPreview navigation={makeNavigation()} route={makeRoute({ initialStatus: 'scheduled' })} />);
+        await waitFor(() => screen.getByTestId('run-section-Section 1'));
+        expect(screen.getByTestId('run-section-Section 1')).toBeTruthy();
+    });
+
+    it('does not show Run section button on non-timed sections', async () => {
+        render(<WorkoutPreview navigation={makeNavigation()} route={makeRoute({ initialStatus: 'scheduled' })} />);
+        await waitFor(() => screen.getAllByTestId('exercise-name'));
+        expect(screen.queryByTestId('run-section-Section 2')).toBeNull();
+    });
+
+    it('does not show Run section button when workout is completed', async () => {
+        render(<WorkoutPreview navigation={makeNavigation()} route={makeRoute({ initialStatus: 'completed' })} />);
+        await waitFor(() => screen.getAllByTestId('exercise-name'));
+        expect(screen.queryByTestId('run-section-Section 1')).toBeNull();
+    });
+
+    it('does not show Run section button when workout is skipped', async () => {
+        render(<WorkoutPreview navigation={makeNavigation()} route={makeRoute({ initialStatus: 'skipped' })} />);
+        await waitFor(() => screen.getAllByTestId('exercise-name'));
+        expect(screen.queryByTestId('run-section-Section 1')).toBeNull();
+    });
+
+    it('pressing Run section navigates to Workout Active with sectionOnly=true', async () => {
+        render(<WorkoutPreview navigation={makeNavigation()} route={makeRoute({ initialStatus: 'scheduled', scheduledDate: null })} />);
+        await waitFor(() => screen.getByTestId('run-section-Section 1'));
+
+        fireEvent.press(screen.getByTestId('run-section-Section 1'));
+
+        await waitFor(() => {
+            expect(mockNavigate).toHaveBeenCalledWith('Workout Active', expect.objectContaining({
+                sectionOnly:      true,
+                startSectionIdx:  0,
+                workoutId:        'workout-1',
+            }));
+        });
+    });
+
+    it('pressing Run section on the second timed section passes startSectionIdx=1', async () => {
+        const twoTimedResponse = TIMED_WORKOUT_API_RESPONSE.map((s, i) => ({ ...s, timed: true }));
+        global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => twoTimedResponse });
+
+        render(<WorkoutPreview navigation={makeNavigation()} route={makeRoute({ initialStatus: 'scheduled', scheduledDate: null })} />);
+        await waitFor(() => screen.getByTestId('run-section-Section 2'));
+
+        fireEvent.press(screen.getByTestId('run-section-Section 2'));
+
+        await waitFor(() => {
+            expect(mockNavigate).toHaveBeenCalledWith('Workout Active', expect.objectContaining({
+                sectionOnly:     true,
+                startSectionIdx: 1,
+            }));
+        });
     });
 });

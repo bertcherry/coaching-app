@@ -68,6 +68,16 @@ const exerciseSchema = Yup.object().shape({
             otherwise: (schema) => schema.notRequired(),
         }),
     timeCapSeconds: Yup.number().typeError('Must be a number').nullable().positive('Must be positive').notRequired(),
+    sides: Yup.string().oneOf(['single', 'two']).nullable().notRequired(),
+    restBetweenSides: Yup.number()
+        .typeError('Must be a number')
+        .nullable()
+        .positive('Must be positive')
+        .when('sides', {
+            is: 'two',
+            then: (s) => s.required('Enter rest seconds between sides'),
+            otherwise: (s) => s.notRequired(),
+        }),
     recommendedRpe: Yup.mixed()
         .nullable()
         .notRequired()
@@ -114,10 +124,11 @@ const workoutSchema = Yup.object().shape({
     data: Yup.array().min(1, 'Your workout must have at least one section').of(sectionSchema),
 });
 
-const emptyExercise = () => ({
+const emptyExercise = (opts = {}) => ({
     id: null, name: null,
     setsMin: null, setsMax: null,
-    countType: null, countMin: null, countMax: null, timeCapSeconds: null,
+    countType: opts.countType ?? null, countMin: null, countMax: null, timeCapSeconds: null,
+    sides: null, restBetweenSides: null,
     recommendedRpe: null, recommendedWeight: null, coachNotes: null,
     setConfigs: null,
 });
@@ -461,6 +472,13 @@ const ExerciseCard = React.memo(({
         if (exercise.setConfigs?.length) setShowPerSet(true);
     }, []);
 
+    // Sync countType to 'Timed' when section is timed (covers exercises added after toggle)
+    React.useEffect(() => {
+        if (isTimed && exercise.countType !== 'Timed') {
+            setFieldValue(`${fieldBase}.countType`, 'Timed');
+        }
+    }, [isTimed]);
+
     // Keep setConfigs array length in sync with setsMin/setsMax while per-set mode is on
     React.useEffect(() => {
         if (!showPerSet) return;
@@ -774,7 +792,7 @@ const SectionCard = ({
                                     <DropZone active={dropTargetSection===sectionIndex && dropTargetIndex===i+1} />
                                 </View>
                             ))}
-                            <Pressable style={styles.addExerciseButton} onPress={()=>pushEx(emptyExercise())}>
+                            <Pressable style={styles.addExerciseButton} onPress={()=>pushEx(emptyExercise({ countType: section.timed ? 'Timed' : null }))}>
                                 <Feather name="plus" size={15} color={theme.accentText} />
                                 <Text style={styles.addExerciseButtonText}>Add Exercise</Text>
                             </Pressable>
@@ -885,7 +903,7 @@ export default function CreateWorkout({ navigation, route }) {
     };
 
     // ── Migration ─────────────────────────────────────────────────────────
-    const migrateEx = (ex) => ({ ...emptyExercise(), ...ex, setsMin: ex.setsMin??ex.sets??null, setsMax: ex.setsMax??null, sets: undefined });
+    const migrateEx = (ex) => ({ ...emptyExercise(), ...ex, setsMin: ex.setsMin??ex.sets??null, setsMax: ex.setsMax??null, sets: undefined, sides: ex.sides??null, restBetweenSides: ex.restBetweenSides??null });
     const makeInitialValues = () => ({
         id: uuid.v4(),
         workoutName: prefillWorkout?.workoutName ?? '',

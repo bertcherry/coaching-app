@@ -705,11 +705,44 @@ export default function WorkoutPreview({ route, navigation }) {
         />
     );
 
-    const renderSectionHeader = ({ section: { title } }) => (
-        <View style={styles.sectionHeader}>
-            <Text style={styles.sectionHeaderText}>{title}</Text>
-        </View>
-    );
+    const handleRunSection = (section) => {
+        const sectionIdx = workoutData.indexOf(section);
+        maybePromptReschedule(() => {
+            navigation.navigate('Workout Active', {
+                workoutData,
+                workoutId: id,
+                scheduledWorkoutId,
+                scheduledDate,
+                clientEmail,
+                viewerIsAthlete,
+                sectionOnly: true,
+                startSectionIdx: sectionIdx,
+            });
+        });
+    };
+
+    const renderSectionHeader = ({ section }) => {
+        const canRunSection = section.timed
+            && workoutStatus !== 'completed'
+            && workoutStatus !== 'skipped';
+        return (
+            <View style={styles.sectionHeader}>
+                <Text style={styles.sectionHeaderText}>{section.title}</Text>
+                {canRunSection && (
+                    <Pressable
+                        style={styles.runSectionButton}
+                        onPress={() => handleRunSection(section)}
+                        testID={`run-section-${section.title}`}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Run ${section.title}`}
+                    >
+                        <Feather name="play" size={11} color="#000" />
+                        <Text style={styles.runSectionButtonText}>Run section</Text>
+                    </Pressable>
+                )}
+            </View>
+        );
+    };
 
     const renderListHeader = () => workoutName ? (
         <View style={styles.workoutTitleContainer}>
@@ -901,11 +934,24 @@ function makeStyles(theme) {
             color: theme.textPrimary,
         },
         sectionHeader: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
             paddingHorizontal: 20,
             paddingTop: 16,
             paddingBottom: 4,
             backgroundColor: theme.background,
         },
+        runSectionButton: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 4,
+            backgroundColor: theme.success,
+            borderRadius: 8,
+            paddingHorizontal: 10,
+            paddingVertical: 5,
+        },
+        runSectionButtonText: { fontSize: 11, fontWeight: '700', color: '#000' },
         sectionHeaderText: {
             fontSize: 12,
             fontWeight: '700',

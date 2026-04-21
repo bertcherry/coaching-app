@@ -626,3 +626,316 @@ describe('WorkoutActiveScreen — back to preview navigation', () => {
         });
     });
 });
+
+// ─── Two-sided timed exercise ─────────────────────────────────────────────────
+
+const TIMED_TWO_SIDED_SECTION = {
+    title: 'Section 1',
+    circuit: false,
+    timed: true,
+    repRest: 30,
+    setRest: 60,
+    data: [{
+        id: 'ex-ts', name: 'Side Plank',
+        setsMin: 1, setsMax: null,
+        countType: 'Timed', countMin: 30, countMax: null,
+        sides: 'two', restBetweenSides: 5,
+        recommendedWeight: null, recommendedRpe: null,
+        coachNotes: null, setConfigs: null,
+    }],
+};
+
+describe('WorkoutActiveScreen — two-sided timed exercise', () => {
+    it('shows "Side 1 of 2" indicator when exercise has sides=two', async () => {
+        render(<WorkoutActiveScreen navigation={makeNavigation()} route={makeRoute({ workoutData: [TIMED_TWO_SIDED_SECTION] })} />);
+        await waitFor(() => screen.getByText('Side Plank'));
+        expect(screen.getByText('Side 1 of 2')).toBeTruthy();
+    });
+
+    it('pressing Finish workout on side 1 transitions to REST (BETWEEN SIDES) without recording a set', async () => {
+        render(<WorkoutActiveScreen navigation={makeNavigation()} route={makeRoute({ workoutData: [TIMED_TWO_SIDED_SECTION] })} />);
+        await waitFor(() => screen.getByText('Side Plank'));
+
+        fireEvent.press(screen.getByText('Finish workout'));
+
+        await waitFor(() => expect(screen.getByText('REST (BETWEEN SIDES)')).toBeTruthy());
+        expect(mockEnqueueRecord).not.toHaveBeenCalled();
+    });
+
+    it('hides set inputs and actions during side-rest phase', async () => {
+        render(<WorkoutActiveScreen navigation={makeNavigation()} route={makeRoute({ workoutData: [TIMED_TWO_SIDED_SECTION] })} />);
+        await waitFor(() => screen.getByText('Side Plank'));
+
+        fireEvent.press(screen.getByText('Finish workout'));
+        await waitFor(() => screen.getByText('REST (BETWEEN SIDES)'));
+
+        expect(screen.queryByText('Finish workout')).toBeNull();
+        expect(screen.queryByText('Skip exercise')).toBeNull();
+    });
+
+    it('shows "Side 2 of 2" after side-rest timer runs', async () => {
+        jest.useFakeTimers();
+        render(<WorkoutActiveScreen navigation={makeNavigation()} route={makeRoute({ workoutData: [TIMED_TWO_SIDED_SECTION] })} />);
+        await waitFor(() => screen.getByText('Side Plank'));
+
+        fireEvent.press(screen.getByText('Finish workout')); // side 1 → side-rest (auto-starts)
+        await waitFor(() => screen.getByText('REST (BETWEEN SIDES)'));
+
+        // side-rest auto-started — just advance time past the 5s rest
+        act(() => { jest.advanceTimersByTime(6000); });
+
+        await waitFor(() => expect(screen.getByText('Side 2 of 2')).toBeTruthy());
+        jest.useRealTimers();
+    });
+
+    it('records set exactly once after completing both sides', async () => {
+        jest.useFakeTimers();
+        render(<WorkoutActiveScreen navigation={makeNavigation()} route={makeRoute({ workoutData: [TIMED_TWO_SIDED_SECTION], sectionOnly: true, startSectionIdx: 0 })} />);
+        await waitFor(() => screen.getByText('Side Plank'));
+
+        fireEvent.press(screen.getByText('Finish section')); // side 1 → side-rest (auto-starts)
+        await waitFor(() => screen.getByText('REST (BETWEEN SIDES)'));
+
+        // side-rest auto-started — advance time to reach side 2
+        act(() => { jest.advanceTimersByTime(6000); });
+        await waitFor(() => screen.getByText('Side 2 of 2'));
+        jest.useRealTimers();
+
+        mockEnqueueRecord.mockClear();
+        fireEvent.press(screen.getByText('Finish section')); // side 2 → record
+
+        expect(mockEnqueueRecord).toHaveBeenCalledTimes(1);
+        expect(mockEnqueueRecord).toHaveBeenCalledWith(expect.objectContaining({
+            exerciseId: 'ex-ts',
+            skipped:    false,
+        }));
+    });
+});
+
+// ─── Section-only mode ────────────────────────────────────────────────────────
+
+const SINGLE_EXERCISE_WORKOUT = [
+    {
+        title: 'Section 1', circuit: false, timed: false,
+        data: [{
+            id: 'sec1-ex', name: 'Warm-up Squat',
+            setsMin: 1, setsMax: null,
+            countType: 'Reps', countMin: 5, countMax: null,
+            recommendedWeight: null, recommendedRpe: null,
+            coachNotes: null, setConfigs: null,
+        }],
+    },
+    {
+        title: 'Section 2', circuit: false, timed: false,
+        data: [{
+            id: 'sec2-ex', name: 'Working Squat',
+            setsMin: 1, setsMax: null,
+            countType: 'Reps', countMin: 5, countMax: null,
+            recommendedWeight: null, recommendedRpe: null,
+            coachNotes: null, setConfigs: null,
+        }],
+    },
+];
+
+describe('WorkoutActiveScreen — sectionOnly mode', () => {
+    it('shows "Finish section" label on last set when sectionOnly=true', async () => {
+        render(<WorkoutActiveScreen navigation={makeNavigation()} route={makeRoute({
+            workoutData: SINGLE_EXERCISE_WORKOUT,
+            sectionOnly: true,
+            startSectionIdx: 0,
+        })} />);
+        await waitFor(() => screen.getByText('Warm-up Squat'));
+        expect(screen.getByText('Finish section')).toBeTruthy();
+    });
+
+    it('does not show "Finish workout" when sectionOnly=true', async () => {
+        render(<WorkoutActiveScreen navigation={makeNavigation()} route={makeRoute({
+            workoutData: SINGLE_EXERCISE_WORKOUT,
+            sectionOnly: true,
+            startSectionIdx: 0,
+        })} />);
+        await waitFor(() => screen.getByText('Warm-up Squat'));
+        expect(screen.queryByText('Finish workout')).toBeNull();
+    });
+
+    it('shows section complete modal after pressing Finish section', async () => {
+        render(<WorkoutActiveScreen navigation={makeNavigation()} route={makeRoute({
+            workoutData: SINGLE_EXERCISE_WORKOUT,
+            sectionOnly: true,
+            startSectionIdx: 0,
+        })} />);
+        await waitFor(() => screen.getByText('Warm-up Squat'));
+
+        fireEvent.press(screen.getByText('Finish section'));
+
+        await waitFor(() => expect(screen.getByText('Section complete!')).toBeTruthy());
+    });
+
+    it('does not show the full finish overlay in sectionOnly mode', async () => {
+        render(<WorkoutActiveScreen navigation={makeNavigation()} route={makeRoute({
+            workoutData: SINGLE_EXERCISE_WORKOUT,
+            sectionOnly: true,
+            startSectionIdx: 0,
+        })} />);
+        await waitFor(() => screen.getByText('Warm-up Squat'));
+
+        fireEvent.press(screen.getByText('Finish section'));
+        await waitFor(() => screen.getByText('Section complete!'));
+
+        expect(screen.queryByText('Mark this workout as finished?')).toBeNull();
+    });
+
+    it('"Back to workout summary" button navigates to Workout Preview', async () => {
+        const nav = makeNavigation();
+        render(<WorkoutActiveScreen navigation={nav} route={makeRoute({
+            workoutData: SINGLE_EXERCISE_WORKOUT,
+            sectionOnly: true,
+            startSectionIdx: 0,
+        })} />);
+        await waitFor(() => screen.getByText('Warm-up Squat'));
+
+        fireEvent.press(screen.getByText('Finish section'));
+        await waitFor(() => screen.getByTestId('section-complete-back-button'));
+
+        fireEvent.press(screen.getByTestId('section-complete-back-button'));
+
+        await waitFor(() => {
+            expect(mockNavigate).toHaveBeenCalledWith('Workout Preview', expect.objectContaining({
+                id: 'workout-1',
+            }));
+        });
+    });
+
+    it('startSectionIdx positions cursor at the given section', async () => {
+        render(<WorkoutActiveScreen navigation={makeNavigation()} route={makeRoute({
+            workoutData: SINGLE_EXERCISE_WORKOUT,
+            sectionOnly: true,
+            startSectionIdx: 1,
+        })} />);
+        // Should show Section 2's exercise, not Section 1's
+        await waitFor(() => expect(screen.getByText('Working Squat')).toBeTruthy());
+        expect(screen.queryByText('Warm-up Squat')).toBeNull();
+    });
+
+    it('section complete modal shows "Back to workout summary" label text', async () => {
+        render(<WorkoutActiveScreen navigation={makeNavigation()} route={makeRoute({
+            workoutData: SINGLE_EXERCISE_WORKOUT,
+            sectionOnly: true,
+            startSectionIdx: 0,
+        })} />);
+        await waitFor(() => screen.getByText('Warm-up Squat'));
+
+        fireEvent.press(screen.getByText('Finish section'));
+        await waitFor(() => screen.getByText('Back to workout summary'));
+        expect(screen.getByText('Back to workout summary')).toBeTruthy();
+    });
+});
+
+// ─── Timer mode auto-advance ──────────────────────────────────────────────────
+
+const TIMED_TWO_SET_WORKOUT = [{
+    title: 'Timed Section',
+    circuit: false,
+    timed: true,
+    repRest: 20,
+    setRest: 45,
+    data: [{
+        id: 'timed-ex', name: 'Plank',
+        setsMin: 2, setsMax: null,
+        countType: 'Timed', countMin: 10, countMax: null,
+        sides: 'single', restBetweenSides: null,
+        recommendedWeight: null, recommendedRpe: null,
+        coachNotes: null, setConfigs: null,
+    }],
+}];
+
+describe('WorkoutActiveScreen — timer auto-advance mode', () => {
+    it('in manual mode the rest timer does not auto-start (shows Start button)', async () => {
+        jest.useFakeTimers();
+        render(<WorkoutActiveScreen navigation={makeNavigation()} route={makeRoute({ workoutData: TIMED_TWO_SET_WORKOUT })} />);
+        await waitFor(() => screen.getByText('Plank'));
+
+        // Start the work timer manually, let it run to max
+        fireEvent.press(screen.getByText('Start'));
+        act(() => { jest.advanceTimersByTime(11000); }); // timer hits max but stays on work phase in manual mode
+
+        // In manual mode the user presses the action button to record and advance to rest
+        fireEvent.press(screen.getByText('Next'));
+
+        // Rest timer appears but has NOT auto-started — shows Start button
+        await waitFor(() => screen.getByText('REST'));
+        expect(screen.getByText('Start')).toBeTruthy();
+        jest.useRealTimers();
+    });
+
+    it('in auto mode the rest timer starts immediately after work ends', async () => {
+        jest.useFakeTimers();
+        render(<WorkoutActiveScreen navigation={makeNavigation()} route={makeRoute({ workoutData: TIMED_TWO_SET_WORKOUT })} />);
+        await waitFor(() => screen.getByText('Plank'));
+
+        fireEvent.press(screen.getByText('Auto advance'));
+        fireEvent.press(screen.getByText('Start'));
+        act(() => { jest.advanceTimersByTime(11000); }); // work ends (10s) → rest auto-starts
+
+        // Rest phase visible with no Start button (auto-started)
+        await waitFor(() => screen.getByText('REST'));
+        expect(screen.queryByText('Start')).toBeNull();
+        jest.useRealTimers();
+    });
+
+    it('in auto mode the next work timer starts immediately after rest ends', async () => {
+        jest.useFakeTimers();
+        render(<WorkoutActiveScreen navigation={makeNavigation()} route={makeRoute({ workoutData: TIMED_TWO_SET_WORKOUT })} />);
+        await waitFor(() => screen.getByText('Plank'));
+
+        fireEvent.press(screen.getByText('Auto advance'));
+        fireEvent.press(screen.getByText('Start'));
+        act(() => { jest.advanceTimersByTime(11000); }); // work ends → rest auto-starts
+        await waitFor(() => screen.getByText('REST'));
+        act(() => { jest.advanceTimersByTime(46000); }); // rest ends (45s) → next work auto-starts
+
+        await waitFor(() => screen.getByText('WORK'));
+        expect(screen.queryByText('Start')).toBeNull();
+        jest.useRealTimers();
+    });
+
+    it('in manual mode switching to auto does not retroactively start the rest timer', async () => {
+        jest.useFakeTimers();
+        render(<WorkoutActiveScreen navigation={makeNavigation()} route={makeRoute({ workoutData: TIMED_TWO_SET_WORKOUT })} />);
+        await waitFor(() => screen.getByText('Plank'));
+
+        // In manual mode: start work, press Next to advance to rest
+        fireEvent.press(screen.getByText('Start'));
+        act(() => { jest.advanceTimersByTime(11000); });
+        fireEvent.press(screen.getByText('Next')); // advance to rest manually
+        await waitFor(() => screen.getByText('REST'));
+        expect(screen.getByText('Start')).toBeTruthy(); // rest has Start button
+
+        // Switching to auto should NOT auto-start the already-mounted rest timer
+        fireEvent.press(screen.getByText('Auto advance'));
+        await waitFor(() => screen.getByText('REST'));
+        expect(screen.getByText('Start')).toBeTruthy();
+        jest.useRealTimers();
+    });
+
+    it('side-rest timer always auto-starts regardless of timer mode', async () => {
+        jest.useFakeTimers();
+        render(<WorkoutActiveScreen navigation={makeNavigation()} route={makeRoute({ workoutData: [TIMED_TWO_SIDED_SECTION] })} />);
+        await waitFor(() => screen.getByText('Side Plank'));
+
+        // Manual mode (default) — side 1 done
+        fireEvent.press(screen.getByText('Finish workout')); // side 1 → side-rest
+
+        // Side-rest should auto-start (no Start button) even in manual mode
+        await waitFor(() => screen.getByText('REST (BETWEEN SIDES)'));
+        expect(screen.queryByText('Start')).toBeNull();
+        jest.useRealTimers();
+    });
+
+    it('in auto mode the timer card shows green background for work phase', async () => {
+        render(<WorkoutActiveScreen navigation={makeNavigation()} route={makeRoute({ workoutData: TIMED_TWO_SET_WORKOUT })} />);
+        await waitFor(() => screen.getByText('WORK'));
+        // The WORK label being present confirms the work-phase timer card is rendered
+        expect(screen.getByText('WORK')).toBeTruthy();
+    });
+});

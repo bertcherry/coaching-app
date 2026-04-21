@@ -87,6 +87,32 @@ function nextCircuitExerciseIdx(exercises, setsCompleted, currentIdx) {
     return null; // all done
 }
 
+// ─── Section complete overlay ─────────────────────────────────────────────────
+
+const SectionCompleteModal = ({ visible, onBackToSummary }) => {
+    const { theme } = useTheme();
+    const styles = makeStyles(theme);
+    return (
+        <Modal transparent animationType="fade" visible={visible} onRequestClose={onBackToSummary}>
+            <View style={styles.overlayBackdrop}>
+                <View style={[styles.overlayCard, styles.sectionCompleteCard]}>
+                    <Feather name="check-circle" size={52} color={theme.success} style={styles.overlayIcon} />
+                    <Text style={styles.overlayMessage}>Section complete!</Text>
+                    <Text style={styles.overlaySubtext}>Great work. Your sets have been saved.</Text>
+                    <Pressable
+                        style={styles.sectionCompleteButton}
+                        onPress={onBackToSummary}
+                        testID="section-complete-back-button"
+                    >
+                        <Feather name="arrow-left" size={16} color="#000" style={{ marginRight: 6 }} />
+                        <Text style={styles.sectionCompleteButtonText}>Back to workout summary</Text>
+                    </Pressable>
+                </View>
+            </View>
+        </Modal>
+    );
+};
+
 // ─── Finish overlay ───────────────────────────────────────────────────────────
 
 const FINISH_MESSAGES = [
@@ -140,7 +166,10 @@ const FinishOverlay = ({ visible, onDismiss, onConfirm }) => {
  *   upNextName     string | null    — shown during rest phase
  *   onAdvance      () => void       — called when timer should move to next step
  */
-const WorkTimer = ({ phase, workMin, workMax, restSeconds, timerMode, upNextName, onAdvance, onElapsedWork, paused = false, onTimerStart }) => {
+const ON_COLOR_MUTED = 'rgba(255,255,255,0.75)';
+const ON_COLOR_BANNER_BG = 'rgba(0,0,0,0.2)';
+
+const WorkTimer = ({ phase, workMin, workMax, restSeconds, timerMode, upNextName, onAdvance, onElapsedWork, paused = false, onTimerStart, phaseLabel, autoStart = false }) => {
     const { theme } = useTheme();
     const styles = makeStyles(theme);
 
@@ -158,78 +187,99 @@ const WorkTimer = ({ phase, workMin, workMax, restSeconds, timerMode, upNextName
         setMaxReached(false);
     }, [phase]);
 
+    // Auto-start on mount when parent signals it (auto-advance mode)
+    React.useEffect(() => {
+        if (autoStart) {
+            setStarted(true);
+            onTimerStart?.();
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // Tick — only increments elapsed, no side effects inside the updater
     React.useEffect(() => {
         if (!started || maxReached || paused) return;
         const interval = setInterval(() => {
-            setElapsed(prev => {
-                const next = prev + 1;
-                if (phase === 'work' && workMin && next >= workMin) setMinReached(true);
-                if (next >= targetSeconds) {
-                    setMaxReached(true);
-                    clearInterval(interval);
-                    if (timerMode === 'auto') {
-                        if (phase === 'work') onElapsedWork?.(next);
-                        onAdvance();
-                    }
-                }
-                return next;
-            });
+            setElapsed(prev => prev + 1);
         }, 1000);
         return () => clearInterval(interval);
-    }, [started, maxReached, phase, timerMode, paused]);
+    }, [started, maxReached, paused]);
+
+    // Threshold checks run after each tick, outside the updater
+    React.useEffect(() => {
+        if (!started || maxReached) return;
+        if (phase === 'work' && workMin && elapsed >= workMin && !minReached) {
+            setMinReached(true);
+        }
+        if (targetSeconds != null && elapsed >= targetSeconds) {
+            setMaxReached(true);
+        }
+    }, [elapsed]);
+
+    // Auto-advance fires once when maxReached flips to true
+    React.useEffect(() => {
+        if (!maxReached || timerMode !== 'auto') return;
+        if (phase === 'work') onElapsedWork?.(elapsed);
+        onAdvance();
+    }, [maxReached]);
 
     const remaining = Math.max(0, targetSeconds - elapsed);
     const isWork = phase === 'work';
     const hasRange = workMin && workMax && workMin !== workMax;
+    const cardBg = isWork ? theme.success : theme.danger;
 
     return (
-        <View style={styles.timerContainer}>
+        <View style={[styles.timerContainer, { backgroundColor: cardBg, borderWidth: 0 }]}>
             {isWork ? (
                 <>
-                    <Text style={styles.timerPhaseLabel}>WORK</Text>
+                    <Text style={[styles.timerPhaseLabel, { color: ON_COLOR_MUTED }]}>{phaseLabel ?? 'WORK'}</Text>
                     <Text style={styles.timerDisplay}>{formatTime(remaining)}</Text>
                     {hasRange && minReached && !maxReached && (
-                        <View style={styles.timerBanner}>
-                            <Text style={styles.timerBannerText}>Min time reached — keep going or advance</Text>
+                        <View style={[styles.timerBanner, { backgroundColor: ON_COLOR_BANNER_BG }]}>
+                            <Text style={[styles.timerBannerText, { color: '#fff' }]}>Min time reached — keep going or advance</Text>
                         </View>
                     )}
                     {maxReached && (
-                        <View style={[styles.timerBanner, styles.timerBannerMax]}>
-                            <Text style={styles.timerBannerText}>Max time reached</Text>
+                        <View style={[styles.timerBanner, { backgroundColor: ON_COLOR_BANNER_BG }]}>
+                            <Text style={[styles.timerBannerText, { color: '#fff' }]}>Max time reached</Text>
                         </View>
                     )}
                 </>
             ) : (
                 <>
-                    <Text style={styles.timerPhaseLabel}>REST</Text>
+                    <Text style={[styles.timerPhaseLabel, { color: ON_COLOR_MUTED }]}>{phaseLabel ?? 'REST'}</Text>
                     <Text style={styles.timerDisplay}>{formatTime(remaining)}</Text>
                     {upNextName && (
                         <View style={styles.upNextContainer}>
-                            <Text style={styles.upNextLabel}>UP NEXT</Text>
+                            <Text style={[styles.upNextLabel, { color: ON_COLOR_MUTED }]}>UP NEXT</Text>
                             <Text style={styles.upNextName}>{upNextName}</Text>
                         </View>
                     )}
                     {maxReached && timerMode === 'manual' && (
-                        <View style={styles.timerBanner}>
-                            <Text style={styles.timerBannerText}>Rest done — tap Next when ready</Text>
-                        </View>
+                        <Pressable
+                            style={[styles.timerStartButton, { backgroundColor: '#fff', marginTop: 20 }]}
+                            onPress={onAdvance}
+                            testID="timer-rest-next-button"
+                        >
+                            <Text style={[styles.timerStartText, { color: theme.danger }]}>Next →</Text>
+                        </Pressable>
                     )}
                 </>
             )}
 
             {!started && (
-                <Pressable style={styles.timerStartButton} onPress={() => { setStarted(true); onTimerStart?.(); }}>
-                    <Feather name="play" size={18} color="#000" />
-                    <Text style={styles.timerStartText}>Start</Text>
+                <Pressable style={[styles.timerStartButton, { backgroundColor: '#fff' }]} onPress={() => { setStarted(true); onTimerStart?.(); }}>
+                    <Feather name="play" size={18} color={cardBg} />
+                    <Text style={[styles.timerStartText, { color: cardBg }]}>Start</Text>
                 </Pressable>
             )}
 
             {started && !maxReached && isWork && minReached && (
-                <Pressable style={styles.timerAdvanceButton} onPress={() => {
+                <Pressable style={[styles.timerAdvanceButton, { borderColor: ON_COLOR_MUTED }]} onPress={() => {
                     onElapsedWork?.(elapsed);
                     onAdvance();
                 }}>
-                    <Text style={styles.timerAdvanceText}>Done early</Text>
+                    <Text style={[styles.timerAdvanceText, { color: '#fff' }]}>Done early</Text>
                 </Pressable>
             )}
         </View>
@@ -255,7 +305,7 @@ function ActiveDemoVideo({ streamId, styles }) {
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
 export default function WorkoutActiveScreen({ route, navigation }) {
-    const { workoutData, workoutId, scheduledWorkoutId, scheduledDate, clientEmail: clientEmailParam, viewerIsAthlete } = route.params;
+    const { workoutData, workoutId, scheduledWorkoutId, scheduledDate, clientEmail: clientEmailParam, viewerIsAthlete, sectionOnly = false, startSectionIdx = 0 } = route.params;
     const { user, accessToken, authFetch } = useAuth();
     const { theme } = useTheme();
     const styles = makeStyles(theme);
@@ -264,9 +314,10 @@ export default function WorkoutActiveScreen({ route, navigation }) {
     useFocusEffect(React.useCallback(() => { scrollY.setValue(0); }, [scrollY]));
 
     // ── Cursor ──────────────────────────────────────────────────────────────
-    const [sectionIdx, setSectionIdx] = React.useState(0);
+    const [sectionIdx, setSectionIdx] = React.useState(startSectionIdx);
     const [exerciseIdx, setExerciseIdx] = React.useState(0);
     const [setNum, setSetNum] = React.useState(1);
+    const [currentSide, setCurrentSide] = React.useState(1);
 
     // setsCompleted[exId] = count of sets that have been finished (completed or skipped)
     const [setsCompleted, setSetsCompleted] = React.useState({});
@@ -283,11 +334,13 @@ export default function WorkoutActiveScreen({ route, navigation }) {
     const [weightUnit, setWeightUnit] = React.useState(profileUnit);
     const [otherLoad,  setOtherLoad]  = React.useState('');
     const [elapsedWork, setElapsedWork] = React.useState(null); // for timed exercises
+    const elapsedWorkRef = React.useRef(null); // sync ref so handleTimerAdvance reads current value
 
     // ── Timer ───────────────────────────────────────────────────────────────
     const [timerMode,  setTimerMode]  = React.useState('manual'); // 'auto' | 'manual'
-    const [timerPhase, setTimerPhase] = React.useState('work');   // 'work' | 'rest'
+    const [timerPhase, setTimerPhase] = React.useState('work');   // 'work' | 'rest' | 'side-rest'
     const [timerPaused, setTimerPaused] = React.useState(false);
+    const [autoStartNext, setAutoStartNext] = React.useState(false);
     const timerActiveRef = React.useRef(false);
     const hasSavedSetsRef = React.useRef(false);
 
@@ -296,6 +349,7 @@ export default function WorkoutActiveScreen({ route, navigation }) {
 
     // ── Finish ──────────────────────────────────────────────────────────────
     const [showFinishOverlay, setShowFinishOverlay] = React.useState(false);
+    const [showSectionCompleteModal, setShowSectionCompleteModal] = React.useState(false);
     const [workoutDone, setWorkoutDone] = React.useState(false);
 
     // ── Back-navigation guard ────────────────────────────────────────────────
@@ -328,10 +382,11 @@ export default function WorkoutActiveScreen({ route, navigation }) {
         return unsubscribe;
     }, [navigation, workoutDone]);
 
-    // Reset timer active state when advancing to a new section
+    // Reset timer active state and side when advancing to a new section
     React.useEffect(() => {
         timerActiveRef.current = false;
         setTimerPaused(false);
+        setCurrentSide(1);
     }, [sectionIdx]);
 
     // ── Derived current state ───────────────────────────────────────────────
@@ -499,7 +554,9 @@ export default function WorkoutActiveScreen({ route, navigation }) {
 
     // ── Advance cursor ──────────────────────────────────────────────────────
 
-    function advanceCursor(newSetsCompleted) {
+    // withRest=true: show a rest timer before the next set (default for handleSkip).
+    // withRest=false: cursor has already come from a rest — don't add another one.
+    function advanceCursor(newSetsCompleted, withRest = true) {
         if (!currentSection) return;
 
         if (isCircuit) {
@@ -508,22 +565,20 @@ export default function WorkoutActiveScreen({ route, navigation }) {
                 const nextEx = currentSection.data[nextIdx];
                 setExerciseIdx(nextIdx);
                 setSetNum((newSetsCompleted[nextEx.id] ?? 0) + 1);
-                if (isTimed) setTimerPhase('rest');
+                if (isTimed && withRest) setTimerPhase('rest');
             } else {
                 advanceToNextSection();
             }
         } else {
-            // Non-circuit: exhaust all sets of current exercise first
             if (setNum < totalSets) {
-                const isSameExercise = true; // same exercise, next set
                 setSetNum(setNum + 1);
-                if (isTimed) setTimerPhase(isSameExercise ? 'rest' : 'rest'); // setRest between sets
+                if (isTimed && withRest) setTimerPhase('rest');
             } else {
                 const nextExIdx = exerciseIdx + 1;
                 if (nextExIdx < currentSection.data.length) {
                     setExerciseIdx(nextExIdx);
                     setSetNum(1);
-                    if (isTimed) setTimerPhase('rest');
+                    if (isTimed && withRest) setTimerPhase('rest');
                 } else {
                     advanceToNextSection();
                 }
@@ -532,6 +587,11 @@ export default function WorkoutActiveScreen({ route, navigation }) {
     }
 
     function advanceToNextSection() {
+        if (sectionOnly) {
+            if (accessToken) syncQueue(accessToken);
+            setShowSectionCompleteModal(true);
+            return;
+        }
         const nextSectionIdx = sectionIdx + 1;
         if (nextSectionIdx < workoutData.length) {
             setSectionIdx(nextSectionIdx);
@@ -547,7 +607,24 @@ export default function WorkoutActiveScreen({ route, navigation }) {
     // ── Handle Next ─────────────────────────────────────────────────────────
 
     function handleNext() {
-        recordSet({ skipped: false, actualCount: elapsedWork != null ? String(elapsedWork) : null });
+        // During rest phase: advance cursor (set was already recorded)
+        if (isTimed && timerPhase === 'rest') {
+            const newCompleted = pendingAdvanceRef.current ?? setsCompleted;
+            pendingAdvanceRef.current = null;
+            setTimerPhase('work');
+            setCurrentSide(1);
+            resetSetInputs();
+            advanceCursor(newCompleted, false);
+            return;
+        }
+
+        // Two-sided timed: side 1 transitions to side-rest without recording yet
+        if (isTimed && (currentExercise?.sides ?? 'single') === 'two' && currentSide === 1) {
+            setTimerPhase('side-rest');
+            return;
+        }
+
+        recordSet({ skipped: false, actualCount: elapsedWorkRef.current != null ? String(elapsedWorkRef.current) : null });
 
         const newCompleted = {
             ...setsCompleted,
@@ -555,32 +632,59 @@ export default function WorkoutActiveScreen({ route, navigation }) {
         };
         setSetsCompleted(newCompleted);
         resetSetInputs();
+        setCurrentSide(1);
 
         if (isTimed) {
             setTimerPhase('rest');
         }
-        // For non-timed, advance immediately. For timed, user will advance after rest timer.
         if (!isTimed) {
             advanceCursor(newCompleted);
         } else {
-            // Store pending advance; will fire when rest timer calls onAdvance
             pendingAdvanceRef.current = newCompleted;
         }
     }
 
     const pendingAdvanceRef = React.useRef(null);
 
+    function recordTimedSet() {
+        const elapsedVal = elapsedWorkRef.current;
+        recordSet({ skipped: false, actualCount: elapsedVal != null ? String(elapsedVal) : null });
+        const newCompleted = {
+            ...setsCompleted,
+            [currentExercise.id]: (setsCompleted[currentExercise.id] ?? 0) + 1,
+        };
+        setSetsCompleted(newCompleted);
+        pendingAdvanceRef.current = newCompleted;
+        return newCompleted;
+    }
+
     function handleTimerAdvance() {
+        const isTwoSided = (currentExercise?.sides ?? 'single') === 'two';
+
         if (timerPhase === 'work') {
-            // work phase ended naturally (auto) or user advanced — go to rest
-            setTimerPhase('rest');
+            if (isTwoSided && currentSide === 1) {
+                // Side 1 ends — rest between sides, record happens after side 2
+                setTimerPhase('side-rest');
+            } else {
+                // Single-sided or side 2 — record the set then rest
+                recordTimedSet();
+                setTimerPhase('rest');
+                if (timerMode === 'auto') setAutoStartNext(true);
+            }
+        } else if (timerPhase === 'side-rest') {
+            // Rest between sides done — start side 2 immediately
+            setCurrentSide(2);
+            setTimerPhase('work');
+            setAutoStartNext(true);
         } else {
-            // rest phase ended — actually advance cursor
+            // Post-set rest done — advance cursor (rest already happened, withRest=false)
             const newCompleted = pendingAdvanceRef.current ?? setsCompleted;
             pendingAdvanceRef.current = null;
             setTimerPhase('work');
+            setCurrentSide(1);
             resetSetInputs();
-            advanceCursor(newCompleted);
+            advanceCursor(newCompleted, false);
+            if (timerMode === 'auto') setAutoStartNext(true);
         }
     }
 
@@ -646,6 +750,20 @@ export default function WorkoutActiveScreen({ route, navigation }) {
         }
 
         if (accessToken) syncQueue(accessToken);
+    }
+
+    async function handleBackToSummary() {
+        setShowSectionCompleteModal(false);
+        const localHistory = await getLocalWorkoutHistory(workoutId);
+        const clientEmail  = clientEmailParam ?? user?.email;
+        navigation.navigate('Workout Preview', {
+            id: workoutId,
+            scheduledWorkoutId,
+            scheduledDate,
+            viewerIsAthlete: viewerIsAthlete ?? true,
+            clientEmail,
+            localHistory: Object.keys(localHistory).length > 0 ? localHistory : undefined,
+        });
     }
 
     async function handleBackToPreview() {
@@ -774,22 +892,31 @@ export default function WorkoutActiveScreen({ route, navigation }) {
                     <ActiveDemoVideo streamId={demo.streamId} styles={styles} />
                 )}
 
+                {/* ── Timer mode row (always visible for timed sections) ── */}
+                {isTimed && timerPhase !== 'side-rest' && (
+                    <View style={styles.timerModeRow}>
+                        {['manual', 'auto'].map(m => (
+                            <Pressable
+                                key={m}
+                                style={[styles.modePill, timerMode === m && styles.modePillActive]}
+                                onPress={() => setTimerMode(m)}
+                            >
+                                <Text style={[styles.modePillText, timerMode === m && styles.modePillTextActive]}>
+                                    {m === 'manual' ? 'Manual advance' : 'Auto advance'}
+                                </Text>
+                            </Pressable>
+                        ))}
+                        {timerPhase === 'work' && (currentExercise?.sides ?? 'single') === 'two' && (
+                            <View style={styles.sidePill}>
+                                <Text style={styles.sidePillText}>Side {currentSide} of 2</Text>
+                            </View>
+                        )}
+                    </View>
+                )}
+
                 {/* ── Timer (timed sections only) ── */}
                 {isTimed && timerPhase === 'work' && (
                     <>
-                        <View style={styles.timerModeRow}>
-                            {['manual', 'auto'].map(m => (
-                                <Pressable
-                                    key={m}
-                                    style={[styles.modePill, timerMode === m && styles.modePillActive]}
-                                    onPress={() => setTimerMode(m)}
-                                >
-                                    <Text style={[styles.modePillText, timerMode === m && styles.modePillTextActive]}>
-                                        {m === 'manual' ? 'Manual advance' : 'Auto advance'}
-                                    </Text>
-                                </Pressable>
-                            ))}
-                        </View>
                         <WorkTimer
                             phase="work"
                             workMin={currentExercise.countMin != null ? parseFloat(currentExercise.countMin) : null}
@@ -797,12 +924,30 @@ export default function WorkoutActiveScreen({ route, navigation }) {
                             restSeconds={currentRestSeconds}
                             timerMode={timerMode}
                             upNextName={null}
-                            onElapsedWork={(s) => setElapsedWork(s)}
+                            onElapsedWork={(s) => { elapsedWorkRef.current = s; setElapsedWork(s); }}
                             onAdvance={handleTimerAdvance}
                             paused={timerPaused}
-                            onTimerStart={() => { timerActiveRef.current = true; }}
+                            autoStart={autoStartNext}
+                            onTimerStart={() => { timerActiveRef.current = true; setAutoStartNext(false); }}
                         />
                     </>
+                )}
+
+                {isTimed && timerPhase === 'side-rest' && (
+                    <WorkTimer
+                        phase="rest"
+                        workMin={null}
+                        workMax={null}
+                        restSeconds={parseFloat(currentExercise?.restBetweenSides ?? 5)}
+                        timerMode="auto"
+                        upNextName={`${exerciseName} — Side 2`}
+                        phaseLabel="REST (BETWEEN SIDES)"
+                        onElapsedWork={null}
+                        onAdvance={handleTimerAdvance}
+                        paused={timerPaused}
+                        autoStart={true}
+                        onTimerStart={() => { timerActiveRef.current = true; }}
+                    />
                 )}
 
                 {isTimed && timerPhase === 'rest' && (
@@ -816,12 +961,13 @@ export default function WorkoutActiveScreen({ route, navigation }) {
                         onElapsedWork={null}
                         onAdvance={handleTimerAdvance}
                         paused={timerPaused}
-                        onTimerStart={() => { timerActiveRef.current = true; }}
+                        autoStart={autoStartNext}
+                        onTimerStart={() => { timerActiveRef.current = true; setAutoStartNext(false); }}
                     />
                 )}
 
                 {/* ── Set inputs (shown during work phase or non-timed) ── */}
-                {(!isTimed || timerPhase === 'work') && (
+                {(!isTimed || timerPhase === 'work') && timerPhase !== 'side-rest' && (
                     <View style={styles.setInputsCard}>
                         {/* Weight unit selector */}
                         <View style={styles.unitRow}>
@@ -889,15 +1035,17 @@ export default function WorkoutActiveScreen({ route, navigation }) {
                 )}
 
                 {/* ── Actions ── */}
-                {(!isTimed || timerPhase === 'work') && (
+                {timerPhase !== 'side-rest' && (
                     <View style={styles.actionsRow}>
-                        <Pressable style={styles.skipButton} onPress={handleSkip}>
-                            <Text style={styles.skipButtonText}>Skip exercise</Text>
-                        </Pressable>
+                        {(!isTimed || timerPhase === 'work') && (
+                            <Pressable style={styles.skipButton} onPress={handleSkip}>
+                                <Text style={styles.skipButtonText}>Skip exercise</Text>
+                            </Pressable>
+                        )}
                         <Pressable style={styles.nextButton} onPress={handleNext}>
                             <Text style={styles.nextButtonText}>
-                                {setNum === totalSets && exerciseIdx === currentSection.data.length - 1 && sectionIdx === workoutData.length - 1
-                                    ? 'Finish workout'
+                                {setNum === totalSets && exerciseIdx === currentSection.data.length - 1 && (sectionOnly || sectionIdx === workoutData.length - 1)
+                                    ? (sectionOnly ? 'Finish section' : 'Finish workout')
                                     : 'Next'}
                             </Text>
                             <Feather name="arrow-right" size={18} color="#000" />
@@ -924,6 +1072,11 @@ export default function WorkoutActiveScreen({ route, navigation }) {
                 visible={showFinishOverlay}
                 onDismiss={() => setShowFinishOverlay(false)}
                 onConfirm={handleFinishConfirm}
+            />
+
+            <SectionCompleteModal
+                visible={showSectionCompleteModal}
+                onBackToSummary={handleBackToSummary}
             />
         </KeyboardAvoidingView>
     );
@@ -1021,5 +1174,14 @@ function makeStyles(theme) {
         overlayButtonPrimaryText: { color: '#000', fontWeight: '700', fontSize: 15 },
         overlayButtonSecondary: { flex: 1, borderWidth: 1, borderColor: theme.surfaceBorder, borderRadius: 10, paddingVertical: 14, alignItems: 'center' },
         overlayButtonSecondaryText: { color: theme.textSecondary, fontSize: 15 },
+
+        // ── Section complete ──
+        sectionCompleteCard: { borderColor: theme.success },
+        sectionCompleteButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: theme.success, borderRadius: 12, paddingVertical: 14, paddingHorizontal: 24, width: '100%' },
+        sectionCompleteButtonText: { fontSize: 15, fontWeight: '700', color: '#000' },
+
+        // ── Side indicator ──
+        sidePill: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: theme.success, backgroundColor: 'rgba(123,181,51,0.1)' },
+        sidePillText: { fontSize: 12, color: theme.success, fontWeight: '600' },
     });
 }

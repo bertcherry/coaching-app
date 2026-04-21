@@ -71,21 +71,63 @@ export default function ExerciseCountInput({ exercise, fieldBase, handleChange, 
             )}
 
             {(type === 'Timed' || forceTimed) && (
-                <View style={styles.inputRow}>
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.inputLabel}>Min sec <Text style={styles.req}>*</Text></Text>
-                        <TextInput style={styles.countInput} keyboardType="numeric" placeholder="e.g. 30" placeholderTextColor={theme.inputPlaceholder}
-                            value={exercise.countMin != null ? String(exercise.countMin) : ''}
-                            onChangeText={handleChange(`${f}.countMin`)} onBlur={handleBlur(`${f}.countMin`)} />
+                <>
+                    <View style={styles.inputRow}>
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.inputLabel}>Min sec <Text style={styles.req}>*</Text></Text>
+                            <TextInput style={styles.countInput} keyboardType="numeric" placeholder="e.g. 30" placeholderTextColor={theme.inputPlaceholder}
+                                value={exercise.countMin != null ? String(exercise.countMin) : ''}
+                                onChangeText={handleChange(`${f}.countMin`)} onBlur={handleBlur(`${f}.countMin`)} />
+                        </View>
+                        <Text style={styles.rangeDash}>–</Text>
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.inputLabel}>Max sec</Text>
+                            <TextInput style={[styles.countInput, styles.countInputOptional]} keyboardType="numeric" placeholder="opt." placeholderTextColor={theme.inputPlaceholder}
+                                value={exercise.countMax != null ? String(exercise.countMax) : ''}
+                                onChangeText={handleChange(`${f}.countMax`)} onBlur={handleBlur(`${f}.countMax`)} />
+                        </View>
                     </View>
-                    <Text style={styles.rangeDash}>–</Text>
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.inputLabel}>Max sec</Text>
-                        <TextInput style={[styles.countInput, styles.countInputOptional]} keyboardType="numeric" placeholder="opt." placeholderTextColor={theme.inputPlaceholder}
-                            value={exercise.countMax != null ? String(exercise.countMax) : ''}
-                            onChangeText={handleChange(`${f}.countMax`)} onBlur={handleBlur(`${f}.countMax`)} />
+
+                    {/* Single / Two Sides */}
+                    <View style={styles.sidesRow}>
+                        <Text style={styles.inputLabel}>Sides</Text>
+                        <View style={styles.sidesPickerRow}>
+                            {[{ label: 'Single', value: 'single' }, { label: 'Two Sides', value: 'two' }].map(({ label, value }) => {
+                                const active = (exercise.sides ?? 'single') === value;
+                                return (
+                                    <Pressable
+                                        key={value}
+                                        style={[styles.sidesPill, active && styles.sidesPillActive]}
+                                        onPress={() => {
+                                            setFieldValue(`${f}.sides`, value);
+                                            if (value === 'single') setFieldValue(`${f}.restBetweenSides`, null);
+                                        }}
+                                        testID={`sides-${value}`}
+                                    >
+                                        <Text style={[styles.sidesPillText, active && styles.sidesPillTextActive]}>{label}</Text>
+                                    </Pressable>
+                                );
+                            })}
+                        </View>
                     </View>
-                </View>
+
+                    {(exercise.sides ?? 'single') === 'two' && (
+                        <View style={[styles.inputGroup, { maxWidth: 160, marginBottom: 4 }]}>
+                            <Text style={styles.inputLabel}>Rest between sides (sec) <Text style={styles.req}>*</Text></Text>
+                            <TextInput
+                                style={styles.countInput}
+                                keyboardType="numeric"
+                                placeholder="e.g. 5"
+                                placeholderTextColor={theme.inputPlaceholder}
+                                value={exercise.restBetweenSides != null ? String(exercise.restBetweenSides) : ''}
+                                onChangeText={handleChange(`${f}.restBetweenSides`)}
+                                onBlur={handleBlur(`${f}.restBetweenSides`)}
+                                testID="rest-between-sides-input"
+                            />
+                            <ErrorMessage render={msg => <Text style={styles.errorText}>{msg}</Text>} name={`${f}.restBetweenSides`} />
+                        </View>
+                    )}
+                </>
             )}
 
             {type === 'AMRAP' && (
@@ -103,7 +145,10 @@ export default function ExerciseCountInput({ exercise, fieldBase, handleChange, 
             {type && (
                 <Text style={styles.preview}>
                     {type === 'Reps' && exercise.countMin != null && (exercise.countMax ? `${exercise.countMin}–${exercise.countMax} reps` : `${exercise.countMin} reps`)}
-                    {(type === 'Timed' || forceTimed) && exercise.countMin != null && (exercise.countMax ? `${exercise.countMin}–${exercise.countMax} sec` : `${exercise.countMin} sec`)}
+                    {(type === 'Timed' || forceTimed) && exercise.countMin != null && (
+                        (exercise.countMax ? `${exercise.countMin}–${exercise.countMax} sec` : `${exercise.countMin} sec`) +
+                        ((exercise.sides ?? 'single') === 'two' ? ' × 2 sides' : '')
+                    )}
                     {type === 'AMRAP' && (exercise.timeCapSeconds ? `AMRAP · ${Math.round(exercise.timeCapSeconds / 60)} min cap` : 'AMRAP · no time cap')}
                 </Text>
             )}
@@ -135,5 +180,11 @@ function makeStyles(theme) {
         rangeDash: { color: theme.textTertiary, fontSize: 20, paddingBottom: 8, width: 16, textAlign: 'center' },
         preview: { fontSize: 12, color: theme.success, paddingTop: 4, paddingHorizontal: 2, fontStyle: 'italic' },
         errorText: { fontSize: 12, fontStyle: 'italic', paddingTop: 2, color: theme.accentText },
+        sidesRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
+        sidesPickerRow: { flexDirection: 'row', gap: 6 },
+        sidesPill: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: theme.surfaceBorder, backgroundColor: theme.fieldBackground },
+        sidesPillActive: { borderColor: theme.accent, backgroundColor: theme.accentSubtle ?? 'rgba(251,168,160,0.15)' },
+        sidesPillText: { fontSize: 13, color: theme.textSecondary, fontWeight: '500' },
+        sidesPillTextActive: { color: theme.accentText, fontWeight: '700' },
     });
 }

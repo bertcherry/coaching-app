@@ -43,7 +43,12 @@ jest.mock('../../components/ExerciseSearch', () => {
 
 jest.mock('../../components/ExerciseCountInput', () => {
     const { View } = require('react-native');
-    return () => <View testID="exercise-count-input" />;
+    return ({ forceTimed, exercise }) => (
+        <View
+            testID="exercise-count-input"
+            accessibilityLabel={`forceTimed:${forceTimed} countType:${exercise?.countType}`}
+        />
+    );
 });
 
 jest.mock('../../context/ScrollContext', () => ({
@@ -354,6 +359,64 @@ describe('DateField', () => {
             expect(screen.queryByTestId('date-picker-backdrop')).toBeNull();
             // Date is still set
             expect(screen.getByLabelText('Clear scheduled date')).toBeTruthy();
+        });
+    });
+});
+
+// ─── Timed section toggle ─────────────────────────────────────────────────────
+
+describe('Timed section toggle', () => {
+    it('shows Rep rest and Set rest inputs after enabling timed toggle', async () => {
+        renderScreen();
+        await waitFor(() => screen.getByText('Timed'));
+
+        fireEvent.press(screen.getByText('Timed'));
+
+        await waitFor(() => {
+            expect(screen.getByPlaceholderText('e.g. 30')).toBeTruthy(); // rep rest
+            expect(screen.getByPlaceholderText('e.g. 90')).toBeTruthy(); // set rest
+        });
+    });
+
+    it('sets forceTimed=true on ExerciseCountInput after enabling timed toggle', async () => {
+        renderScreen();
+        await waitFor(() => screen.getByText('Timed'));
+
+        fireEvent.press(screen.getByText('Timed'));
+
+        await waitFor(() => {
+            const input = screen.getByTestId('exercise-count-input');
+            expect(input.props.accessibilityLabel).toContain('forceTimed:true');
+        });
+    });
+
+    it('exercise countType is set to Timed when timed toggle is enabled', async () => {
+        renderScreen();
+        await waitFor(() => screen.getByText('Timed'));
+
+        fireEvent.press(screen.getByText('Timed'));
+
+        await waitFor(() => {
+            const input = screen.getByTestId('exercise-count-input');
+            expect(input.props.accessibilityLabel).toContain('countType:Timed');
+        });
+    });
+
+    it('new exercise added to a timed section has countType=Timed', async () => {
+        renderScreen();
+        await waitFor(() => screen.getByText('Timed'));
+
+        fireEvent.press(screen.getByText('Timed'));
+        await waitFor(() => screen.getByText('Add Exercise'));
+
+        fireEvent.press(screen.getByText('Add Exercise'));
+
+        // Both exercise-count-input elements should have countType:Timed
+        await waitFor(() => {
+            const inputs = screen.getAllByTestId('exercise-count-input');
+            inputs.forEach(input => {
+                expect(input.props.accessibilityLabel).toContain('countType:Timed');
+            });
         });
     });
 });
