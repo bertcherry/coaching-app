@@ -139,7 +139,13 @@ export default function WorkoutPreviewItem({
 
                 <View style={styles.actionButtons}>
                     {hasVideo && !isCompleted && (
-                        <Pressable style={[styles.iconButton, showVideo && styles.iconButtonActive]} onPress={() => setShowVideo(v => !v)}>
+                        <Pressable
+                            style={[styles.iconButton, showVideo && styles.iconButtonActive]}
+                            onPress={() => setShowVideo(v => !v)}
+                            accessibilityRole="button"
+                            accessibilityLabel={showVideo ? `Hide ${displayName} demo video` : `Show ${displayName} demo video`}
+                            accessibilityState={{ expanded: showVideo }}
+                        >
                             <Feather name="film" size={15} color={showVideo ? theme.accentText : theme.surfaceBorder} />
                         </Pressable>
                     )}
@@ -193,7 +199,22 @@ export default function WorkoutPreviewItem({
                 );
             })()}
 
-            {showVideo && hasVideo && !isCompleted && <VideoPlayer streamId={demo.streamId} />}
+            {showVideo && hasVideo && !isCompleted && (
+                <>
+                    <VideoPlayer streamId={demo.streamId} />
+                    {demo.description ? (
+                        <View
+                            style={styles.videoDescriptionContainer}
+                            accessible={true}
+                            accessibilityRole="text"
+                            accessibilityLabel={`Exercise description: ${demo.description}`}
+                            testID="video-description"
+                        >
+                            <Text style={styles.videoDescriptionText}>{demo.description}</Text>
+                        </View>
+                    ) : null}
+                </>
+            )}
 
             {showLogs && (
                 <View style={styles.logsContainer}>
@@ -260,8 +281,10 @@ function makeStyles(theme) {
         coachNotesContainer: { flexDirection: 'row', alignItems: 'flex-start', marginHorizontal: 16, marginBottom: 8, backgroundColor: theme.accentSubtle, borderLeftWidth: 2, borderLeftColor: theme.accent, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 4 },
         coachNotesText:      { fontSize: 13, color: theme.textSecondary, flex: 1, lineHeight: 18, fontStyle: 'italic' },
 
-        videoContainer: { flex: 1, justifyContent: 'center', backgroundColor: theme.background },
-        video:          { alignSelf: 'center', width: 320, height: 200 },
+        videoContainer:            { flex: 1, justifyContent: 'center', backgroundColor: theme.background },
+        video:                     { alignSelf: 'center', width: 320, height: 200 },
+        videoDescriptionContainer: { marginHorizontal: 16, marginTop: 6, marginBottom: 8, paddingHorizontal: 10, paddingVertical: 8, backgroundColor: theme.surface, borderRadius: 6 },
+        videoDescriptionText:      { fontSize: 13, color: theme.textSecondary, lineHeight: 19 },
 
         completedSummary: { marginHorizontal: 16, marginBottom: 8, gap: 4 },
         summaryRow:       { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6, paddingVertical: 3, borderTopWidth: 0.5, borderTopColor: theme.surfaceBorder },

@@ -881,7 +881,13 @@ export default function WorkoutActiveScreen({ route, navigation }) {
 
                 {/* ── Video toggle ── */}
                 {hasVideo && (
-                    <Pressable style={styles.videoToggle} onPress={() => setShowVideo(v => !v)}>
+                    <Pressable
+                        style={styles.videoToggle}
+                        onPress={() => setShowVideo(v => !v)}
+                        accessibilityRole="button"
+                        accessibilityLabel={showVideo ? `Hide ${exerciseName} demo video` : `Show ${exerciseName} demo video`}
+                        accessibilityState={{ expanded: showVideo }}
+                    >
                         <Feather name="film" size={15} color={showVideo ? theme.accentText : theme.textSecondary} />
                         <Text style={[styles.videoToggleText, showVideo && { color: theme.accentText }]}>
                             {showVideo ? 'Hide demo' : 'Show demo'}
@@ -889,7 +895,20 @@ export default function WorkoutActiveScreen({ route, navigation }) {
                     </Pressable>
                 )}
                 {showVideo && hasVideo && (
-                    <ActiveDemoVideo streamId={demo.streamId} styles={styles} />
+                    <>
+                        <ActiveDemoVideo streamId={demo.streamId} styles={styles} />
+                        {demo.description ? (
+                            <View
+                                style={styles.videoDescriptionContainer}
+                                accessible={true}
+                                accessibilityRole="text"
+                                accessibilityLabel={`Exercise description: ${demo.description}`}
+                                testID="video-description"
+                            >
+                                <Text style={styles.videoDescriptionText}>{demo.description}</Text>
+                            </View>
+                        ) : null}
+                    </>
                 )}
 
                 {/* ── Timer mode row (always visible for timed sections) ── */}
@@ -1114,6 +1133,8 @@ function makeStyles(theme) {
         videoToggleText: { fontSize: 13, color: theme.textSecondary },
         videoContainer: { justifyContent: 'center', backgroundColor: theme.background, marginBottom: 12 },
         video: { alignSelf: 'center', width: '100%', height: 220, borderRadius: 8 },
+        videoDescriptionContainer: { paddingHorizontal: 10, paddingVertical: 8, backgroundColor: theme.surface, borderRadius: 6, marginBottom: 12 },
+        videoDescriptionText: { fontSize: 13, color: theme.textSecondary, lineHeight: 19 },
 
         // ── Timer ──
         timerModeRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },

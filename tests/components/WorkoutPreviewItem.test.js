@@ -61,9 +61,10 @@ jest.mock('../../components/SetRow', () => {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const STREAM_ID  = 'abc123stream';
+const STREAM_ID   = 'abc123stream';
 const EXERCISE_ID = 'ex-1';
-const HLS_URL = `https://customer-fp1q3oe31pc8sz6g.cloudflarestream.com/${STREAM_ID}/manifest/video.m3u8`;
+const HLS_URL     = `https://customer-fp1q3oe31pc8sz6g.cloudflarestream.com/${STREAM_ID}/manifest/video.m3u8`;
+const DESCRIPTION = 'Stand with feet hip-width apart and lower until thighs are parallel to the floor.';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -75,6 +76,7 @@ function mockDemoFetch(overrides = {}) {
             name: 'Squat',
             hasVideo: true,
             streamId: STREAM_ID,
+            description: DESCRIPTION,
             ...overrides,
         }),
     });
@@ -266,5 +268,75 @@ describe('WorkoutPreviewItem — set 1 top border', () => {
         expect(screen.queryByTestId('set-row-no-border-3')).toBeNull();
         expect(screen.getByTestId('set-row-2')).toBeTruthy();
         expect(screen.getByTestId('set-row-3')).toBeTruthy();
+    });
+});
+
+// ─── Video description ────────────────────────────────────────────────────────
+
+describe('WorkoutPreviewItem — video description', () => {
+    it('does not show description before the film button is pressed', async () => {
+        render(<WorkoutPreviewItem {...defaultProps()} />);
+        await waitFor(() => screen.getByTestId('icon-film'));
+        expect(screen.queryByTestId('video-description')).toBeNull();
+    });
+
+    it('shows description text after pressing the film button', async () => {
+        render(<WorkoutPreviewItem {...defaultProps()} />);
+        await waitFor(() => screen.getByTestId('icon-film'));
+
+        fireEvent.press(screen.getByTestId('icon-film'));
+
+        await waitFor(() => screen.getByTestId('video-description'));
+        expect(screen.getByText(DESCRIPTION)).toBeTruthy();
+    });
+
+    it('hides description after pressing the film button a second time', async () => {
+        render(<WorkoutPreviewItem {...defaultProps()} />);
+        await waitFor(() => screen.getByTestId('icon-film'));
+
+        fireEvent.press(screen.getByTestId('icon-film'));
+        await waitFor(() => screen.getByTestId('video-description'));
+
+        fireEvent.press(screen.getByTestId('icon-film'));
+        await waitFor(() => expect(screen.queryByTestId('video-description')).toBeNull());
+    });
+
+    it('does not show description when demo has no description', async () => {
+        mockDemoFetch({ description: null });
+        render(<WorkoutPreviewItem {...defaultProps()} />);
+        await waitFor(() => screen.getByTestId('icon-film'));
+
+        fireEvent.press(screen.getByTestId('icon-film'));
+        await waitFor(() => screen.getByTestId('video-player'));
+
+        expect(screen.queryByTestId('video-description')).toBeNull();
+    });
+
+    it('description view has accessible label for screenreaders', async () => {
+        render(<WorkoutPreviewItem {...defaultProps()} />);
+        await waitFor(() => screen.getByTestId('icon-film'));
+
+        fireEvent.press(screen.getByTestId('icon-film'));
+        await waitFor(() => screen.getByTestId('video-description'));
+
+        const descView = screen.getByTestId('video-description');
+        expect(descView.props.accessibilityLabel).toBe(`Exercise description: ${DESCRIPTION}`);
+        expect(descView.props.accessibilityRole).toBe('text');
+    });
+
+    it('film button has accessibilityRole button and correct expanded state', async () => {
+        render(<WorkoutPreviewItem {...defaultProps()} />);
+        await waitFor(() => screen.getByTestId('icon-film'));
+
+        const btn = screen.getByTestId('icon-film').parent;
+        // Find the Pressable by its accessibilityRole
+        const pressable = screen.getByRole('button', { name: /Show Squat demo video/i });
+        expect(pressable).toBeTruthy();
+
+        fireEvent.press(pressable);
+        await waitFor(() => screen.getByTestId('video-player'));
+
+        const pressableExpanded = screen.getByRole('button', { name: /Hide Squat demo video/i });
+        expect(pressableExpanded).toBeTruthy();
     });
 });

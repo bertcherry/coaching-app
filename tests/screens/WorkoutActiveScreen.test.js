@@ -137,8 +137,11 @@ function makeRoute(overrides = {}) {
     };
 }
 
+const DEMO_DESCRIPTION = 'Stand with feet hip-width apart and lower until thighs are parallel to the floor.';
+const STREAM_ID = 'abc123stream';
+
 /** Mock fetch: demos return { id, name, streamId: null }; everything else → {} */
-function mockFetch() {
+function mockFetch({ withVideo = false } = {}) {
     global.fetch = jest.fn((url) => {
         const urlStr = String(url);
         if (urlStr.includes('/demos/')) {
@@ -146,7 +149,12 @@ function mockFetch() {
             const ex = [SECTION_1.data[0], SECTION_1.data[1]].find(e => e.id === id);
             return Promise.resolve({
                 ok: true,
-                json: async () => ({ id, name: ex?.name ?? id, streamId: null }),
+                json: async () => ({
+                    id,
+                    name: ex?.name ?? id,
+                    streamId: withVideo ? STREAM_ID : null,
+                    description: withVideo ? DEMO_DESCRIPTION : null,
+                }),
             });
         }
         return Promise.resolve({ ok: true, json: async () => ({}) });
@@ -161,7 +169,7 @@ beforeEach(() => {
     mockUser = { email: 'client@test.com', isCoach: false, unitDefault: 'imperial' };
     mockAuthFetch.mockResolvedValue({ ok: true, json: async () => ({}) });
     mockGetLocalWorkoutHistory.mockResolvedValue({});
-    mockFetch();
+    mockFetch({ withVideo: false });
     jest.spyOn(Alert, 'alert').mockImplementation(jest.fn());
 });
 
@@ -937,5 +945,103 @@ describe('WorkoutActiveScreen — timer auto-advance mode', () => {
         await waitFor(() => screen.getByText('WORK'));
         // The WORK label being present confirms the work-phase timer card is rendered
         expect(screen.getByText('WORK')).toBeTruthy();
+    });
+});
+
+// ─── Video description ────────────────────────────────────────────────────────
+
+describe('WorkoutActiveScreen — video description', () => {
+    it('does not show description before the demo toggle is pressed', async () => {
+        mockFetch({ withVideo: true });
+        render(<WorkoutActiveScreen navigation={makeNavigation()} route={makeRoute()} />);
+        await waitFor(() => screen.getByText('Show demo'));
+        expect(screen.queryByTestId('video-description')).toBeNull();
+    });
+
+    it('shows description after pressing Show demo', async () => {
+        mockFetch({ withVideo: true });
+        render(<WorkoutActiveScreen navigation={makeNavigation()} route={makeRoute()} />);
+        await waitFor(() => screen.getByText('Show demo'));
+
+        fireEvent.press(screen.getByText('Show demo'));
+
+        await waitFor(() => screen.getByTestId('video-description'));
+        expect(screen.getByText(DEMO_DESCRIPTION)).toBeTruthy();
+    });
+
+    it('hides description after pressing Hide demo', async () => {
+        mockFetch({ withVideo: true });
+        render(<WorkoutActiveScreen navigation={makeNavigation()} route={makeRoute()} />);
+        await waitFor(() => screen.getByText('Show demo'));
+
+        fireEvent.press(screen.getByText('Show demo'));
+        await waitFor(() => screen.getByTestId('video-description'));
+
+        fireEvent.press(screen.getByText('Hide demo'));
+        await waitFor(() => expect(screen.queryByTestId('video-description')).toBeNull());
+    });
+
+    it('does not show description when demo has no description', async () => {
+        global.fetch = jest.fn((url) => {
+            const urlStr = String(url);
+            if (urlStr.includes('/demos/')) {
+                const id = urlStr.split('/demos/')[1];
+                const ex = [SECTION_1.data[0], SECTION_1.data[1]].find(e => e.id === id);
+                return Promise.resolve({
+                    ok: true,
+                    json: async () => ({ id, name: ex?.name ?? id, streamId: STREAM_ID, description: null }),
+                });
+            }
+            return Promise.resolve({ ok: true, json: async () => ({}) });
+        });
+        render(<WorkoutActiveScreen navigation={makeNavigation()} route={makeRoute()} />);
+        await waitFor(() => screen.getByText('Show demo'));
+
+        fireEvent.press(screen.getByText('Show demo'));
+        await waitFor(() => screen.getByText('Hide demo'));
+
+        expect(screen.queryByTestId('video-description')).toBeNull();
+    });
+
+    it('description view has accessible label for screenreaders', async () => {
+        mockFetch({ withVideo: true });
+        render(<WorkoutActiveScreen navigation={makeNavigation()} route={makeRoute()} />);
+        await waitFor(() => screen.getByText('Show demo'));
+
+        fireEvent.press(screen.getByText('Show demo'));
+        await waitFor(() => screen.getByTestId('video-description'));
+
+        const descView = screen.getByTestId('video-description');
+        expect(descView.props.accessibilityLabel).toBe(`Exercise description: ${DEMO_DESCRIPTION}`);
+        expect(descView.props.accessibilityRole).toBe('text');
+    });
+
+    it('toggle button has correct accessibilityRole and expanded state', async () => {
+        mockFetch({ withVideo: true });
+        render(<WorkoutActiveScreen navigation={makeNavigation()} route={makeRoute()} />);
+        await waitFor(() => screen.getByText('Show demo'));
+
+        const showBtn = screen.getByRole('button', { name: /Show Squat demo video/i });
+        expect(showBtn).toBeTruthy();
+
+        fireEvent.press(showBtn);
+        await waitFor(() => screen.getByTestId('video-description'));
+
+        const hideBtn = screen.getByRole('button', { name: /Hide Squat demo video/i });
+        expect(hideBtn).toBeTruthy();
+    });
+
+    it('description is hidden after advancing to the next set (showVideo reset)', async () => {
+        mockFetch({ withVideo: true });
+        render(<WorkoutActiveScreen navigation={makeNavigation()} route={makeRoute()} />);
+        await waitFor(() => screen.getByText('Show demo'));
+
+        fireEvent.press(screen.getByText('Show demo'));
+        await waitFor(() => screen.getByTestId('video-description'));
+
+        fireEvent.press(screen.getByText('Next'));
+        await waitFor(() => screen.getByText('Set 2 of 3'));
+
+        expect(screen.queryByTestId('video-description')).toBeNull();
     });
 });
