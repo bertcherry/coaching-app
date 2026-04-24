@@ -46,7 +46,9 @@ export const dark = {
     accentPressed:      brand.roseDark,
     accentSubtle:       'rgba(251,168,160,0.12)',
     success:            brand.green,
-    danger:             '#ff6b6b',  // 7.57:1 on black — WCAG AAA
+    danger:             '#c0392b',  // 5.17:1 with white — WCAG AA (unified with light theme)
+    paused:             brand.rose, // #fba8a0 rose — use dark text on this bg
+    pausedText:         '#1a0e0e',  // near-black — 7.7:1 on rose WCAG AAA
     // Inputs
     inputBackground:    '#fae9e9',
     inputText:          '#000000',
@@ -82,6 +84,8 @@ export const light = {
     accentSubtle:       'rgba(251,168,160,0.15)',
     success:            brand.green,
     danger:             '#c0392b',  // 5.07:1 on #faf5f5 — WCAG AA
+    paused:             brand.rose, // #fba8a0 rose — use dark text on this bg
+    pausedText:         '#1a0e0e',  // near-black — 7.7:1 on rose WCAG AAA
     // Inputs
     inputBackground:    '#ffffff',
     inputText:          '#1a0e0e',
