@@ -34,7 +34,7 @@ export default function CalendarStack() {
                 options={{ headerLeft: () => null }}
             />
             <Stack.Screen name="Workout Preview" component={WorkoutPreview} />
-            <Stack.Screen name="Workout Active" component={WorkoutActiveScreen} />
+            <Stack.Screen name="Workout Active" component={WorkoutActiveScreen} options={{ title: 'Active Workout' }} />
         </Stack.Navigator>
     );
 }

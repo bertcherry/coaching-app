@@ -507,6 +507,27 @@ export default function WorkoutActiveScreen({ route, navigation }) {
         return demos[next.id]?.name ?? next.name ?? null;
     }
 
+    function upNextInfo() {
+        const nextEx = peekNextExercise();
+        if (!nextEx) return null;
+
+        const isNextNewSection = nextEx === workoutData[sectionIdx + 1]?.data[0];
+        if (sectionOnly && isNextNewSection) return null;
+
+        const name         = demos[nextEx.id]?.name ?? nextEx.name ?? '…';
+        const prescription = formatPrescription(nextEx);
+
+        if (isNextNewSection) {
+            const display = prescription ? `New Section - ${name}, ${prescription}` : `New Section - ${name}`;
+            return { text: display, accessLabel: `Up next: New Section, ${name}${prescription ? `, ${prescription}` : ''}` };
+        }
+
+        const isSameExercise = nextEx === currentExercise;
+        const nextSetNum     = isSameExercise ? setNum + 1 : (setsCompleted[nextEx.id] ?? 0) + 1;
+        const display        = prescription ? `${name} Set ${nextSetNum}, ${prescription}` : `${name} Set ${nextSetNum}`;
+        return { text: display, accessLabel: `Up next: ${display}` };
+    }
+
     // ── Record a set to history ─────────────────────────────────────────────
 
     function recordSet({ skipped = false, actualCount = null } = {}) {
@@ -1053,6 +1074,24 @@ export default function WorkoutActiveScreen({ route, navigation }) {
                     </View>
                 )}
 
+                {/* ── Up Next ── */}
+                {timerPhase !== 'side-rest' && (() => {
+                    const info = upNextInfo();
+                    if (!info) return null;
+                    return (
+                        <View
+                            style={styles.upNextBanner}
+                            accessible={true}
+                            accessibilityRole="text"
+                            accessibilityLabel={info.accessLabel}
+                            testID="up-next-banner"
+                        >
+                            <Text style={styles.upNextBannerLabel}>UP NEXT</Text>
+                            <Text style={styles.upNextBannerText} numberOfLines={1}>{info.text}</Text>
+                        </View>
+                    );
+                })()}
+
                 {/* ── Actions ── */}
                 {timerPhase !== 'side-rest' && (
                     <View style={styles.actionsRow}>
@@ -1168,6 +1207,11 @@ function makeStyles(theme) {
         inputLabel: { fontSize: 10, color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4, textAlign: 'center' },
         input: { width: '100%', height: 44, borderWidth: 1, borderColor: theme.surfaceBorder, borderRadius: 8, backgroundColor: theme.surfaceElevated, color: theme.textPrimary, textAlign: 'center', fontSize: 16 },
         noteInput: { borderWidth: 1, borderColor: theme.surfaceBorder, borderRadius: 8, backgroundColor: theme.surfaceElevated, color: theme.textPrimary, padding: 10, fontSize: 14, minHeight: 44 },
+
+        // ── Up Next banner ──
+        upNextBanner:      { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: theme.surfaceElevated, borderRadius: 8, marginBottom: 10, borderWidth: 0.5, borderColor: theme.surfaceBorder },
+        upNextBannerLabel: { fontSize: 10, fontWeight: '700', color: theme.textTertiary, letterSpacing: 1, textTransform: 'uppercase' },
+        upNextBannerText:  { fontSize: 13, color: theme.textSecondary, flex: 1 },
 
         // ── Actions ──
         actionsRow: { flexDirection: 'row', gap: 12 },

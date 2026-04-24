@@ -1045,3 +1045,132 @@ describe('WorkoutActiveScreen — video description', () => {
         expect(screen.queryByTestId('video-description')).toBeNull();
     });
 });
+
+// ─── Up Next banner ───────────────────────────────────────────────────────────
+
+const TWO_SECTION_WORKOUT = [
+    {
+        title: 'Section 1', circuit: false, timed: false,
+        data: [{
+            id: 'ex-a', name: 'Squat',
+            setsMin: 1, setsMax: null,
+            countType: 'Reps', countMin: 5, countMax: null,
+            recommendedWeight: null, recommendedRpe: null,
+            coachNotes: null, setConfigs: null,
+        }],
+    },
+    {
+        title: 'Section 2', circuit: false, timed: false,
+        data: [{
+            id: 'ex-b', name: 'Front Plank Hold',
+            setsMin: 1, setsMax: null,
+            countType: 'Timed', countMin: 30, countMax: null,
+            recommendedWeight: null, recommendedRpe: null,
+            coachNotes: null, setConfigs: null,
+        }],
+    },
+];
+
+function mockFetchForExercises(exercises) {
+    global.fetch = jest.fn((url) => {
+        const urlStr = String(url);
+        if (urlStr.includes('/demos/')) {
+            const id = urlStr.split('/demos/')[1];
+            const ex = exercises.find(e => e.id === id);
+            return Promise.resolve({
+                ok: true,
+                json: async () => ({ id, name: ex?.name ?? id, streamId: null, description: null }),
+            });
+        }
+        return Promise.resolve({ ok: true, json: async () => ({}) });
+    });
+}
+
+describe('WorkoutActiveScreen — Up Next banner', () => {
+    it('shows Up Next banner with same exercise and next set number when more sets remain', async () => {
+        render(<WorkoutActiveScreen navigation={makeNavigation()} route={makeRoute()} />);
+        await waitFor(() => screen.getByText('Set 1 of 3'));
+
+        await waitFor(() => expect(screen.getByTestId('up-next-banner')).toBeTruthy());
+        expect(screen.getByText('Squat Set 2, 5 reps')).toBeTruthy();
+    });
+
+    it('updates Up Next set number as sets advance', async () => {
+        render(<WorkoutActiveScreen navigation={makeNavigation()} route={makeRoute()} />);
+        await waitFor(() => screen.getByText('Set 1 of 3'));
+
+        fireEvent.press(screen.getByText('Next'));
+        await waitFor(() => screen.getByText('Set 2 of 3'));
+
+        expect(screen.getByText('Squat Set 3, 5 reps')).toBeTruthy();
+    });
+
+    it('shows next different exercise with Set 1 when on last set of current exercise', async () => {
+        render(<WorkoutActiveScreen navigation={makeNavigation()} route={makeRoute()} />);
+        await waitFor(() => screen.getByText('Set 1 of 3'));
+
+        fireEvent.press(screen.getByText('Next'));
+        await waitFor(() => screen.getByText('Set 2 of 3'));
+        fireEvent.press(screen.getByText('Next'));
+        await waitFor(() => screen.getByText('Set 3 of 3'));
+
+        await waitFor(() => expect(screen.getByTestId('up-next-banner')).toBeTruthy());
+        expect(screen.getByText('Deadlift Set 1, 3 reps')).toBeTruthy();
+    });
+
+    it('banner has accessible label for screenreaders', async () => {
+        render(<WorkoutActiveScreen navigation={makeNavigation()} route={makeRoute()} />);
+        await waitFor(() => screen.getByText('Set 1 of 3'));
+
+        const banner = await waitFor(() => screen.getByTestId('up-next-banner'));
+        expect(banner.props.accessibilityLabel).toBe('Up next: Squat Set 2, 5 reps');
+        expect(banner.props.accessibilityRole).toBe('text');
+    });
+
+    it('hides Up Next banner on last exercise of last section (end of workout)', async () => {
+        render(<WorkoutActiveScreen navigation={makeNavigation()} route={makeRoute()} />);
+        await waitFor(() => screen.getByText('Set 1 of 3'));
+
+        // Complete Squat (3 sets), advance to Deadlift set 2 (last)
+        fireEvent.press(screen.getByText('Next'));
+        await waitFor(() => screen.getByText('Set 2 of 3'));
+        fireEvent.press(screen.getByText('Next'));
+        await waitFor(() => screen.getByText('Set 3 of 3'));
+        fireEvent.press(screen.getByText('Next'));
+        await waitFor(() => screen.getByText('Deadlift'));
+        fireEvent.press(screen.getByText('Next'));
+        await waitFor(() => screen.getByText('Set 2 of 2'));
+
+        expect(screen.queryByTestId('up-next-banner')).toBeNull();
+    });
+
+    it('shows "New Section - [name], [prescription]" when next exercise is in a new section (full workout mode)', async () => {
+        mockFetchForExercises([...TWO_SECTION_WORKOUT[0].data, ...TWO_SECTION_WORKOUT[1].data]);
+        render(<WorkoutActiveScreen navigation={makeNavigation()} route={makeRoute({ workoutData: TWO_SECTION_WORKOUT })} />);
+        await waitFor(() => screen.getByText('Squat'));
+
+        await waitFor(() => expect(screen.getByTestId('up-next-banner')).toBeTruthy());
+        expect(screen.getByText('New Section - Front Plank Hold, 30 sec')).toBeTruthy();
+    });
+
+    it('cross-section banner accessible label reads section, exercise name, and prescription', async () => {
+        mockFetchForExercises([...TWO_SECTION_WORKOUT[0].data, ...TWO_SECTION_WORKOUT[1].data]);
+        render(<WorkoutActiveScreen navigation={makeNavigation()} route={makeRoute({ workoutData: TWO_SECTION_WORKOUT })} />);
+        await waitFor(() => screen.getByText('Squat'));
+
+        const banner = await waitFor(() => screen.getByTestId('up-next-banner'));
+        expect(banner.props.accessibilityLabel).toBe('Up next: New Section, Front Plank Hold, 30 sec');
+    });
+
+    it('hides Up Next banner when sectionOnly=true and on last exercise', async () => {
+        mockFetchForExercises([...TWO_SECTION_WORKOUT[0].data, ...TWO_SECTION_WORKOUT[1].data]);
+        render(<WorkoutActiveScreen navigation={makeNavigation()} route={makeRoute({
+            workoutData: TWO_SECTION_WORKOUT,
+            sectionOnly: true,
+            startSectionIdx: 0,
+        })} />);
+        await waitFor(() => screen.getByText('Squat'));
+
+        expect(screen.queryByTestId('up-next-banner')).toBeNull();
+    });
+});
