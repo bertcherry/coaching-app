@@ -48,6 +48,7 @@ jest.mock('../../components/WorkoutPreviewItem', () => {
         name, id, setsMin, setsMax, readOnly,
         coachNotes, recommendedWeight, recommendedRpe,
         isCompleted, completedHistory, onSetSaved,
+        initialShowVideo,
     }) {
         const sets = setsMax ?? setsMin ?? 1;
         // Simulate which logged sets are available from completedHistory
@@ -55,7 +56,7 @@ jest.mock('../../components/WorkoutPreviewItem', () => {
             ? Array.from({ length: sets }, (_, i) => i + 1).filter(n => completedHistory[`${id}-${n}`])
             : [];
         return (
-            <View testID="workout-preview-item">
+            <View testID="workout-preview-item" accessibilityHint={initialShowVideo ? 'details-default-open' : 'details-default-closed'}>
                 <Text testID="exercise-name">{name}</Text>
                 {/* Coach notes hidden when completed */}
                 {coachNotes && !isCompleted ? <Text testID="coach-notes">{coachNotes}</Text> : null}
@@ -123,6 +124,11 @@ jest.mock('../../context/ThemeContext', () => ({
 }));
 jest.mock('../../context/ScrollContext', () => ({
     useScrollY: () => ({ setValue: jest.fn() }),
+}));
+
+let mockPreviewDetailsDefault = false;
+jest.mock('../../context/WorkoutDisplayContext', () => ({
+    useWorkoutDisplay: () => ({ previewDetailsDefault: mockPreviewDetailsDefault }),
 }));
 
 jest.mock('../../utils/WorkoutSync', () => ({
@@ -201,6 +207,7 @@ import WorkoutPreview from '../../screens/WorkoutPreview';
 beforeEach(() => {
     jest.clearAllMocks();
     mockBeforeRemoveListener = null;
+    mockPreviewDetailsDefault = false;
     mockUser = { email: 'client@test.com', isCoach: false, unitDefault: 'imperial' };
     mockAuthFetch.mockResolvedValue({ ok: true, json: async () => ({}) });
     mockWorkoutFetch();
@@ -750,3 +757,29 @@ describe('WorkoutPreview — Run section button', () => {
         });
     });
 });
+
+// ─── previewDetailsDefault — initialShowVideo prop ────────────────────────────
+
+describe('WorkoutPreview — previewDetailsDefault', () => {
+    it('passes initialShowVideo=false to items when previewDetailsDefault=false', async () => {
+        render(<WorkoutPreview navigation={makeNavigation()} route={makeRoute()} />);
+        await waitFor(() => screen.getAllByTestId('workout-preview-item'));
+
+        const items = screen.getAllByTestId('workout-preview-item');
+        items.forEach(item => {
+            expect(item.props.accessibilityHint).toBe('details-default-closed');
+        });
+    });
+
+    it('passes initialShowVideo=true to items when previewDetailsDefault=true', async () => {
+        mockPreviewDetailsDefault = true;
+        render(<WorkoutPreview navigation={makeNavigation()} route={makeRoute()} />);
+        await waitFor(() => screen.getAllByTestId('workout-preview-item'));
+
+        const items = screen.getAllByTestId('workout-preview-item');
+        items.forEach(item => {
+            expect(item.props.accessibilityHint).toBe('details-default-open');
+        });
+    });
+});
+

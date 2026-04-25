@@ -9,6 +9,7 @@ import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { ScrollProvider } from './context/ScrollContext';
 import { NotificationsProvider } from './context/NotificationsContext';
+import { WorkoutDisplayProvider } from './context/WorkoutDisplayContext';
 import RootNavigator from './screens/navigation/RootNavigator';
 
 function ThemedApp() {
@@ -32,11 +33,13 @@ function ThemedApp() {
 export default function App() {
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <NotificationsProvider>
-          <ThemedApp />
-        </NotificationsProvider>
-      </AuthProvider>
+      <WorkoutDisplayProvider>
+        <AuthProvider>
+          <NotificationsProvider>
+            <ThemedApp />
+          </NotificationsProvider>
+        </AuthProvider>
+      </WorkoutDisplayProvider>
     </ThemeProvider>
   );
 }

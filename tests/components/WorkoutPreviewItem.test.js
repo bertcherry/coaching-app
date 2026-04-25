@@ -340,3 +340,66 @@ describe('WorkoutPreviewItem — video description', () => {
         expect(pressableExpanded).toBeTruthy();
     });
 });
+
+// ─── initialShowVideo prop ────────────────────────────────────────────────────
+
+describe('WorkoutPreviewItem — initialShowVideo', () => {
+    it('shows video and description immediately when initialShowVideo=true', async () => {
+        render(<WorkoutPreviewItem {...defaultProps({ initialShowVideo: true })} />);
+        await waitFor(() => screen.getByTestId('video-player'));
+        expect(screen.getByTestId('video-description')).toBeTruthy();
+    });
+
+    it('does NOT call p.play() (no autoplay) when initially open via initialShowVideo', async () => {
+        render(<WorkoutPreviewItem {...defaultProps({ initialShowVideo: true })} />);
+        await waitFor(() => screen.getByTestId('video-player'));
+
+        const setupFn = mockUseVideoPlayer.mock.calls[0][1];
+        const mockPlayer = { play: jest.fn() };
+        setupFn(mockPlayer);
+
+        expect(mockPlayer.play).not.toHaveBeenCalled();
+    });
+
+    it('calls p.play() (autoplay) when user manually opens video with initialShowVideo=false', async () => {
+        render(<WorkoutPreviewItem {...defaultProps()} />);
+        await waitFor(() => screen.getByTestId('icon-film'));
+
+        fireEvent.press(screen.getByTestId('icon-film'));
+        await waitFor(() => screen.getByTestId('video-player'));
+
+        const setupFn = mockUseVideoPlayer.mock.calls[0][1];
+        const mockPlayer = { play: jest.fn() };
+        setupFn(mockPlayer);
+
+        expect(mockPlayer.play).toHaveBeenCalled();
+    });
+
+    it('calls p.play() when user closes and reopens a default-open video', async () => {
+        render(<WorkoutPreviewItem {...defaultProps({ initialShowVideo: true })} />);
+        await waitFor(() => screen.getByTestId('video-player'));
+
+        // close
+        fireEvent.press(screen.getByRole('button', { name: /Hide Squat demo video/i }));
+        await waitFor(() => expect(screen.queryByTestId('video-player')).toBeNull());
+
+        // reopen — now user-initiated so autoplay should be true
+        fireEvent.press(screen.getByRole('button', { name: /Show Squat demo video/i }));
+        await waitFor(() => screen.getByTestId('video-player'));
+
+        const lastCall = mockUseVideoPlayer.mock.calls[mockUseVideoPlayer.mock.calls.length - 1];
+        const setupFn = lastCall[1];
+        const mockPlayer = { play: jest.fn() };
+        setupFn(mockPlayer);
+
+        expect(mockPlayer.play).toHaveBeenCalled();
+    });
+
+    it('hides video after pressing film button when initialShowVideo=true', async () => {
+        render(<WorkoutPreviewItem {...defaultProps({ initialShowVideo: true })} />);
+        await waitFor(() => screen.getByTestId('video-player'));
+
+        fireEvent.press(screen.getByRole('button', { name: /Hide Squat demo video/i }));
+        await waitFor(() => expect(screen.queryByTestId('video-player')).toBeNull());
+    });
+});

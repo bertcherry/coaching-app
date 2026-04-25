@@ -11,13 +11,13 @@ function streamUrl(streamId) {
     return `https://customer-fp1q3oe31pc8sz6g.cloudflarestream.com/${streamId}/manifest/video.m3u8`;
 }
 
-const VideoPlayer = ({ streamId }) => {
+const VideoPlayer = ({ streamId, autoplay = true }) => {
     const { theme } = useTheme();
     const styles = makeStyles(theme);
     const player = useVideoPlayer({ uri: streamUrl(streamId) }, p => {
         p.loop = true;
         p.muted = true;
-        p.play();
+        if (autoplay) p.play();
     });
     return (
         <View style={styles.videoContainer}>
@@ -48,13 +48,16 @@ export default function WorkoutPreviewItem({
     readOnly,         // when true: hides the log-sets button (edit icon)
     isCompleted,      // workout is completed — show summary, hide video
     completedHistory, // map of `${exerciseId}-${setNumber}` → history record
+    initialShowVideo = false, // from WorkoutDisplayContext — default open without autoplay
 }) {
     const { theme } = useTheme();
     const styles = makeStyles(theme);
     const [demo,         setDemo]         = React.useState(null);
     const [loading,      setLoading]      = React.useState(true);
     const [showLogs,     setShowLogs]     = React.useState(false);
-    const [showVideo,    setShowVideo]    = React.useState(false);
+    const [showVideo,    setShowVideo]    = React.useState(initialShowVideo);
+    // false = no autoplay when default-open; becomes true on first user-initiated open
+    const [videoAutoplay, setVideoAutoplay] = React.useState(false);
     const [savedSetNums, setSavedSetNums] = React.useState(() => new Set());
 
     // Close log panel when readOnly becomes true (e.g. leaving edit mode)
@@ -141,7 +144,10 @@ export default function WorkoutPreviewItem({
                     {hasVideo && !isCompleted && (
                         <Pressable
                             style={[styles.iconButton, showVideo && styles.iconButtonActive]}
-                            onPress={() => setShowVideo(v => !v)}
+                            onPress={() => {
+                                if (!showVideo) setVideoAutoplay(true);
+                                setShowVideo(v => !v);
+                            }}
                             accessibilityRole="button"
                             accessibilityLabel={showVideo ? `Hide ${displayName} demo video` : `Show ${displayName} demo video`}
                             accessibilityState={{ expanded: showVideo }}
@@ -201,7 +207,7 @@ export default function WorkoutPreviewItem({
 
             {showVideo && hasVideo && !isCompleted && (
                 <>
-                    <VideoPlayer streamId={demo.streamId} />
+                    <VideoPlayer streamId={demo.streamId} autoplay={videoAutoplay} />
                     {demo.description ? (
                         <View
                             style={styles.videoDescriptionContainer}

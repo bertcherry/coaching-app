@@ -24,10 +24,13 @@ jest.mock('@expo/vector-icons/Feather', () => {
     return ({ name }) => <View testID={`icon-${name}`} />;
 });
 
-jest.mock('expo-video', () => ({
-    VideoView: () => null,
-    useVideoPlayer: () => ({}),
-}));
+const mockUseVideoPlayer = jest.fn(() => ({}));
+jest.mock('expo-video', () => {
+    return {
+        VideoView: () => null,
+        useVideoPlayer: (...args) => mockUseVideoPlayer(...args),
+    };
+});
 
 jest.mock('react-native-reanimated', () => ({
     default: { View: require('react-native').View },
@@ -76,6 +79,15 @@ jest.mock('../../context/ThemeContext', () => ({
 }));
 jest.mock('../../context/ScrollContext', () => ({
     useScrollY: () => ({ setValue: jest.fn() }),
+}));
+
+let mockActiveDetailsDefault  = false;
+let mockActiveAutoplaysDefault = false;
+jest.mock('../../context/WorkoutDisplayContext', () => ({
+    useWorkoutDisplay: () => ({
+        activeDetailsDefault:   mockActiveDetailsDefault,
+        activeAutoplaysDefault: mockActiveAutoplaysDefault,
+    }),
 }));
 
 const mockEnqueueRecord = jest.fn();
@@ -167,6 +179,9 @@ import WorkoutActiveScreen from '../../screens/WorkoutActiveScreen';
 beforeEach(() => {
     jest.clearAllMocks();
     mockBeforeRemoveListener = null;
+    mockActiveDetailsDefault   = false;
+    mockActiveAutoplaysDefault = true;
+    mockUseVideoPlayer.mockReturnValue({});
     mockUser = { email: 'client@test.com', isCoach: false, unitDefault: 'imperial' };
     mockAuthFetch.mockResolvedValue({ ok: true, json: async () => ({}) });
     mockGetLocalWorkoutHistory.mockResolvedValue({});
@@ -1056,6 +1071,140 @@ describe('WorkoutActiveScreen — video description', () => {
         await waitFor(() => screen.getByText('Set 2 of 3'));
 
         expect(screen.queryByTestId('video-description')).toBeNull();
+    });
+});
+
+// ─── activeDetailsDefault setting ────────────────────────────────────────────
+
+describe('WorkoutActiveScreen — activeDetailsDefault', () => {
+    it('hides demo video by default when activeDetailsDefault=false', async () => {
+        mockFetch({ withVideo: true });
+        render(<WorkoutActiveScreen navigation={makeNavigation()} route={makeRoute()} />);
+        await waitFor(() => screen.getByText('Show demo'));
+        expect(screen.queryByTestId('video-description')).toBeNull();
+    });
+
+    it('shows demo video on mount when activeDetailsDefault=true', async () => {
+        mockActiveDetailsDefault = true;
+        mockFetch({ withVideo: true });
+        render(<WorkoutActiveScreen navigation={makeNavigation()} route={makeRoute()} />);
+        await waitFor(() => screen.getByText('Hide demo'));
+        expect(screen.getByTestId('video-description')).toBeTruthy();
+    });
+
+    it('shows "Hide demo" label on mount when activeDetailsDefault=true', async () => {
+        mockActiveDetailsDefault = true;
+        mockFetch({ withVideo: true });
+        render(<WorkoutActiveScreen navigation={makeNavigation()} route={makeRoute()} />);
+        await waitFor(() => expect(screen.getByText('Hide demo')).toBeTruthy());
+    });
+
+    it('video remains visible after advancing to next set when activeDetailsDefault=true', async () => {
+        mockActiveDetailsDefault = true;
+        mockFetch({ withVideo: true });
+        render(<WorkoutActiveScreen navigation={makeNavigation()} route={makeRoute()} />);
+        await waitFor(() => screen.getByText('Hide demo'));
+
+        fireEvent.press(screen.getByText('Next'));
+        await waitFor(() => screen.getByText('Set 2 of 3'));
+
+        expect(screen.getByTestId('video-description')).toBeTruthy();
+        expect(screen.getByText('Hide demo')).toBeTruthy();
+    });
+
+    it('hides video after pressing Hide demo when activeDetailsDefault=true', async () => {
+        mockActiveDetailsDefault = true;
+        mockFetch({ withVideo: true });
+        render(<WorkoutActiveScreen navigation={makeNavigation()} route={makeRoute()} />);
+        await waitFor(() => screen.getByText('Hide demo'));
+
+        fireEvent.press(screen.getByText('Hide demo'));
+        await waitFor(() => expect(screen.queryByTestId('video-description')).toBeNull());
+        expect(screen.getByText('Show demo')).toBeTruthy();
+    });
+
+    it('video resets to hidden on next set when activeDetailsDefault=false even if user opened it', async () => {
+        mockFetch({ withVideo: true });
+        render(<WorkoutActiveScreen navigation={makeNavigation()} route={makeRoute()} />);
+        await waitFor(() => screen.getByText('Show demo'));
+
+        fireEvent.press(screen.getByText('Show demo'));
+        await waitFor(() => screen.getByText('Hide demo'));
+
+        fireEvent.press(screen.getByText('Next'));
+        await waitFor(() => screen.getByText('Set 2 of 3'));
+
+        expect(screen.queryByTestId('video-description')).toBeNull();
+        expect(screen.getByText('Show demo')).toBeTruthy();
+    });
+});
+
+// ─── activeAutoplaysDefault setting ──────────────────────────────────────────
+// activeAutoplaysDefault only governs demos that open via the default-expand setting.
+// Demos opened manually by the user always autoplay regardless of this setting.
+
+describe('WorkoutActiveScreen — activeAutoplaysDefault', () => {
+    it('calls p.play() when default-expanded and activeAutoplaysDefault=true (default)', async () => {
+        mockActiveDetailsDefault  = true;
+        mockActiveAutoplaysDefault = true;
+        mockFetch({ withVideo: true });
+        render(<WorkoutActiveScreen navigation={makeNavigation()} route={makeRoute()} />);
+        await waitFor(() => screen.getByText('Hide demo'));
+
+        const setupFn = mockUseVideoPlayer.mock.calls[0]?.[1];
+        expect(setupFn).toBeDefined();
+        const mockPlayer = { play: jest.fn() };
+        setupFn(mockPlayer);
+        expect(mockPlayer.play).toHaveBeenCalled();
+    });
+
+    it('does not call p.play() when default-expanded and activeAutoplaysDefault=false', async () => {
+        mockActiveDetailsDefault  = true;
+        mockActiveAutoplaysDefault = false;
+        mockFetch({ withVideo: true });
+        render(<WorkoutActiveScreen navigation={makeNavigation()} route={makeRoute()} />);
+        await waitFor(() => screen.getByText('Hide demo'));
+
+        const setupFn = mockUseVideoPlayer.mock.calls[0]?.[1];
+        expect(setupFn).toBeDefined();
+        const mockPlayer = { play: jest.fn() };
+        setupFn(mockPlayer);
+        expect(mockPlayer.play).not.toHaveBeenCalled();
+    });
+
+    it('always calls p.play() when user manually opens video, even if activeAutoplaysDefault=false', async () => {
+        mockActiveAutoplaysDefault = false;
+        mockFetch({ withVideo: true });
+        render(<WorkoutActiveScreen navigation={makeNavigation()} route={makeRoute()} />);
+        await waitFor(() => screen.getByText('Show demo'));
+
+        fireEvent.press(screen.getByText('Show demo'));
+        await waitFor(() => screen.getByText('Hide demo'));
+
+        const setupFn = mockUseVideoPlayer.mock.calls[0]?.[1];
+        expect(setupFn).toBeDefined();
+        const mockPlayer = { play: jest.fn() };
+        setupFn(mockPlayer);
+        expect(mockPlayer.play).toHaveBeenCalled();
+    });
+
+    it('resets to default-expand autoplay behavior after advancing to next set', async () => {
+        mockActiveDetailsDefault  = true;
+        mockActiveAutoplaysDefault = false;
+        mockFetch({ withVideo: true });
+        render(<WorkoutActiveScreen navigation={makeNavigation()} route={makeRoute()} />);
+        await waitFor(() => screen.getByText('Hide demo'));
+
+        // Advance — video re-opens via default-expand, autoplay=false
+        fireEvent.press(screen.getByText('Next'));
+        await waitFor(() => screen.getByText('Set 2 of 3'));
+
+        const lastCall = mockUseVideoPlayer.mock.calls[mockUseVideoPlayer.mock.calls.length - 1];
+        const setupFn = lastCall?.[1];
+        expect(setupFn).toBeDefined();
+        const mockPlayer = { play: jest.fn() };
+        setupFn(mockPlayer);
+        expect(mockPlayer.play).not.toHaveBeenCalled();
     });
 });
 

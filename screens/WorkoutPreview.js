@@ -10,6 +10,7 @@ import { useHeaderHeight } from '@react-navigation/elements';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useScrollY } from '../context/ScrollContext';
+import { useWorkoutDisplay } from '../context/WorkoutDisplayContext';
 import { enqueueRecord, syncQueue } from '../utils/WorkoutSync';
 import SetRow from '../components/SetRow';
 import WorkoutPreviewItem from '../components/WorkoutPreviewItem';
@@ -459,6 +460,7 @@ export default function WorkoutPreview({ route, navigation }) {
     const { theme } = useTheme();
     const styles = makeStyles(theme);
     const scrollY = useScrollY();
+    const { previewDetailsDefault } = useWorkoutDisplay();
     const headerHeight = useHeaderHeight();
 
     // The email of the athlete whose history we display/fetch
@@ -702,6 +704,7 @@ export default function WorkoutPreview({ route, navigation }) {
             readOnly={!loggingEnabled}
             isCompleted={workoutStatus === 'completed'}
             completedHistory={completedHistory}
+            initialShowVideo={previewDetailsDefault}
         />
     );
 

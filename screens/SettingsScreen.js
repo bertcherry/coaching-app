@@ -22,6 +22,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../context/ThemeContext';
 import { useScrollY } from '../context/ScrollContext';
 import { useAuth } from '../context/AuthContext';
+import { useWorkoutDisplay } from '../context/WorkoutDisplayContext';
 import { CALENDAR_VIEW_KEY } from '../screens/CalendarScreen';
 
 const WORKER_URL = 'https://coaching-app.bert-m-cherry.workers.dev';
@@ -108,6 +109,31 @@ const notifRowStyles = StyleSheet.create({
     pill:        { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5 },
     pillLabel:   { fontSize: 12, fontWeight: '600' },
 });
+
+// ─── Toggle row ───────────────────────────────────────────────────────────────
+
+const ToggleRow = ({ icon, label, value, onToggle, theme, last = false, disabled = false }) => (
+    <Pressable
+        style={[
+            styles.row,
+            { backgroundColor: theme.surface, borderBottomColor: theme.divider },
+            last && styles.rowLast,
+            disabled && { opacity: 0.4 },
+        ]}
+        onPress={() => { if (!disabled) onToggle(!value); }}
+        accessibilityRole="switch"
+        accessibilityLabel={label}
+        accessibilityState={{ checked: value, disabled }}
+    >
+        <View style={[styles.rowIcon, { backgroundColor: theme.accentSubtle }]}>
+            <Feather name={icon} size={18} color={theme.accent} />
+        </View>
+        <Text style={[styles.rowLabel, { color: theme.textPrimary }]}>{label}</Text>
+        <View style={[styles.toggleTrack, { backgroundColor: value ? theme.accent : theme.surfaceBorder }]}>
+            <View style={[styles.toggleKnob, { transform: [{ translateX: value ? 14 : 2 }] }]} />
+        </View>
+    </Pressable>
+);
 
 // ─── Theme picker ─────────────────────────────────────────────────────────────
 
@@ -303,6 +329,7 @@ export default function SettingsScreen() {
     const scrollY = useScrollY();
     useFocusEffect(React.useCallback(() => { scrollY.setValue(0); }, [scrollY]));
     const { user, authFetch, signOut } = useAuth();
+    const { previewDetailsDefault, activeDetailsDefault, activeAutoplaysDefault, setPreviewDetailsDefault, setActiveDetailsDefault, setActiveAutoplaysDefault } = useWorkoutDisplay();
 
     const [loading, setLoading] = React.useState(false);
 
@@ -571,6 +598,31 @@ export default function SettingsScreen() {
                         value={unitLabel}
                         onPress={() => setShowUnitPicker(true)}
                         theme={theme}
+                    />
+                    <ToggleRow
+                        icon="film"
+                        label="Expand exercise demos by default in workout summary"
+                        value={previewDetailsDefault}
+                        onToggle={setPreviewDetailsDefault}
+                        theme={theme}
+                    />
+                    <ToggleRow
+                        icon="play-circle"
+                        label="Expand exercise demos during active workout"
+                        value={activeDetailsDefault}
+                        onToggle={(value) => {
+                            setActiveDetailsDefault(value);
+                            if (!value) setActiveAutoplaysDefault(true);
+                        }}
+                        theme={theme}
+                    />
+                    <ToggleRow
+                        icon="play"
+                        label="Autoplay exercise demos during workout"
+                        value={activeAutoplaysDefault}
+                        onToggle={setActiveAutoplaysDefault}
+                        theme={theme}
+                        disabled={!activeDetailsDefault}
                         last
                     />
                 </View>
@@ -698,6 +750,8 @@ const styles = StyleSheet.create({
     },
     row:     { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 0.5, minHeight: 56 },
     rowLast: { borderBottomWidth: 0 },
+    toggleTrack: { width: 36, height: 20, borderRadius: 10, justifyContent: 'center' },
+    toggleKnob:  { width: 16, height: 16, borderRadius: 8, backgroundColor: '#fff' },
     rowIcon: { width: 32, height: 32, borderRadius: 8, justifyContent: 'center', alignItems: 'center', marginRight: 14 },
     rowLabel:{ flex: 1, fontSize: 15 },
     rowRight:{ flexDirection: 'row', alignItems: 'center', gap: 8 },

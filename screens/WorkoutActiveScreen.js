@@ -31,6 +31,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { useTheme } from '../context/ThemeContext';
 import { useScrollY } from '../context/ScrollContext';
+import { useWorkoutDisplay } from '../context/WorkoutDisplayContext';
 import { enqueueRecord, syncQueue, getLocalWorkoutHistory } from '../utils/WorkoutSync';
 import 'react-native-get-random-values';
 import { v4 as uuidv4 } from 'uuid';
@@ -332,10 +333,10 @@ const WorkTimer = ({ phase, workMin, workMax, restSeconds, timerMode, upNextName
 
 const CF_STREAM = 'https://customer-fp1q3oe31pc8sz6g.cloudflarestream.com';
 
-function ActiveDemoVideo({ streamId, styles }) {
+function ActiveDemoVideo({ streamId, styles, autoplay = true }) {
     const player = useVideoPlayer(
         { uri: `${CF_STREAM}/${streamId}/manifest/video.m3u8` },
-        p => { p.loop = true; p.muted = true; p.play(); }
+        p => { p.loop = true; p.muted = true; if (autoplay) p.play(); }
     );
     return (
         <View style={styles.videoContainer}>
@@ -353,6 +354,7 @@ export default function WorkoutActiveScreen({ route, navigation }) {
     const styles = makeStyles(theme);
     const scrollY = useScrollY();
     const headerHeight = useHeaderHeight();
+    const { activeDetailsDefault, activeAutoplaysDefault } = useWorkoutDisplay();
     useFocusEffect(React.useCallback(() => { scrollY.setValue(0); }, [scrollY]));
 
     // ── Cursor ──────────────────────────────────────────────────────────────
@@ -388,7 +390,10 @@ export default function WorkoutActiveScreen({ route, navigation }) {
     const hasSavedSetsRef = React.useRef(false);
 
     // ── Video ───────────────────────────────────────────────────────────────
-    const [showVideo, setShowVideo] = React.useState(false);
+    const [showVideo, setShowVideo] = React.useState(activeDetailsDefault);
+    // true when the current visible video was opened by the user (not auto-expanded);
+    // user-triggered opens always autoplay regardless of activeAutoplaysDefault
+    const [videoUserTriggered, setVideoUserTriggered] = React.useState(false);
 
     // ── Finish ──────────────────────────────────────────────────────────────
     const [showFinishOverlay, setShowFinishOverlay] = React.useState(false);
@@ -614,7 +619,8 @@ export default function WorkoutActiveScreen({ route, navigation }) {
         setElapsedWork(null);
         elapsedWorkRef.current = null;
         side1ElapsedRef.current = null;
-        setShowVideo(false);
+        setShowVideo(activeDetailsDefault);
+        setVideoUserTriggered(false);
         // weightUnit intentionally preserved
     }
 
@@ -981,7 +987,10 @@ export default function WorkoutActiveScreen({ route, navigation }) {
                 {hasVideo && (
                     <Pressable
                         style={styles.videoToggle}
-                        onPress={() => setShowVideo(v => !v)}
+                        onPress={() => {
+                            if (!showVideo) setVideoUserTriggered(true);
+                            setShowVideo(v => !v);
+                        }}
                         accessibilityRole="button"
                         accessibilityLabel={showVideo ? `Hide ${exerciseName} demo video` : `Show ${exerciseName} demo video`}
                         accessibilityState={{ expanded: showVideo }}
@@ -994,7 +1003,7 @@ export default function WorkoutActiveScreen({ route, navigation }) {
                 )}
                 {showVideo && hasVideo && (
                     <>
-                        <ActiveDemoVideo streamId={demo.streamId} styles={styles} />
+                        <ActiveDemoVideo streamId={demo.streamId} styles={styles} autoplay={videoUserTriggered ? true : activeAutoplaysDefault} />
                         {demo.description ? (
                             <View
                                 style={styles.videoDescriptionContainer}

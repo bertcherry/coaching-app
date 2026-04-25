@@ -62,6 +62,23 @@ jest.mock('../../context/AuthContext', () => ({
     useAuth: () => ({ user: mockUser, authFetch: mockAuthFetch, signOut: mockSignOut }),
 }));
 
+let mockPreviewDefault   = false;
+let mockActiveDefault    = false;
+let mockAutoplaysDefault = true;
+const mockSetPreviewDefault   = jest.fn();
+const mockSetActiveDefault    = jest.fn();
+const mockSetAutoplaysDefault = jest.fn();
+jest.mock('../../context/WorkoutDisplayContext', () => ({
+    useWorkoutDisplay: () => ({
+        previewDetailsDefault:    mockPreviewDefault,
+        activeDetailsDefault:     mockActiveDefault,
+        activeAutoplaysDefault:   mockAutoplaysDefault,
+        setPreviewDetailsDefault:  mockSetPreviewDefault,
+        setActiveDetailsDefault:   mockSetActiveDefault,
+        setActiveAutoplaysDefault: mockSetAutoplaysDefault,
+    }),
+}));
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function mockNotifSettingsResponse(settings = null) {
@@ -74,6 +91,9 @@ function mockNotifSettingsResponse(settings = null) {
 beforeEach(() => {
     jest.clearAllMocks();
     jest.spyOn(Alert, 'alert').mockImplementation(jest.fn());
+    mockPreviewDefault   = false;
+    mockActiveDefault    = false;
+    mockAutoplaysDefault = true;
     mockUser = {
         sub: 'client@example.com', email: 'client@example.com',
         fname: 'Jane', lname: 'Doe', isCoach: false, unitDefault: 'imperial',
@@ -309,5 +329,156 @@ describe('SettingsScreen — calendar view', () => {
         await waitFor(() => {
             expect(AsyncStorage.getItem).toHaveBeenCalledWith('calendar_view_preference');
         });
+    });
+});
+
+// ─── Workout display toggles ─────────────────────────────────────────────────
+
+describe('SettingsScreen — workout display toggles', () => {
+    it('renders the Workout Summary details toggle', async () => {
+        render(<SettingsScreen />);
+        await waitFor(() =>
+            expect(screen.getByLabelText('Expand exercise demos by default in workout summary')).toBeTruthy()
+        );
+    });
+
+    it('renders the Active Workout details toggle', async () => {
+        render(<SettingsScreen />);
+        await waitFor(() =>
+            expect(screen.getByLabelText('Expand exercise demos during active workout')).toBeTruthy()
+        );
+    });
+
+    it('summary toggle reflects previewDetailsDefault=false (unchecked)', async () => {
+        render(<SettingsScreen />);
+        await waitFor(() => screen.getByLabelText('Expand exercise demos by default in workout summary'));
+        const toggle = screen.getByLabelText('Expand exercise demos by default in workout summary');
+        expect(toggle.props.accessibilityState.checked).toBe(false);
+    });
+
+    it('summary toggle reflects previewDetailsDefault=true (checked)', async () => {
+        mockPreviewDefault = true;
+        render(<SettingsScreen />);
+        await waitFor(() => screen.getByLabelText('Expand exercise demos by default in workout summary'));
+        const toggle = screen.getByLabelText('Expand exercise demos by default in workout summary');
+        expect(toggle.props.accessibilityState.checked).toBe(true);
+    });
+
+    it('active toggle reflects activeDetailsDefault=false (unchecked)', async () => {
+        render(<SettingsScreen />);
+        await waitFor(() => screen.getByLabelText('Expand exercise demos during active workout'));
+        const toggle = screen.getByLabelText('Expand exercise demos during active workout');
+        expect(toggle.props.accessibilityState.checked).toBe(false);
+    });
+
+    it('active toggle reflects activeDetailsDefault=true (checked)', async () => {
+        mockActiveDefault = true;
+        render(<SettingsScreen />);
+        await waitFor(() => screen.getByLabelText('Expand exercise demos during active workout'));
+        const toggle = screen.getByLabelText('Expand exercise demos during active workout');
+        expect(toggle.props.accessibilityState.checked).toBe(true);
+    });
+
+    it('pressing summary toggle calls setPreviewDetailsDefault(true) when off', async () => {
+        render(<SettingsScreen />);
+        await waitFor(() => screen.getByLabelText('Expand exercise demos by default in workout summary'));
+        fireEvent.press(screen.getByLabelText('Expand exercise demos by default in workout summary'));
+        expect(mockSetPreviewDefault).toHaveBeenCalledWith(true);
+    });
+
+    it('pressing summary toggle calls setPreviewDetailsDefault(false) when on', async () => {
+        mockPreviewDefault = true;
+        render(<SettingsScreen />);
+        await waitFor(() => screen.getByLabelText('Expand exercise demos by default in workout summary'));
+        fireEvent.press(screen.getByLabelText('Expand exercise demos by default in workout summary'));
+        expect(mockSetPreviewDefault).toHaveBeenCalledWith(false);
+    });
+
+    it('pressing active toggle calls setActiveDetailsDefault(true) when off', async () => {
+        render(<SettingsScreen />);
+        await waitFor(() => screen.getByLabelText('Expand exercise demos during active workout'));
+        fireEvent.press(screen.getByLabelText('Expand exercise demos during active workout'));
+        expect(mockSetActiveDefault).toHaveBeenCalledWith(true);
+    });
+
+    it('pressing active toggle calls setActiveDetailsDefault(false) when on', async () => {
+        mockActiveDefault = true;
+        render(<SettingsScreen />);
+        await waitFor(() => screen.getByLabelText('Expand exercise demos during active workout'));
+        fireEvent.press(screen.getByLabelText('Expand exercise demos during active workout'));
+        expect(mockSetActiveDefault).toHaveBeenCalledWith(false);
+    });
+
+    it('turning expand off resets autoplay to true', async () => {
+        mockActiveDefault    = true;
+        mockAutoplaysDefault = false;
+        render(<SettingsScreen />);
+        await waitFor(() => screen.getByLabelText('Expand exercise demos during active workout'));
+        fireEvent.press(screen.getByLabelText('Expand exercise demos during active workout'));
+        expect(mockSetAutoplaysDefault).toHaveBeenCalledWith(true);
+    });
+
+    it('turning expand on does not reset autoplay', async () => {
+        render(<SettingsScreen />);
+        await waitFor(() => screen.getByLabelText('Expand exercise demos during active workout'));
+        fireEvent.press(screen.getByLabelText('Expand exercise demos during active workout'));
+        expect(mockSetAutoplaysDefault).not.toHaveBeenCalled();
+    });
+
+    it('renders the autoplay toggle', async () => {
+        render(<SettingsScreen />);
+        await waitFor(() =>
+            expect(screen.getByLabelText('Autoplay exercise demos during workout')).toBeTruthy()
+        );
+    });
+
+    it('autoplay toggle reflects activeAutoplaysDefault=true (checked by default)', async () => {
+        render(<SettingsScreen />);
+        await waitFor(() => screen.getByLabelText('Autoplay exercise demos during workout'));
+        expect(screen.getByLabelText('Autoplay exercise demos during workout').props.accessibilityState.checked).toBe(true);
+    });
+
+    it('autoplay toggle reflects activeAutoplaysDefault=false (unchecked)', async () => {
+        mockAutoplaysDefault = false;
+        render(<SettingsScreen />);
+        await waitFor(() => screen.getByLabelText('Autoplay exercise demos during workout'));
+        expect(screen.getByLabelText('Autoplay exercise demos during workout').props.accessibilityState.checked).toBe(false);
+    });
+
+    it('autoplay toggle is disabled when activeDetailsDefault=false', async () => {
+        render(<SettingsScreen />);
+        await waitFor(() => screen.getByLabelText('Autoplay exercise demos during workout'));
+        expect(screen.getByLabelText('Autoplay exercise demos during workout').props.accessibilityState.disabled).toBe(true);
+    });
+
+    it('autoplay toggle is enabled when activeDetailsDefault=true', async () => {
+        mockActiveDefault = true;
+        render(<SettingsScreen />);
+        await waitFor(() => screen.getByLabelText('Autoplay exercise demos during workout'));
+        expect(screen.getByLabelText('Autoplay exercise demos during workout').props.accessibilityState.disabled).toBe(false);
+    });
+
+    it('pressing disabled autoplay toggle does not call setter', async () => {
+        render(<SettingsScreen />);
+        await waitFor(() => screen.getByLabelText('Autoplay exercise demos during workout'));
+        fireEvent.press(screen.getByLabelText('Autoplay exercise demos during workout'));
+        expect(mockSetAutoplaysDefault).not.toHaveBeenCalled();
+    });
+
+    it('pressing autoplay toggle calls setActiveAutoplaysDefault(false) when on (default)', async () => {
+        mockActiveDefault = true; // must be enabled for toggle to be pressable
+        render(<SettingsScreen />);
+        await waitFor(() => screen.getByLabelText('Autoplay exercise demos during workout'));
+        fireEvent.press(screen.getByLabelText('Autoplay exercise demos during workout'));
+        expect(mockSetAutoplaysDefault).toHaveBeenCalledWith(false);
+    });
+
+    it('pressing autoplay toggle calls setActiveAutoplaysDefault(true) when off', async () => {
+        mockActiveDefault    = true;
+        mockAutoplaysDefault = false;
+        render(<SettingsScreen />);
+        await waitFor(() => screen.getByLabelText('Autoplay exercise demos during workout'));
+        fireEvent.press(screen.getByLabelText('Autoplay exercise demos during workout'));
+        expect(mockSetAutoplaysDefault).toHaveBeenCalledWith(true);
     });
 });
