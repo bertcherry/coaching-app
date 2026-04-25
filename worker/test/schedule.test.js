@@ -371,32 +371,33 @@ describe('POST /workouts/save', () => {
     };
 
     it('saves a new workout and returns 200', async () => {
-        const res = await handleSaveWorkout(post('/workouts/save', WORKOUT_PAYLOAD), env);
+        const tok = await coachToken();
+        const res = await handleSaveWorkout(post('/workouts/save', WORKOUT_PAYLOAD, tok), env);
         expect(res.status).toBe(200);
         const body = await res.json();
         expect(body.id).toBe('wk-test-1');
     });
 
     it('re-saving the same id (after a failed schedule/assign) returns 200, not an error', async () => {
-        // First save — succeeds
-        await handleSaveWorkout(post('/workouts/save', WORKOUT_PAYLOAD), env);
-
-        // Second save with same id (simulates user retrying after a failed schedule/assign)
-        const res = await handleSaveWorkout(post('/workouts/save', WORKOUT_PAYLOAD), env);
+        const tok = await coachToken();
+        await handleSaveWorkout(post('/workouts/save', WORKOUT_PAYLOAD, tok), env);
+        const res = await handleSaveWorkout(post('/workouts/save', WORKOUT_PAYLOAD, tok), env);
         expect(res.status).toBe(200);
         const body = await res.json();
         expect(body.id).toBe('wk-test-1');
     });
 
     it('re-save updates the workout name in the DB', async () => {
-        await handleSaveWorkout(post('/workouts/save', WORKOUT_PAYLOAD), env);
-        await handleSaveWorkout(post('/workouts/save', { ...WORKOUT_PAYLOAD, workoutName: 'Updated Name' }), env);
+        const tok = await coachToken();
+        await handleSaveWorkout(post('/workouts/save', WORKOUT_PAYLOAD, tok), env);
+        await handleSaveWorkout(post('/workouts/save', { ...WORKOUT_PAYLOAD, workoutName: 'Updated Name' }, tok), env);
         const row = await env.DB.prepare('SELECT workoutName FROM workouts WHERE id = ?').bind('wk-test-1').first();
         expect(row.workoutName).toBe('Updated Name');
     });
 
     it('returns 400 when id is missing', async () => {
-        const res = await handleSaveWorkout(post('/workouts/save', { workoutName: 'No ID', data: [] }), env);
+        const tok = await coachToken();
+        const res = await handleSaveWorkout(post('/workouts/save', { workoutName: 'No ID', data: [] }, tok), env);
         expect(res.status).toBe(400);
     });
 });

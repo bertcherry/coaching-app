@@ -823,9 +823,34 @@ export default function CreateWorkout({ navigation, route }) {
     const prefillClientName     = route?.params?.clientName   ?? null;
     const prefillClientTimezone = route?.params?.clientTimezone ?? null;
     const prefillDate           = route?.params?.scheduledDate ?? null;
-    const prefillWorkout        = route?.params?.workoutData  ?? null;
+    const prefillWorkout          = route?.params?.workoutData          ?? null;
+    const editMode                = route?.params?.editMode              ?? false;
+    const editWorkoutId           = route?.params?.workoutId             ?? null;
+    const editScheduledWorkoutId  = route?.params?.scheduledWorkoutId    ?? null;
+    const editInitialStatus       = route?.params?.initialStatus         ?? null;
+
+    React.useEffect(() => {
+        navigation.setOptions({ title: editMode ? 'Edit Workout' : 'Create Workout' });
+    }, [editMode]);
 
     const [showToast, setShowToast] = React.useState(false);
+    const [editLoading, setEditLoading] = React.useState(editMode && !prefillWorkout?.data);
+    const [fetchedSections, setFetchedSections] = React.useState(null);
+
+    React.useEffect(() => {
+        if (!editMode || prefillWorkout?.data || !editWorkoutId) return;
+        (async () => {
+            try {
+                const res = await fetch(`${WORKER_URL}/${editWorkoutId}`);
+                if (!res.ok) throw new Error();
+                setFetchedSections(await res.json());
+            } catch {
+                Alert.alert('Error', 'Could not load workout data.');
+            } finally {
+                setEditLoading(false);
+            }
+        })();
+    }, []);
 
     // ── Drag state ────────────────────────────────────────────────────────
     const [dragState,         setDragState]         = React.useState(null);
@@ -904,16 +929,19 @@ export default function CreateWorkout({ navigation, route }) {
 
     // ── Migration ─────────────────────────────────────────────────────────
     const migrateEx = (ex) => ({ ...emptyExercise(), ...ex, setsMin: ex.setsMin??ex.sets??null, setsMax: ex.setsMax??null, sets: undefined, sides: ex.sides??null, restBetweenSides: ex.restBetweenSides??null });
-    const makeInitialValues = () => ({
-        id: uuid.v4(),
-        workoutName: prefillWorkout?.workoutName ?? '',
-        clientEmail: prefillClient, clientName: prefillClientName,
-        clientTimezone: prefillClientTimezone,
-        scheduledDate: prefillDate ?? null,
-        data: prefillWorkout?.data
-            ? prefillWorkout.data.map(s => ({ ...s, data: s.data.map(migrateEx) }))
-            : [{ timed: false, circuit: true, data: [emptyExercise()] }],
-    });
+    const makeInitialValues = () => {
+        const sections = prefillWorkout?.data ?? fetchedSections;
+        return {
+            id: editMode && editWorkoutId ? editWorkoutId : uuid.v4(),
+            workoutName: prefillWorkout?.workoutName ?? '',
+            clientEmail: prefillClient, clientName: prefillClientName,
+            clientTimezone: prefillClientTimezone,
+            scheduledDate: prefillDate ?? null,
+            data: sections
+                ? sections.map(s => ({ ...s, data: s.data.map(migrateEx) }))
+                : [{ timed: false, circuit: true, data: [emptyExercise()] }],
+        };
+    };
 
     const handleSave = async (values) => {
         try {
@@ -937,24 +965,38 @@ export default function CreateWorkout({ navigation, route }) {
                         }
                     }
                 }
-                const schedRes = await authFetch(`${WORKER_URL}/schedule/assign`, {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ clientEmail: values.clientEmail, workoutId: values.id, workoutName: values.workoutName, scheduledDate: values.scheduledDate ?? null }),
-                });
-                if (!schedRes.ok) {
-                    let errMsg = 'Workout saved but could not schedule.';
-                    try {
-                        const errBody = await schedRes.json();
-                        if (errBody?.error) errMsg = errBody.error;
-                    } catch {}
-                    console.error('[schedule/assign] status:', schedRes.status, errMsg);
-                    Alert.alert('Error', errMsg);
-                    return;
+                if (!editMode) {
+                    const schedRes = await authFetch(`${WORKER_URL}/schedule/assign`, {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ clientEmail: values.clientEmail, workoutId: values.id, workoutName: values.workoutName, scheduledDate: values.scheduledDate ?? null }),
+                    });
+                    if (!schedRes.ok) {
+                        let errMsg = 'Workout saved but could not schedule.';
+                        try {
+                            const errBody = await schedRes.json();
+                            if (errBody?.error) errMsg = errBody.error;
+                        } catch {}
+                        console.error('[schedule/assign] status:', schedRes.status, errMsg);
+                        Alert.alert('Error', errMsg);
+                        return;
+                    }
                 }
             }
 
             setShowToast(true);
-            if (values.clientEmail) {
+            if (editMode) {
+                navigation.navigate('Workout Preview', {
+                    id: values.id,
+                    scheduledWorkoutId: editScheduledWorkoutId ?? null,
+                    scheduledDate: values.scheduledDate ?? null,
+                    initialStatus: editInitialStatus ?? 'scheduled',
+                    viewerIsAthlete: false,
+                    clientEmail: values.clientEmail ?? null,
+                    clientName: values.clientName ?? null,
+                    clientTimezone: values.clientTimezone ?? null,
+                    workoutName: values.workoutName,
+                });
+            } else if (values.clientEmail) {
                 navigation.navigate('My Calendar', {
                     screen: 'Calendar',
                     params: {
@@ -969,6 +1011,12 @@ export default function CreateWorkout({ navigation, route }) {
             }
         } catch (e) { Alert.alert('Error', 'Network error.'); console.error(e); }
     };
+
+    if (editLoading) return (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.background }}>
+            <ActivityIndicator size="large" color={theme.accent} />
+        </View>
+    );
 
     return (
         <KeyboardAvoidingView style={{ flex: 1, backgroundColor: theme.background }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={headerHeight}>

@@ -58,13 +58,18 @@ function todayForTimezone(tz) {
 // ─── Workout handlers (unchanged) ─────────────────────────────────────────────
 
 export async function handleSaveWorkout(request, env) {
+    try { await requireAuth(request, env); } catch (e) { return e; }
     const body = await request.json();
     const { id, workoutName, createdBy, data } = body;
     if (!id || !data) return json({ error: 'id and data are required' }, 400);
     const success = (await env.DB.prepare(
         'INSERT OR REPLACE INTO workouts (id, data, workoutName, createdBy) VALUES (?, ?, ?, ?)'
     ).bind(id, JSON.stringify(data), workoutName ?? null, createdBy ?? null).run()).success;
-    return success ? json({ message: 'Workout saved', id }) : json({ error: 'Failed to save workout' }, 400);
+    if (!success) return json({ error: 'Failed to save workout' }, 400);
+    await env.DB.prepare(
+        'UPDATE scheduled_workouts SET workoutName = ? WHERE workoutId = ?'
+    ).bind(workoutName ?? null, id).run();
+    return json({ message: 'Workout saved', id });
 }
 
 async function handleGetWorkout(id, env) {

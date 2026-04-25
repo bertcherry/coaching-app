@@ -453,12 +453,13 @@ const DeleteConfirmModal = ({ workout, onClose, onConfirm }) => {
     );
 };
 
-const WorkoutActionSheet = ({ workout, onClose, onSkip, onCopy, onMove, onDelete }) => {
+const WorkoutActionSheet = ({ workout, isCoach, onClose, onSkip, onCopy, onMove, onEdit, onDelete }) => {
     const { theme } = useTheme();
     const styles = makeStyles(theme);
     const dateDisplay = isMonthOnly(workout.scheduledDate)
         ? formatMonthOnly(workout.scheduledDate)
         : friendlyDate(workout.scheduledDate);
+    const notCompleted = workout.status !== 'completed';
     return (
     <Modal
         transparent
@@ -485,59 +486,47 @@ const WorkoutActionSheet = ({ workout, onClose, onSkip, onCopy, onMove, onDelete
                 <Text style={styles.sheetTitle}>{workout.workoutName}</Text>
                 <Text style={styles.sheetDate}>{dateDisplay}</Text>
 
-                {workout.status === 'completed' ? (
+                {workout.status === 'completed' && (
                     <View style={styles.sheetCompleted} accessible accessibilityLabel="Workout completed">
                         <Feather name="check-circle" size={18} color={theme.success} accessible={false} />
                         <Text style={styles.sheetCompletedText}>This workout has been completed.</Text>
                     </View>
-                ) : (
-                    <>
-                        <Pressable
-                            style={styles.sheetAction}
-                            onPress={() => { onSkip(); }}
-                            accessibilityRole="button"
-                            accessibilityLabel="Skip workout"
-                            accessibilityHint="Mark this workout as skipped with an optional reason"
-                        >
-                            <Feather name="slash" size={20} color={theme.textPrimary} accessible={false} />
-                            <View style={styles.sheetActionTextBlock}>
-                                <Text style={styles.sheetActionText}>Skip</Text>
-                                <Text style={styles.sheetActionSub}>Mark as skipped with optional reason</Text>
-                            </View>
-                        </Pressable>
+                )}
 
-                        <Pressable
-                            style={styles.sheetAction}
-                            onPress={() => { onMove(); }}
-                            accessibilityRole="button"
-                            accessibilityLabel="Move workout to a different date"
-                        >
-                            <Feather name="calendar" size={20} color={theme.textPrimary} accessible={false} />
-                            <View style={styles.sheetActionTextBlock}>
-                                <Text style={styles.sheetActionText}>Move</Text>
-                                <Text style={styles.sheetActionSub}>Reschedule to a different date</Text>
-                            </View>
-                        </Pressable>
+                {notCompleted && (
+                    <Pressable
+                        style={styles.sheetAction}
+                        onPress={onSkip}
+                        accessibilityRole="button"
+                        accessibilityLabel="Skip workout"
+                        accessibilityHint="Mark this workout as skipped with an optional reason"
+                    >
+                        <Feather name="slash" size={20} color={theme.textPrimary} accessible={false} />
+                        <View style={styles.sheetActionTextBlock}>
+                            <Text style={styles.sheetActionText}>Skip</Text>
+                            <Text style={styles.sheetActionSub}>Mark as skipped with optional reason</Text>
+                        </View>
+                    </Pressable>
+                )}
 
-                        <Pressable
-                            style={styles.sheetAction}
-                            onPress={() => { onDelete(); }}
-                            accessibilityRole="button"
-                            accessibilityLabel="Delete workout"
-                            accessibilityHint="Permanently remove this workout from the schedule"
-                        >
-                            <Feather name="trash-2" size={20} color={theme.danger} accessible={false} />
-                            <View style={styles.sheetActionTextBlock}>
-                                <Text style={[styles.sheetActionText, { color: theme.danger }]}>Delete</Text>
-                                <Text style={styles.sheetActionSub}>Permanently remove from schedule</Text>
-                            </View>
-                        </Pressable>
-                    </>
+                {notCompleted && (
+                    <Pressable
+                        style={styles.sheetAction}
+                        onPress={onMove}
+                        accessibilityRole="button"
+                        accessibilityLabel="Move workout to a different date"
+                    >
+                        <Feather name="calendar" size={20} color={theme.textPrimary} accessible={false} />
+                        <View style={styles.sheetActionTextBlock}>
+                            <Text style={styles.sheetActionText}>Move</Text>
+                            <Text style={styles.sheetActionSub}>Reschedule to a different date</Text>
+                        </View>
+                    </Pressable>
                 )}
 
                 <Pressable
                     style={styles.sheetAction}
-                    onPress={() => { onCopy(); }}
+                    onPress={onCopy}
                     accessibilityRole="button"
                     accessibilityLabel="Copy workout to another date"
                 >
@@ -547,6 +536,37 @@ const WorkoutActionSheet = ({ workout, onClose, onSkip, onCopy, onMove, onDelete
                         <Text style={styles.sheetActionSub}>Duplicate on a different day</Text>
                     </View>
                 </Pressable>
+
+                {isCoach && notCompleted && (
+                    <Pressable
+                        style={styles.sheetAction}
+                        onPress={onEdit}
+                        accessibilityRole="button"
+                        accessibilityLabel="Edit workout"
+                    >
+                        <Feather name="edit-2" size={20} color={theme.textPrimary} accessible={false} />
+                        <View style={styles.sheetActionTextBlock}>
+                            <Text style={styles.sheetActionText}>Edit Workout</Text>
+                            <Text style={styles.sheetActionSub}>Change exercises, sets, or structure</Text>
+                        </View>
+                    </Pressable>
+                )}
+
+                {notCompleted && (
+                    <Pressable
+                        style={styles.sheetAction}
+                        onPress={onDelete}
+                        accessibilityRole="button"
+                        accessibilityLabel="Delete workout"
+                        accessibilityHint="Permanently remove this workout from the schedule"
+                    >
+                        <Feather name="trash-2" size={20} color={theme.danger} accessible={false} />
+                        <View style={styles.sheetActionTextBlock}>
+                            <Text style={[styles.sheetActionText, { color: theme.danger }]}>Delete</Text>
+                            <Text style={styles.sheetActionSub}>Permanently remove from schedule</Text>
+                        </View>
+                    </Pressable>
+                )}
 
                 <Pressable
                     style={styles.sheetCancel}
@@ -1367,6 +1387,8 @@ export default function CalendarScreen({ navigation, route }) {
             initialStatus: workout.status,
             viewerIsAthlete: isViewingOwnCalendar,
             clientEmail: workout.clientEmail ?? clientEmail,
+            clientName,
+            clientTimezone,
             workoutName: workout.workoutName,
         });
     };
@@ -1838,10 +1860,26 @@ export default function CalendarScreen({ navigation, route }) {
             ) : actionWorkout ? (
                 <WorkoutActionSheet
                     workout={actionWorkout}
+                    isCoach={isCoach}
                     onClose={() => setActionWorkout(null)}
                     onSkip={() => { const w = actionWorkout; setActionWorkout(null); setSkipWorkout(w); }}
                     onCopy={() => { const w = actionWorkout; setActionWorkout(null); setCopyWorkout(w); }}
                     onMove={() => { const w = actionWorkout; setActionWorkout(null); setMoveWorkout(w); }}
+                    onEdit={() => {
+                        const w = actionWorkout;
+                        setActionWorkout(null);
+                        navigation.navigate('Create Workout', {
+                            editMode: true,
+                            workoutId: w.workoutId,
+                            scheduledWorkoutId: w.id,
+                            initialStatus: w.status,
+                            workoutData: { workoutName: w.workoutName, data: null },
+                            clientEmail: w.clientEmail ?? clientEmail,
+                            clientName,
+                            clientTimezone,
+                            scheduledDate: w.scheduledDate ?? null,
+                        });
+                    }}
                     onDelete={() => { const w = actionWorkout; setActionWorkout(null); setDeleteWorkout(w); }}
                 />
             ) : null}

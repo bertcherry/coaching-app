@@ -161,7 +161,7 @@ export default function WorkoutPreviewItem({
                             onPress={() => setShowLogs(v => !v)}
                         >
                             <Feather
-                                name={requiredComplete && !showLogs ? 'check' : 'edit-3'}
+                                name={requiredComplete && !showLogs ? 'check' : 'clipboard'}
                                 size={15}
                                 color={requiredComplete ? theme.success : showLogs ? theme.accentText : theme.textPrimary}
                             />

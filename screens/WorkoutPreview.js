@@ -455,7 +455,7 @@ const DeleteConfirmModal = ({ workoutName: name, onClose, onConfirm }) => {
 // ─── WorkoutPreview ───────────────────────────────────────────────────────────
 
 export default function WorkoutPreview({ route, navigation }) {
-    const { id, scheduledWorkoutId, scheduledDate, initialStatus, viewerIsAthlete, clientEmail: clientEmailParam, localHistory, calendarRefresh, workoutName } = route.params;
+    const { id, scheduledWorkoutId, scheduledDate, initialStatus, viewerIsAthlete, clientEmail: clientEmailParam, clientName: clientNameParam, clientTimezone: clientTimezoneParam, localHistory, calendarRefresh, workoutName } = route.params;
     const { user, accessToken, authFetch } = useAuth();
     const { theme } = useTheme();
     const styles = makeStyles(theme);
@@ -778,9 +778,9 @@ export default function WorkoutPreview({ route, navigation }) {
                         style={[styles.editButton, editMode && styles.editButtonActive]}
                         onPress={() => setEditMode(v => !v)}
                     >
-                        <Feather name={editMode ? 'x' : 'edit-2'} size={16} color={editMode ? theme.textSecondary : theme.accentText} />
+                        <Feather name={editMode ? 'x' : 'clipboard'} size={16} color={editMode ? theme.textSecondary : theme.accentText} />
                         <Text style={[styles.editButtonText, editMode && styles.editButtonTextActive]}>
-                            {editMode ? 'Done editing' : 'Edit workout'}
+                            {editMode ? 'Done editing' : 'Edit logs'}
                         </Text>
                     </Pressable>
                 </>
@@ -836,6 +836,30 @@ export default function WorkoutPreview({ route, navigation }) {
                                 <Text style={styles.rescheduleButtonText}>Reschedule Workout</Text>
                             </Pressable>
                         </>
+                    )}
+                    {user.isCoach && workoutData && (
+                        <Pressable
+                            style={styles.editWorkoutButton}
+                            onPress={() => navigation.navigate('Create Workout', {
+                                editMode: true,
+                                workoutId: id,
+                                scheduledWorkoutId: scheduledWorkoutId ?? null,
+                                initialStatus: workoutStatus,
+                                workoutData: {
+                                    workoutName,
+                                    data: workoutData.map(({ title, ...section }) => section),
+                                },
+                                clientEmail: clientEmailParam ?? null,
+                                clientName: clientNameParam ?? null,
+                                clientTimezone: clientTimezoneParam ?? null,
+                                scheduledDate: scheduledDate ?? null,
+                            })}
+                            accessibilityRole="button"
+                            accessibilityLabel="Edit workout structure"
+                        >
+                            <Feather name="edit-2" size={16} color={theme.accentText} accessible={false} />
+                            <Text style={styles.editWorkoutButtonText}>Edit Workout</Text>
+                        </Pressable>
                     )}
                     {scheduledWorkoutId && (
                         <Pressable
@@ -1143,6 +1167,21 @@ function makeStyles(theme) {
         },
         editButtonTextActive: {
             color: theme.textSecondary,
+        },
+        editWorkoutButton: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            paddingVertical: 14,
+            borderWidth: 1,
+            borderColor: theme.accentText,
+            borderRadius: 12,
+        },
+        editWorkoutButtonText: {
+            fontSize: 15,
+            color: theme.accentText,
+            fontWeight: '600',
         },
         skippedBadge: {
             flexDirection: 'row',

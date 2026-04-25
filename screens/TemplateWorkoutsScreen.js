@@ -61,7 +61,7 @@ const ConfirmCopyModal = ({ workout, onCancel, onConfirm, theme }) => {
 
 // ─── Workout row ──────────────────────────────────────────────────────────────
 
-const WorkoutRow = ({ workout, onCopy, theme }) => {
+const WorkoutRow = ({ workout, onCopy, onEdit, theme }) => {
     const sectionCount = workout.data?.length ?? 0;
     const exerciseCount = workout.data?.reduce((acc, s) => acc + (s.data?.length ?? 0), 0) ?? 0;
 
@@ -73,10 +73,15 @@ const WorkoutRow = ({ workout, onCopy, theme }) => {
                     {sectionCount} section{sectionCount !== 1 ? 's' : ''} · {exerciseCount} exercise{exerciseCount !== 1 ? 's' : ''}
                 </Text>
             </View>
-            <Pressable style={[styles.copyButton, { backgroundColor: theme.accent }]} onPress={() => onCopy(workout)}>
-                <Feather name="copy" size={18} color="#000" />
-                <Text style={styles.copyButtonText}>Use</Text>
-            </Pressable>
+            <View style={styles.workoutRowActions}>
+                <Pressable style={[styles.editButton, { borderColor: theme.accentText }]} onPress={() => onEdit(workout)}>
+                    <Feather name="edit-2" size={16} color={theme.accentText} />
+                </Pressable>
+                <Pressable style={[styles.copyButton, { backgroundColor: theme.accent }]} onPress={() => onCopy(workout)}>
+                    <Feather name="copy" size={18} color="#000" />
+                    <Text style={styles.copyButtonText}>Use</Text>
+                </Pressable>
+            </View>
         </View>
     );
 };
@@ -173,10 +178,25 @@ export default function UnscheduledWorkoutsScreen({ navigation }) {
         });
     };
 
+    // ── Edit template ───────────────────────────────────────────────────────
+
+    const handleEdit = (workout) => {
+        navigation.navigate('Create Workout', {
+            editMode: true,
+            workoutId: workout.id,
+            scheduledWorkoutId: null,
+            initialStatus: null,
+            workoutData: {
+                workoutName: workout.workoutName,
+                data: workout.data,
+            },
+        });
+    };
+
     // ── Render ───────────────────────────────────────────────────────────────
 
     const renderItem = ({ item }) => (
-        <WorkoutRow workout={item} onCopy={(w) => setConfirmWorkout(w)} theme={theme} />
+        <WorkoutRow workout={item} onCopy={(w) => setConfirmWorkout(w)} onEdit={handleEdit} theme={theme} />
     );
 
     const renderFooter = () => {
@@ -301,6 +321,8 @@ const styles = StyleSheet.create({
     workoutRowInfo: { flex: 1 },
     workoutName: { fontSize: 16, fontWeight: '600' },
     workoutMeta: { fontSize: 12, marginTop: 3 },
+    workoutRowActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    editButton: { padding: 8, borderWidth: 1, borderRadius: 8 },
     copyButton: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8 },
     copyButtonText: { fontSize: 13, color: '#000', fontWeight: '700' },
 
