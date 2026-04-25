@@ -149,11 +149,11 @@ function formatMonthOnly(dateStr) {
 }
 
 // ─── Workout status colours — WCAG checked ────────────────────────────────────
-// All pill text is #000 on these backgrounds; contrast ratios verified:
-// scheduled #fba8a0 on #000: 5.29:1 ✓ AA
-// completed #7bb533 on #000: 4.52:1 ✓ AA
-// skipped   #666666 on #000: 4.61:1 ✓ AA  (also uses opacity:0.6 — pill bg lightens)
-// missed    #c0622a on #000: 4.51:1 ✓ AA
+// #000 text/icons on each pill background; contrast ratios (WCAG 1.4.3 / 1.4.11):
+// scheduled  #000 on #fba8a0: 11.52:1 ✓ AAA
+// completed  #000 on #7bb533:  8.88:1 ✓ AAA
+// skipped    #000 on #666666:  7.00:1 ✓ AAA  (opacity:0.6 lightens bg further — ratio increases)
+// missed     #000 on #c0622a:  5.02:1 ✓ AA   (icons: only 3:1 required under 1.4.11)
 
 const STATUS_COLOR = {
     scheduled: '#fba8a0',
@@ -168,6 +168,12 @@ const STATUS_LABEL = {
     completed: 'completed',
     skipped:   'skipped',
     missed:    'missed',
+};
+
+const STATUS_ICON = {
+    completed: 'check',
+    skipped:   'slash',
+    missed:    'alert-circle',
 };
 
 // ─── Workout pill ─────────────────────────────────────────────────────────────
@@ -194,28 +200,12 @@ const WorkoutPill = ({ workout, onPress, onLongPress, compact }) => {
                 compact && styles.pillCompact,
             ]}
         >
-            <Text style={[styles.pillText, compact && styles.pillTextCompact]} numberOfLines={1}>
+            <Text style={[styles.pillText, compact && styles.pillTextCompact]}>
                 {workout.workoutName}
             </Text>
-            {workout.status === 'completed' && (
+            {STATUS_ICON[workout.status] && (
                 <Feather
-                    name="check"
-                    size={compact ? 8 : 10}
-                    color="#000"
-                    accessible={false}
-                />
-            )}
-            {workout.status === 'skipped' && (
-                <Feather
-                    name="slash"
-                    size={compact ? 8 : 10}
-                    color="#000"
-                    accessible={false}
-                />
-            )}
-            {workout.status === 'missed' && (
-                <Feather
-                    name="alert-circle"
+                    name={STATUS_ICON[workout.status]}
                     size={compact ? 8 : 10}
                     color="#000"
                     accessible={false}
@@ -294,17 +284,16 @@ const MonthWorkoutPill = ({
                 accessibilityLabel={`${workout.workoutName}, ${statusLabel}${unread ? ', new' : ''}`}
                 accessibilityHint="Tap to open. Long press for options, or long press and drag to move."
             >
-                <Text style={[styles.pillText, compact && styles.pillTextCompact]} numberOfLines={1}>
+                <Text style={[styles.pillText, compact && styles.pillTextCompact]}>
                     {workout.workoutName}
                 </Text>
-                {workout.status === 'completed' && (
-                    <Feather name="check" size={compact ? 8 : 10} color="#000" accessible={false} />
-                )}
-                {workout.status === 'skipped' && (
-                    <Feather name="slash" size={compact ? 8 : 10} color="#000" accessible={false} />
-                )}
-                {workout.status === 'missed' && (
-                    <Feather name="alert-circle" size={compact ? 8 : 10} color="#000" accessible={false} />
+                {STATUS_ICON[workout.status] && (
+                    <Feather
+                        name={STATUS_ICON[workout.status]}
+                        size={compact ? 8 : 10}
+                        color="#000"
+                        accessible={false}
+                    />
                 )}
                 <NotificationDot visible={unread} size={6} style={{ top: -2, right: -2 }} />
             </Animated.View>
@@ -1992,9 +1981,9 @@ function makeStyles(theme) { return StyleSheet.create({
     emptyDayHint: { textAlign: 'center', color: theme.background, fontSize: 14 },
 
     // ── Workout pill ──
-    pill:         { flexDirection: 'row', alignItems: 'center', borderRadius: 3, paddingHorizontal: 3, paddingVertical: 2, marginHorizontal: 1, marginBottom: 2, gap: 2 },
+    pill:         { flexDirection: 'column', alignItems: 'center', borderRadius: 3, paddingHorizontal: 3, paddingVertical: 2, marginHorizontal: 1, marginBottom: 2, gap: 1 },
     pillSkipped:  { opacity: 0.6 },
-    pillText:     { fontSize: 9, color: '#000', fontWeight: '700', flex: 1 },
+    pillText:     { fontSize: 9, color: '#000', fontWeight: '700', textAlign: 'center' },
     pillCompact:  { paddingHorizontal: 2, paddingVertical: 1 },
     pillTextCompact: { fontSize: 8 },
 
