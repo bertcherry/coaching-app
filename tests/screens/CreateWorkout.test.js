@@ -420,3 +420,65 @@ describe('Timed section toggle', () => {
         });
     });
 });
+
+// ─── Create vs Edit mode ──────────────────────────────────────────────────────
+
+const editWorkoutData = {
+    workoutName: 'Push Day',
+    data: [{ timed: false, circuit: true, data: [] }],
+};
+
+describe('Create vs Edit mode', () => {
+    it('shows blank workout name when rendered with no route params', async () => {
+        renderScreen();
+        await waitFor(() => {
+            const nameInput = screen.getByPlaceholderText('e.g. Upper Body Strength');
+            expect(nameInput.props.value).toBe('');
+        });
+    });
+
+    it('sets navigation title to "Create Workout" when editMode is not set', async () => {
+        const navigation = makeNavigation();
+        render(<CreateWorkout navigation={navigation} route={makeRoute()} />);
+        await waitFor(() => {
+            expect(navigation.setOptions).toHaveBeenCalledWith({ title: 'Create Workout' });
+        });
+    });
+
+    it('sets navigation title to "Edit Workout" when editMode is true', async () => {
+        const navigation = makeNavigation();
+        render(<CreateWorkout navigation={navigation} route={makeRoute({ editMode: true, workoutId: 'w1', workoutData: editWorkoutData })} />);
+        await waitFor(() => {
+            expect(navigation.setOptions).toHaveBeenCalledWith({ title: 'Edit Workout' });
+        });
+    });
+
+    it('pre-fills workout name when editMode is true and workoutData is provided', async () => {
+        renderScreen({ editMode: true, workoutId: 'w1', workoutData: editWorkoutData });
+        await waitFor(() => {
+            const nameInput = screen.getByPlaceholderText('e.g. Upper Body Strength');
+            expect(nameInput.props.value).toBe('Push Day');
+        });
+    });
+
+    it('shows blank workout name when editMode is false even if workoutData param exists (stale params regression)', async () => {
+        // Regression: CalendarScreen/WorkoutPreview navigate to the Drawer's CreateWorkout
+        // with editMode:true. After editing, those params persist on the Drawer screen.
+        // When the user later presses "Create Workout" from the drawer, CoachNavigation's
+        // drawerItemPress listener clears the params (editMode:false, workoutData:null).
+        // This test confirms that editMode:false suppresses workoutData regardless.
+        renderScreen({ editMode: false, workoutData: editWorkoutData });
+        await waitFor(() => {
+            const nameInput = screen.getByPlaceholderText('e.g. Upper Body Strength');
+            expect(nameInput.props.value).toBe('');
+        });
+    });
+
+    it('shows blank workout name when params are explicitly cleared (post-drawer-press state)', async () => {
+        renderScreen({ editMode: false, workoutData: null, workoutId: null });
+        await waitFor(() => {
+            const nameInput = screen.getByPlaceholderText('e.g. Upper Body Strength');
+            expect(nameInput.props.value).toBe('');
+        });
+    });
+});

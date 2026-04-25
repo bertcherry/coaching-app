@@ -1868,7 +1868,7 @@ export default function CalendarScreen({ navigation, route }) {
                     onEdit={() => {
                         const w = actionWorkout;
                         setActionWorkout(null);
-                        navigation.navigate('Create Workout', {
+                        navigation.navigate('Edit Workout', {
                             editMode: true,
                             workoutId: w.workoutId,
                             scheduledWorkoutId: w.id,

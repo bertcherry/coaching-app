@@ -7,6 +7,7 @@ import { useTheme } from '../../context/ThemeContext';
 import CalendarScreen from '../CalendarScreen';
 import WorkoutPreview from '../WorkoutPreview';
 import WorkoutActiveScreen from '../WorkoutActiveScreen';
+import CreateWorkout from '../CreateWorkout';
 
 const Stack = createStackNavigator();
 
@@ -35,6 +36,7 @@ export default function CalendarStack() {
             />
             <Stack.Screen name="Workout Preview" component={WorkoutPreview} />
             <Stack.Screen name="Workout Active" component={WorkoutActiveScreen} options={{ title: 'Active Workout' }} />
+            <Stack.Screen name="Edit Workout" component={CreateWorkout} options={{ title: 'Edit Workout' }} />
         </Stack.Navigator>
     );
 }

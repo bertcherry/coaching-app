@@ -818,13 +818,23 @@ export default function CreateWorkout({ navigation, route }) {
     const styles = makeStyles(theme);
     const scrollY = useScrollY();
     const headerHeight = useHeaderHeight();
-    useFocusEffect(React.useCallback(() => { scrollY.setValue(0); }, [scrollY]));
+    const routeRef = React.useRef(route);
+    routeRef.current = route;
+    const prevEditModeRef = React.useRef(route?.params?.editMode ?? false);
+    useFocusEffect(React.useCallback(() => {
+        scrollY.setValue(0);
+        const currentEditMode = routeRef.current?.params?.editMode ?? false;
+        if (prevEditModeRef.current !== currentEditMode) {
+            setFormKey(k => k + 1);
+        }
+        prevEditModeRef.current = currentEditMode;
+    }, [scrollY]));
     const prefillClient         = route?.params?.clientEmail  ?? null;
     const prefillClientName     = route?.params?.clientName   ?? null;
     const prefillClientTimezone = route?.params?.clientTimezone ?? null;
     const prefillDate           = route?.params?.scheduledDate ?? null;
-    const prefillWorkout          = route?.params?.workoutData          ?? null;
     const editMode                = route?.params?.editMode              ?? false;
+    const prefillWorkout          = editMode ? (route?.params?.workoutData ?? null) : null;
     const editWorkoutId           = route?.params?.workoutId             ?? null;
     const editScheduledWorkoutId  = route?.params?.scheduledWorkoutId    ?? null;
     const editInitialStatus       = route?.params?.initialStatus         ?? null;
@@ -860,6 +870,7 @@ export default function CreateWorkout({ navigation, route }) {
     const [showUndo,          setShowUndo]          = React.useState(false);
     const undoTimerRef = React.useRef(null);
     const formikRef    = React.useRef(null);  // { values, setValues }
+    const [formKey,    setFormKey]    = React.useState(0);
 
     const startDrag = (sectionIndex, exerciseIndex) => {
         if (!formikRef.current) return;
@@ -1021,7 +1032,7 @@ export default function CreateWorkout({ navigation, route }) {
     return (
         <KeyboardAvoidingView style={{ flex: 1, backgroundColor: theme.background }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={headerHeight}>
             <ScrollView style={styles.container} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets={true} onScroll={(e) => scrollY.setValue(e.nativeEvent.contentOffset.y)} scrollEventThrottle={16}>
-                <Formik initialValues={makeInitialValues()} onSubmit={handleSave} validationSchema={workoutSchema}>
+                <Formik key={formKey} initialValues={makeInitialValues()} onSubmit={handleSave} validationSchema={workoutSchema}>
                     {({ handleChange, handleBlur, handleSubmit, setFieldValue, values, errors, setValues }) => {
                         formikRef.current = { values, setValues };
                         return (

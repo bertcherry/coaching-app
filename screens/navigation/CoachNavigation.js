@@ -56,12 +56,37 @@ function CoachDrawer() {
                 component={TemplateStack}
                 options={{ headerShown: false }}
             />
-            <Drawer.Screen name="Create Workout" component={CreateWorkout} />
+            <Drawer.Screen
+                name="Create Workout"
+                component={CreateWorkout}
+                listeners={({ navigation }) => ({
+                    drawerItemPress: (e) => {
+                        e.preventDefault();
+                        navigation.navigate('Create Workout', {
+                            editMode: false,
+                            workoutData: null,
+                            workoutId: null,
+                            scheduledWorkoutId: null,
+                            initialStatus: null,
+                            clientEmail: null,
+                            clientName: null,
+                            clientTimezone: null,
+                            scheduledDate: null,
+                        });
+                    },
+                })}
+            />
             <Drawer.Screen name="Exercise Library" component={ExerciseLibraryStack} options={{ headerShown: false }} />
             <Drawer.Screen
                 name="My Calendar"
                 component={CalendarStack}
                 options={{ headerShown: false }}
+                listeners={({ navigation }) => ({
+                    drawerItemPress: (e) => {
+                        e.preventDefault();
+                        navigation.navigate('My Calendar', { screen: 'Calendar' });
+                    },
+                })}
             />
         </Drawer.Navigator>
     );

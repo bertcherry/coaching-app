@@ -850,7 +850,7 @@ export default function WorkoutPreview({ route, navigation }) {
                     {user.isCoach && workoutData && (
                         <Pressable
                             style={styles.editWorkoutButton}
-                            onPress={() => navigation.navigate('Create Workout', {
+                            onPress={() => navigation.navigate('Edit Workout', {
                                 editMode: true,
                                 workoutId: id,
                                 scheduledWorkoutId: scheduledWorkoutId ?? null,
