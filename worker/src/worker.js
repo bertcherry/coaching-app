@@ -212,18 +212,22 @@ export async function handleSkipWorkout(request, env) {
         'SELECT fname, lname, coachedBy FROM clients WHERE email = ?'
     ).bind(workout.clientEmail).first();
     if (clientRecord?.coachedBy) {
-        await emitNotification(env.DB, env, {
-            recipientEmail: clientRecord.coachedBy,
-            type: 'workout_skipped',
-            scheduledWorkoutId: id,
-            payload: {
-                workoutName: workout.workoutName,
-                scheduledDate: workout.scheduledDate,
-                clientEmail: workout.clientEmail,
-                clientName: `${clientRecord.fname} ${clientRecord.lname}`,
-                skipReason: reason ?? null,
-            },
-        });
+        try {
+            await emitNotification(env.DB, env, {
+                recipientEmail: clientRecord.coachedBy,
+                type: 'workout_skipped',
+                scheduledWorkoutId: id,
+                payload: {
+                    workoutName: workout.workoutName,
+                    scheduledDate: workout.scheduledDate,
+                    clientEmail: workout.clientEmail,
+                    clientName: `${clientRecord.fname} ${clientRecord.lname}`,
+                    skipReason: reason ?? null,
+                },
+            });
+        } catch (e) {
+            console.error('[handleSkipWorkout] emitNotification failed:', e?.message ?? e);
+        }
     }
 
     return json({ message: 'Workout skipped', id });
@@ -259,17 +263,21 @@ export async function handleScheduleComplete(request, env) {
         'SELECT fname, lname, coachedBy FROM clients WHERE email = ?'
     ).bind(workout.clientEmail).first();
     if (clientRecord?.coachedBy) {
-        await emitNotification(env.DB, env, {
-            recipientEmail: clientRecord.coachedBy,
-            type: 'workout_completed',
-            scheduledWorkoutId: id,
-            payload: {
-                workoutName: workout.workoutName,
-                scheduledDate: workout.scheduledDate,
-                clientEmail: workout.clientEmail,
-                clientName: `${clientRecord.fname} ${clientRecord.lname}`,
-            },
-        });
+        try {
+            await emitNotification(env.DB, env, {
+                recipientEmail: clientRecord.coachedBy,
+                type: 'workout_completed',
+                scheduledWorkoutId: id,
+                payload: {
+                    workoutName: workout.workoutName,
+                    scheduledDate: workout.scheduledDate,
+                    clientEmail: workout.clientEmail,
+                    clientName: `${clientRecord.fname} ${clientRecord.lname}`,
+                },
+            });
+        } catch (e) {
+            console.error('[handleScheduleComplete] emitNotification failed:', e?.message ?? e);
+        }
     }
 
     return json({ message: 'Workout marked complete', id });
