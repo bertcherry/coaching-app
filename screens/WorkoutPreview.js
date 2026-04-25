@@ -869,7 +869,7 @@ export default function WorkoutPreview({ route, navigation }) {
                             accessibilityLabel="Delete workout"
                             accessibilityHint="Permanently remove this workout from your schedule"
                         >
-                            <Feather name="trash-2" size={16} color={theme.danger} accessible={false} />
+                            <Feather name="trash-2" size={16} color={theme.accentText} accessible={false} />
                             <Text style={styles.deleteButtonText}>Delete Workout</Text>
                         </Pressable>
                     )}
@@ -1423,13 +1423,13 @@ function makeStyles(theme) {
             paddingVertical: 14,
             paddingHorizontal: 20,
             borderWidth: 1,
-            borderColor: theme.danger,
+            borderColor: theme.accentText,
             borderRadius: 12,
             minHeight: 48,
         },
         deleteButtonText: {
             fontSize: 15,
-            color: theme.danger,
+            color: theme.accentText,
             fontWeight: '600',
         },
         deleteConfirmButton: {

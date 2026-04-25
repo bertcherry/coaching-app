@@ -163,7 +163,7 @@ export default function WorkoutPreviewItem({
                             <Feather
                                 name={requiredComplete && !showLogs ? 'check' : 'clipboard'}
                                 size={15}
-                                color={requiredComplete ? theme.success : showLogs ? theme.accentText : theme.textPrimary}
+                                color={requiredComplete ? theme.success : showLogs ? theme.accentText : theme.surfaceBorder}
                             />
                         </Pressable>
                     )}
