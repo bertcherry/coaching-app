@@ -27,12 +27,13 @@ const VideoPlayer = ({ streamId, autoplay = true }) => {
 };
 
 function formatPrescription(item) {
-    const { countType, countMin, countMax, timeCapSeconds } = item;
+    const { countType, countMin, countMax, timeCapSeconds, sides } = item;
     if (!countType) return '';
     if (countType === 'AMRAP') return timeCapSeconds ? `AMRAP · ${Math.round(timeCapSeconds / 60)} min cap` : 'AMRAP';
     const unit = countType === 'Timed' ? 'sec' : 'reps';
-    if (countMax) return `${countMin}–${countMax} ${unit}`;
-    if (countMin) return `${countMin} ${unit}`;
+    const perSide = sides === 'two' ? ' / side' : '';
+    if (countMax) return `${countMin}–${countMax} ${unit}${perSide}`;
+    if (countMin) return `${countMin} ${unit}${perSide}`;
     return countType;
 }
 
@@ -42,6 +43,7 @@ export default function WorkoutPreviewItem({
     sets,      // legacy
     setsMin, setsMax,
     countType, countMin, countMax, timeCapSeconds,
+    sides, restBetweenSides,
     recommendedRpe, recommendedWeight,
     coachNotes,
     setConfigs,       // per-set coach targets [{ weight, rpe, countMin }]
@@ -133,8 +135,13 @@ export default function WorkoutPreviewItem({
                         {countType && (
                             <View style={styles.pill}>
                                 <Text style={styles.pillText}>
-                                    {formatPrescription({ countType, countMin, countMax, timeCapSeconds })}
+                                    {formatPrescription({ countType, countMin, countMax, timeCapSeconds, sides })}
                                 </Text>
+                            </View>
+                        )}
+                        {sides === 'two' && restBetweenSides != null && (
+                            <View style={styles.pill} testID="sides-rest-pill">
+                                <Text style={styles.pillText}>{restBetweenSides}s rest between sides</Text>
                             </View>
                         )}
                     </View>

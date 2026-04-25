@@ -758,6 +758,42 @@ describe('WorkoutPreview — Run section button', () => {
     });
 });
 
+// ─── Timed section info row ───────────────────────────────────────────────────
+
+describe('WorkoutPreview — timed section info row', () => {
+    beforeEach(() => {
+        global.fetch = jest.fn().mockResolvedValue({
+            ok: true,
+            json: async () => TIMED_WORKOUT_API_RESPONSE,
+        });
+    });
+
+    it('shows timed info row on timed sections', async () => {
+        render(<WorkoutPreview navigation={makeNavigation()} route={makeRoute({ initialStatus: 'scheduled' })} />);
+        await waitFor(() => screen.getByTestId('timed-info-Section 1'));
+        expect(screen.getByTestId('timed-info-Section 1')).toBeTruthy();
+    });
+
+    it('shows repRest and setRest values in the info row', async () => {
+        render(<WorkoutPreview navigation={makeNavigation()} route={makeRoute({ initialStatus: 'scheduled' })} />);
+        await waitFor(() => screen.getByTestId('timed-info-Section 1'));
+        expect(screen.getByText(/30s between exercises/)).toBeTruthy();
+        expect(screen.getByText(/60s between sets/)).toBeTruthy();
+    });
+
+    it('does not show timed info row on non-timed sections', async () => {
+        render(<WorkoutPreview navigation={makeNavigation()} route={makeRoute({ initialStatus: 'scheduled' })} />);
+        await waitFor(() => screen.getAllByTestId('exercise-name'));
+        expect(screen.queryByTestId('timed-info-Section 2')).toBeNull();
+    });
+
+    it('shows timed info row even when workout is completed', async () => {
+        render(<WorkoutPreview navigation={makeNavigation()} route={makeRoute({ initialStatus: 'completed' })} />);
+        await waitFor(() => screen.getByTestId('timed-info-Section 1'));
+        expect(screen.getByTestId('timed-info-Section 1')).toBeTruthy();
+    });
+});
+
 // ─── previewDetailsDefault — initialShowVideo prop ────────────────────────────
 
 describe('WorkoutPreview — previewDetailsDefault', () => {

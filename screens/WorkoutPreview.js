@@ -729,19 +729,29 @@ export default function WorkoutPreview({ route, navigation }) {
             && workoutStatus !== 'completed'
             && workoutStatus !== 'skipped';
         return (
-            <View style={styles.sectionHeader}>
-                <Text style={styles.sectionHeaderText}>{section.title}</Text>
-                {canRunSection && (
-                    <Pressable
-                        style={styles.runSectionButton}
-                        onPress={() => handleRunSection(section)}
-                        testID={`run-section-${section.title}`}
-                        accessibilityRole="button"
-                        accessibilityLabel={`Run ${section.title}`}
-                    >
-                        <Feather name="play" size={11} color="#000" />
-                        <Text style={styles.runSectionButtonText}>Run section</Text>
-                    </Pressable>
+            <View style={styles.sectionHeaderWrap}>
+                <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionHeaderText}>{section.title}</Text>
+                    {canRunSection && (
+                        <Pressable
+                            style={styles.runSectionButton}
+                            onPress={() => handleRunSection(section)}
+                            testID={`run-section-${section.title}`}
+                            accessibilityRole="button"
+                            accessibilityLabel={`Run ${section.title}`}
+                        >
+                            <Feather name="play" size={11} color="#000" />
+                            <Text style={styles.runSectionButtonText}>Run section</Text>
+                        </Pressable>
+                    )}
+                </View>
+                {section.timed && (
+                    <View style={styles.timedInfo} testID={`timed-info-${section.title}`}>
+                        <Feather name="clock" size={11} color={theme.textSecondary} accessible={false} />
+                        <Text style={styles.timedInfoText}>
+                            {`Guided timer · ${section.repRest ?? 30}s between exercises · ${section.setRest ?? 60}s between sets`}
+                        </Text>
+                    </View>
                 )}
             </View>
         );
@@ -960,14 +970,28 @@ function makeStyles(theme) {
             fontWeight: '700',
             color: theme.textPrimary,
         },
+        sectionHeaderWrap: {
+            backgroundColor: theme.background,
+            paddingHorizontal: 20,
+            paddingTop: 16,
+            paddingBottom: 4,
+        },
         sectionHeader: {
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'space-between',
-            paddingHorizontal: 20,
-            paddingTop: 16,
-            paddingBottom: 4,
-            backgroundColor: theme.background,
+        },
+        timedInfo: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 5,
+            marginTop: 4,
+        },
+        timedInfoText: {
+            fontSize: 11,
+            color: theme.textSecondary,
+            fontWeight: '500',
+            flexShrink: 1,
         },
         runSectionButton: {
             flexDirection: 'row',

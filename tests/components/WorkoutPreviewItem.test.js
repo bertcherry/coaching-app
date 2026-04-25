@@ -403,3 +403,45 @@ describe('WorkoutPreviewItem — initialShowVideo', () => {
         await waitFor(() => expect(screen.queryByTestId('video-player')).toBeNull());
     });
 });
+
+// ─── Two-sided exercise pills ─────────────────────────────────────────────────
+
+describe('WorkoutPreviewItem — two-sided exercise', () => {
+    it('appends "/ side" to timed prescription when sides=two', async () => {
+        render(<WorkoutPreviewItem {...defaultProps({ countType: 'Timed', countMin: 30, sides: 'two' })} />);
+        await waitFor(() => screen.getByText('Squat'));
+        expect(screen.getByText('30 sec / side')).toBeTruthy();
+    });
+
+    it('appends "/ side" to reps prescription when sides=two', async () => {
+        render(<WorkoutPreviewItem {...defaultProps({ countType: 'Reps', countMin: 10, sides: 'two' })} />);
+        await waitFor(() => screen.getByText('Squat'));
+        expect(screen.getByText('10 reps / side')).toBeTruthy();
+    });
+
+    it('shows rest between sides pill when sides=two and restBetweenSides is set', async () => {
+        render(<WorkoutPreviewItem {...defaultProps({ sides: 'two', restBetweenSides: 5 })} />);
+        await waitFor(() => screen.getByText('Squat'));
+        expect(screen.getByTestId('sides-rest-pill')).toBeTruthy();
+        expect(screen.getByText('5s rest between sides')).toBeTruthy();
+    });
+
+    it('does not show rest between sides pill when sides=single', async () => {
+        render(<WorkoutPreviewItem {...defaultProps({ sides: 'single', restBetweenSides: null })} />);
+        await waitFor(() => screen.getByText('Squat'));
+        expect(screen.queryByTestId('sides-rest-pill')).toBeNull();
+    });
+
+    it('does not show rest between sides pill when sides is null', async () => {
+        render(<WorkoutPreviewItem {...defaultProps()} />);
+        await waitFor(() => screen.getByText('Squat'));
+        expect(screen.queryByTestId('sides-rest-pill')).toBeNull();
+    });
+
+    it('does not append "/ side" to prescription when sides=single', async () => {
+        render(<WorkoutPreviewItem {...defaultProps({ countType: 'Timed', countMin: 30, sides: 'single' })} />);
+        await waitFor(() => screen.getByText('Squat'));
+        expect(screen.getByText('30 sec')).toBeTruthy();
+        expect(screen.queryByText('30 sec / side')).toBeNull();
+    });
+});
