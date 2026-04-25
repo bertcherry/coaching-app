@@ -1707,3 +1707,116 @@ describe('WorkoutActiveScreen — side-rest Next button', () => {
         jest.useRealTimers();
     });
 });
+
+// ─── Section note ─────────────────────────────────────────────────────────────
+
+describe('WorkoutActiveScreen — section note', () => {
+    it('shows the section note above the exercise name when section.note is set', async () => {
+        const workoutData = [{
+            ...SECTION_1,
+            note: 'Focus on tempo throughout this section.',
+        }];
+        render(<WorkoutActiveScreen navigation={makeNavigation()} route={makeRoute({ workoutData })} />);
+        await waitFor(() => screen.getByText('Squat'));
+
+        expect(screen.getByTestId('section-note')).toBeTruthy();
+        expect(screen.getByText('Focus on tempo throughout this section.')).toBeTruthy();
+    });
+
+    it('does not render section note when section.note is null', async () => {
+        const workoutData = [{ ...SECTION_1, note: null }];
+        render(<WorkoutActiveScreen navigation={makeNavigation()} route={makeRoute({ workoutData })} />);
+        await waitFor(() => screen.getByText('Squat'));
+        expect(screen.queryByTestId('section-note')).toBeNull();
+    });
+
+    it('does not render section note when section.note is absent', async () => {
+        render(<WorkoutActiveScreen navigation={makeNavigation()} route={makeRoute()} />);
+        await waitFor(() => screen.getByText('Squat'));
+        expect(screen.queryByTestId('section-note')).toBeNull();
+    });
+
+    it('section note persists across exercises within the same section', async () => {
+        const workoutData = [{
+            ...SECTION_1,
+            note: 'Keep rest short.',
+        }];
+        render(<WorkoutActiveScreen navigation={makeNavigation()} route={makeRoute({ workoutData })} />);
+        await waitFor(() => screen.getByText('Squat'));
+        expect(screen.getByTestId('section-note')).toBeTruthy();
+
+        // Advance through all sets of exercise 1 to reach exercise 2
+        const totalSets = SECTION_1.data[0].setsMin; // 3
+        for (let i = 0; i < totalSets; i++) {
+            fireEvent.press(screen.getByText('Next'));
+        }
+
+        await waitFor(() => screen.getByText('Deadlift'));
+        expect(screen.getByTestId('section-note')).toBeTruthy();
+        expect(screen.getByText('Keep rest short.')).toBeTruthy();
+    });
+
+    it('section note updates when moving to a new section with a different note', async () => {
+        const workoutData = [
+            { ...SECTION_1, note: 'Section 1 tip.' },
+            {
+                title: 'Section 2',
+                circuit: false,
+                timed: false,
+                note: 'Section 2 tip.',
+                data: [{
+                    id: 'ex-3', name: 'Bench Press',
+                    setsMin: 2, setsMax: null,
+                    countType: 'Reps', countMin: 8, countMax: null,
+                    recommendedWeight: null, recommendedRpe: null,
+                    coachNotes: null, setConfigs: null,
+                }],
+            },
+        ];
+        render(<WorkoutActiveScreen navigation={makeNavigation()} route={makeRoute({ workoutData })} />);
+        await waitFor(() => screen.getByText('Squat'));
+        expect(screen.getByText('Section 1 tip.')).toBeTruthy();
+
+        // Complete all exercises/sets in section 1
+        const ex1Sets = SECTION_1.data[0].setsMin; // 3
+        const ex2Sets = SECTION_1.data[1].setsMin; // 2
+        for (let i = 0; i < ex1Sets + ex2Sets; i++) {
+            fireEvent.press(screen.getByText('Next'));
+        }
+
+        await waitFor(() => screen.getByText('Bench Press'));
+        expect(screen.getByText('Section 2 tip.')).toBeTruthy();
+        expect(screen.queryByText('Section 1 tip.')).toBeNull();
+    });
+
+    it('section note disappears when moving to a new section with no note', async () => {
+        const workoutData = [
+            { ...SECTION_1, note: 'Section 1 tip.' },
+            {
+                title: 'Section 2',
+                circuit: false,
+                timed: false,
+                note: null,
+                data: [{
+                    id: 'ex-3', name: 'Bench Press',
+                    setsMin: 2, setsMax: null,
+                    countType: 'Reps', countMin: 8, countMax: null,
+                    recommendedWeight: null, recommendedRpe: null,
+                    coachNotes: null, setConfigs: null,
+                }],
+            },
+        ];
+        render(<WorkoutActiveScreen navigation={makeNavigation()} route={makeRoute({ workoutData })} />);
+        await waitFor(() => screen.getByText('Squat'));
+        expect(screen.getByTestId('section-note')).toBeTruthy();
+
+        const ex1Sets = SECTION_1.data[0].setsMin; // 3
+        const ex2Sets = SECTION_1.data[1].setsMin; // 2
+        for (let i = 0; i < ex1Sets + ex2Sets; i++) {
+            fireEvent.press(screen.getByText('Next'));
+        }
+
+        await waitFor(() => screen.getByText('Bench Press'));
+        expect(screen.queryByTestId('section-note')).toBeNull();
+    });
+});

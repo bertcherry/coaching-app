@@ -455,7 +455,7 @@ const DeleteConfirmModal = ({ workoutName: name, onClose, onConfirm }) => {
 // ─── WorkoutPreview ───────────────────────────────────────────────────────────
 
 export default function WorkoutPreview({ route, navigation }) {
-    const { id, scheduledWorkoutId, scheduledDate, initialStatus, viewerIsAthlete, clientEmail: clientEmailParam, clientName: clientNameParam, clientTimezone: clientTimezoneParam, localHistory, calendarRefresh, workoutName } = route.params;
+    const { id, scheduledWorkoutId, scheduledDate, initialStatus, viewerIsAthlete, clientEmail: clientEmailParam, clientName: clientNameParam, clientTimezone: clientTimezoneParam, localHistory, calendarRefresh, workoutName, workoutNote } = route.params;
     const { user, accessToken, authFetch } = useAuth();
     const { theme } = useTheme();
     const styles = makeStyles(theme);
@@ -753,6 +753,16 @@ export default function WorkoutPreview({ route, navigation }) {
                         </Text>
                     </View>
                 )}
+                {section.note ? (
+                    <Text
+                        style={styles.sectionNoteText}
+                        testID={`section-note-${section.title}`}
+                        accessibilityRole="text"
+                        accessibilityLabel={`${section.title} note: ${section.note}`}
+                    >
+                        {section.note}
+                    </Text>
+                ) : null}
             </View>
         );
     };
@@ -760,6 +770,16 @@ export default function WorkoutPreview({ route, navigation }) {
     const renderListHeader = () => workoutName ? (
         <View style={styles.workoutTitleContainer}>
             <Text style={styles.workoutTitleText}>{workoutName}</Text>
+            {workoutNote ? (
+                <Text
+                    style={styles.workoutNoteText}
+                    testID="workout-note"
+                    accessibilityRole="text"
+                    accessibilityLabel={`Workout note: ${workoutNote}`}
+                >
+                    {workoutNote}
+                </Text>
+            ) : null}
         </View>
     ) : null;
 
@@ -857,6 +877,7 @@ export default function WorkoutPreview({ route, navigation }) {
                                 initialStatus: workoutStatus,
                                 workoutData: {
                                     workoutName,
+                                    note: workoutNote ?? null,
                                     data: workoutData.map(({ title, ...section }) => section),
                                 },
                                 clientEmail: clientEmailParam ?? null,
@@ -969,6 +990,19 @@ function makeStyles(theme) {
             fontSize: 22,
             fontWeight: '700',
             color: theme.textPrimary,
+        },
+        workoutNoteText: {
+            fontSize: 14,
+            color: theme.textSecondary,
+            lineHeight: 20,
+            marginTop: 6,
+        },
+        sectionNoteText: {
+            fontSize: 12,
+            color: theme.textSecondary,
+            lineHeight: 17,
+            marginTop: 4,
+            fontStyle: 'italic',
         },
         sectionHeaderWrap: {
             backgroundColor: theme.background,

@@ -444,6 +444,7 @@ export default function WorkoutActiveScreen({ route, navigation }) {
     const isTimed         = currentSection?.timed ?? false;
     const repRest         = currentSection?.repRest ?? 30;   // between exercises
     const setRest         = currentSection?.setRest ?? 60;   // between sets
+    const sectionNote     = currentSection?.note ?? null;
 
     const totalSets   = currentExercise ? totalSetsForExercise(currentExercise) : 1;
     const requiredSets = currentExercise ? requiredSetsForExercise(currentExercise) : 1;
@@ -949,6 +950,20 @@ export default function WorkoutActiveScreen({ route, navigation }) {
                     <Text style={styles.exerciseLabel}>{exerciseIdx + 1} / {totalExInSection}</Text>
                 </View>
 
+                {/* ── Section note ── */}
+                {sectionNote ? (
+                    <View
+                        style={styles.sectionNote}
+                        testID="section-note"
+                        accessible={true}
+                        accessibilityRole="text"
+                        accessibilityLabel={`Section note: ${sectionNote}`}
+                    >
+                        <Feather name="info" size={12} color={theme.textSecondary} style={{ marginRight: 6 }} accessible={false} />
+                        <Text style={styles.sectionNoteText}>{sectionNote}</Text>
+                    </View>
+                ) : null}
+
                 {/* ── Exercise title ── */}
                 <Text style={styles.exerciseName}>{exerciseName}</Text>
 
@@ -1249,6 +1264,8 @@ function makeStyles(theme) {
         pillTextOptional: { fontStyle: 'italic', color: theme.textTertiary },
 
         // ── Coach notes / rec ──
+        sectionNote: { flexDirection: 'row', alignItems: 'flex-start', backgroundColor: theme.surfaceElevated, borderLeftWidth: 2, borderLeftColor: theme.textTertiary, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 4, marginBottom: 8 },
+        sectionNoteText: { fontSize: 13, color: theme.textSecondary, flex: 1, lineHeight: 18 },
         coachNotes: { flexDirection: 'row', alignItems: 'flex-start', backgroundColor: theme.accentSubtle, borderLeftWidth: 2, borderLeftColor: theme.accent, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 4, marginBottom: 10 },
         coachNotesText: { fontSize: 13, color: theme.textSecondary, flex: 1, lineHeight: 18, fontStyle: 'italic' },
         recBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.accentSubtle, borderWidth: 0.5, borderColor: theme.accentText, borderRadius: 6, paddingHorizontal: 10, paddingVertical: 6, marginBottom: 12 },

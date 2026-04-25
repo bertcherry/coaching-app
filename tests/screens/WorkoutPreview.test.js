@@ -819,3 +819,118 @@ describe('WorkoutPreview — previewDetailsDefault', () => {
     });
 });
 
+// ─── Workout note ─────────────────────────────────────────────────────────────
+
+describe('WorkoutPreview — workout note', () => {
+    it('displays the workout note when workoutNote route param is set', async () => {
+        render(<WorkoutPreview
+            navigation={makeNavigation()}
+            route={makeRoute({ workoutName: 'Push Day', workoutNote: 'Prioritize form over load today.' })}
+        />);
+        await waitFor(() => {
+            expect(screen.getByTestId('workout-note')).toBeTruthy();
+            expect(screen.getByText('Prioritize form over load today.')).toBeTruthy();
+        });
+    });
+
+    it('does not render workout note element when workoutNote is absent', async () => {
+        render(<WorkoutPreview
+            navigation={makeNavigation()}
+            route={makeRoute({ workoutName: 'Push Day' })}
+        />);
+        await waitFor(() => screen.getAllByTestId('exercise-name'));
+        expect(screen.queryByTestId('workout-note')).toBeNull();
+    });
+
+    it('does not render workout note element when workoutNote is null', async () => {
+        render(<WorkoutPreview
+            navigation={makeNavigation()}
+            route={makeRoute({ workoutName: 'Push Day', workoutNote: null })}
+        />);
+        await waitFor(() => screen.getAllByTestId('exercise-name'));
+        expect(screen.queryByTestId('workout-note')).toBeNull();
+    });
+});
+
+// ─── Section note ─────────────────────────────────────────────────────────────
+
+describe('WorkoutPreview — section notes', () => {
+    it('displays a section note when the section has a note property', async () => {
+        const apiResponse = [
+            {
+                ...WORKOUT_API_RESPONSE[0],
+                note: 'Rest 2 minutes between sets.',
+            },
+            WORKOUT_API_RESPONSE[1],
+        ];
+        global.fetch = jest.fn().mockResolvedValue({
+            ok: true,
+            json: async () => apiResponse,
+        });
+
+        render(<WorkoutPreview navigation={makeNavigation()} route={makeRoute()} />);
+        await waitFor(() => {
+            expect(screen.getByTestId('section-note-Section 1')).toBeTruthy();
+            expect(screen.getByText('Rest 2 minutes between sets.')).toBeTruthy();
+        });
+    });
+
+    it('does not render a section note element when section.note is absent', async () => {
+        render(<WorkoutPreview navigation={makeNavigation()} route={makeRoute()} />);
+        await waitFor(() => screen.getAllByTestId('exercise-name'));
+        expect(screen.queryByTestId('section-note-Section 1')).toBeNull();
+    });
+
+    it('does not render a section note element when section.note is null', async () => {
+        const apiResponse = [
+            { ...WORKOUT_API_RESPONSE[0], note: null },
+            WORKOUT_API_RESPONSE[1],
+        ];
+        global.fetch = jest.fn().mockResolvedValue({
+            ok: true,
+            json: async () => apiResponse,
+        });
+
+        render(<WorkoutPreview navigation={makeNavigation()} route={makeRoute()} />);
+        await waitFor(() => screen.getAllByTestId('exercise-name'));
+        expect(screen.queryByTestId('section-note-Section 1')).toBeNull();
+    });
+
+    it('renders notes independently for multiple sections', async () => {
+        const apiResponse = [
+            { ...WORKOUT_API_RESPONSE[0], note: 'Section 1 tip.' },
+            { ...WORKOUT_API_RESPONSE[1], note: 'Section 2 tip.' },
+        ];
+        global.fetch = jest.fn().mockResolvedValue({
+            ok: true,
+            json: async () => apiResponse,
+        });
+
+        render(<WorkoutPreview navigation={makeNavigation()} route={makeRoute()} />);
+        await waitFor(() => {
+            expect(screen.getByText('Section 1 tip.')).toBeTruthy();
+            expect(screen.getByText('Section 2 tip.')).toBeTruthy();
+        });
+    });
+
+    it('workout note is not shown in active workout — it only lives on preview', async () => {
+        // Use today's date so maybePromptReschedule navigates directly without an overlay
+        const d = new Date();
+        const todayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+        render(<WorkoutPreview
+            navigation={makeNavigation()}
+            route={makeRoute({ workoutName: 'Push Day', workoutNote: 'Preview-only note.', scheduledDate: todayStr })}
+        />);
+        await waitFor(() => expect(screen.getByTestId('workout-note')).toBeTruthy());
+
+        fireEvent.press(screen.getByText('Start Workout'));
+
+        // Workout Active receives workoutData but NOT workoutNote
+        expect(mockNavigate).toHaveBeenCalledWith(
+            'Workout Active',
+            expect.not.objectContaining({ workoutNote: expect.anything() }),
+        );
+    });
+});
+

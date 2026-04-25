@@ -103,6 +103,7 @@ const exerciseSchema = Yup.object().shape({
 const sectionSchema = Yup.object().shape({
     timed: Yup.boolean(),
     circuit: Yup.boolean(),
+    note: Yup.string().nullable().notRequired(),
     data: Yup.array().min(1, 'Each section needs at least 1 exercise').of(exerciseSchema),
     repRest: Yup.number().typeError('Must be a number').positive('Must be positive').truncate()
         .when('timed', { is: true, then: (s) => s.required('Required for timed sections'), otherwise: (s) => s.notRequired() }),
@@ -113,6 +114,7 @@ const sectionSchema = Yup.object().shape({
 const workoutSchema = Yup.object().shape({
     id: Yup.string(),
     workoutName: Yup.string().required('Workout name is required'),
+    note: Yup.string().nullable().notRequired(),
     clientEmail: Yup.string().nullable(),
     clientName: Yup.string().nullable(),
     scheduledDate: Yup.string().nullable()
@@ -773,6 +775,22 @@ const SectionCard = ({
                     </View>
                 )}
 
+                {/* Section note */}
+                <View style={styles.sectionNoteBlock}>
+                    <Text style={styles.inputLabel}>Section note <Text style={styles.inputLabelSub}>(optional — shown on summary and during active workout)</Text></Text>
+                    <TextInput
+                        style={styles.notesInput}
+                        multiline
+                        placeholder="E.g. Rest fully between sets. Focus on tempo."
+                        placeholderTextColor={theme.inputPlaceholder}
+                        onChangeText={handleChange(`${fieldBase}.note`)}
+                        onBlur={handleBlur(`${fieldBase}.note`)}
+                        value={section.note ?? ''}
+                        accessibilityLabel={`Section ${sectionIndex + 1} note`}
+                        accessibilityHint="Optional. Shown on the summary page and above each exercise during the active workout."
+                    />
+                </View>
+
                 <FieldArray name={`${fieldBase}.data`}>
                     {({ remove: removeEx, push: pushEx }) => (
                         <View>
@@ -945,12 +963,13 @@ export default function CreateWorkout({ navigation, route }) {
         return {
             id: editMode && editWorkoutId ? editWorkoutId : uuid.v4(),
             workoutName: prefillWorkout?.workoutName ?? '',
+            note: prefillWorkout?.note ?? null,
             clientEmail: prefillClient, clientName: prefillClientName,
             clientTimezone: prefillClientTimezone,
             scheduledDate: prefillDate ?? null,
             data: sections
-                ? sections.map(s => ({ ...s, data: s.data.map(migrateEx) }))
-                : [{ timed: false, circuit: true, data: [emptyExercise()] }],
+                ? sections.map(s => ({ ...s, note: s.note ?? null, data: s.data.map(migrateEx) }))
+                : [{ timed: false, circuit: true, note: null, data: [emptyExercise()] }],
         };
     };
 
@@ -959,7 +978,7 @@ export default function CreateWorkout({ navigation, route }) {
             const cleanData = values.data.map(s => ({ ...s, data: s.data.map(ex => { const { sets, ...rest } = ex; return rest; }) }));
             const res = await authFetch(`${WORKER_URL}/workouts/save`, {
                 method: 'POST', headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: values.id, workoutName: values.workoutName, createdBy: user.email, data: cleanData }),
+                body: JSON.stringify({ id: values.id, workoutName: values.workoutName, note: values.note || null, createdBy: user.email, data: cleanData }),
             });
             if (!res.ok) { Alert.alert('Error', 'Problem saving workout.'); return; }
 
@@ -1006,6 +1025,7 @@ export default function CreateWorkout({ navigation, route }) {
                     clientName: values.clientName ?? null,
                     clientTimezone: values.clientTimezone ?? null,
                     workoutName: values.workoutName,
+                    workoutNote: values.note || null,
                 });
             } else if (values.clientEmail) {
                 navigation.navigate('My Calendar', {
@@ -1046,6 +1066,22 @@ export default function CreateWorkout({ navigation, route }) {
                                     <ErrorMessage render={msg=><Text style={styles.errorText}>{msg}</Text>} name="workoutName" />
                                 </View>
 
+                                {/* Workout note */}
+                                <View style={styles.fieldBlock}>
+                                    <Text style={styles.fieldLabel}>Workout Note <Text style={styles.optionalLabel}>(optional)</Text></Text>
+                                    <TextInput
+                                        style={styles.notesInput}
+                                        multiline
+                                        placeholder="General notes about this workout shown on the summary page…"
+                                        placeholderTextColor={theme.inputPlaceholder}
+                                        onChangeText={handleChange('note')}
+                                        onBlur={handleBlur('note')}
+                                        value={values.note ?? ''}
+                                        accessibilityLabel="Workout note"
+                                        accessibilityHint="Optional. Shown to the athlete on the workout summary screen."
+                                    />
+                                </View>
+
                                 <ClientSearch selectedEmail={values.clientEmail} selectedName={values.clientName}
                                     coachEmail={user.email} authFetch={authFetch}
                                     onSelect={(email, name, timezone) => {
@@ -1079,7 +1115,7 @@ export default function CreateWorkout({ navigation, route }) {
                                                     dropTargetIndex={dropTargetIndex}
                                                 />
                                             ))}
-                                            <Pressable style={styles.addSectionButton} onPress={()=>push({timed:false,circuit:true,data:[emptyExercise()]})}>
+                                            <Pressable style={styles.addSectionButton} onPress={()=>push({timed:false,circuit:true,note:null,data:[emptyExercise()]})}>
                                                 <Feather name="plus-circle" size={18} color={theme.accentText} />
                                                 <Text style={styles.addSectionButtonText}>Add Section</Text>
                                             </Pressable>
@@ -1213,6 +1249,8 @@ function makeStyles(theme) { return StyleSheet.create({
     toggleChipActive: { borderColor: theme.success, backgroundColor: 'rgba(123,181,51,0.1)' },
     toggleChipText:   { fontSize: 12, color: theme.textSecondary },
     toggleChipTextActive: { color: theme.success },
+
+    sectionNoteBlock: { paddingHorizontal: 14, paddingTop: 10, paddingBottom: 4, borderTopWidth: 0.5, borderTopColor: theme.divider },
 
     timedRestRow:   { flexDirection: 'row', gap: 12, padding: 14, borderBottomWidth: 0.5, borderBottomColor: theme.divider },
     timedRestField: { flex: 1 },

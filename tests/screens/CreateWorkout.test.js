@@ -421,6 +421,93 @@ describe('Timed section toggle', () => {
     });
 });
 
+// ─── Workout note ─────────────────────────────────────────────────────────────
+
+describe('Workout note field', () => {
+    it('renders the workout note input with optional label', async () => {
+        renderScreen();
+        await waitFor(() => {
+            expect(screen.getByLabelText('Workout note')).toBeTruthy();
+        });
+    });
+
+    it('workout note input starts empty for a new workout', async () => {
+        renderScreen();
+        await waitFor(() => {
+            const input = screen.getByLabelText('Workout note');
+            expect(input.props.value).toBe('');
+        });
+    });
+
+    it('pre-fills workout note when editMode supplies workoutData.note', async () => {
+        renderScreen({
+            editMode: true,
+            workoutId: 'w1',
+            workoutData: { workoutName: 'Push Day', note: 'Warm up well today.', data: [] },
+        });
+        await waitFor(() => {
+            const input = screen.getByLabelText('Workout note');
+            expect(input.props.value).toBe('Warm up well today.');
+        });
+    });
+
+    it('does not pre-fill workout note when editMode is false', async () => {
+        renderScreen({
+            editMode: false,
+            workoutData: { workoutName: 'Push Day', note: 'Should not appear', data: [] },
+        });
+        await waitFor(() => {
+            const input = screen.getByLabelText('Workout note');
+            expect(input.props.value).toBe('');
+        });
+    });
+});
+
+// ─── Section note ─────────────────────────────────────────────────────────────
+
+describe('Section note field', () => {
+    it('renders the section note input for the default section', async () => {
+        renderScreen();
+        await waitFor(() => {
+            expect(screen.getByLabelText('Section 1 note')).toBeTruthy();
+        });
+    });
+
+    it('section note input starts empty for a new section', async () => {
+        renderScreen();
+        await waitFor(() => {
+            const input = screen.getByLabelText('Section 1 note');
+            expect(input.props.value).toBe('');
+        });
+    });
+
+    it('pre-fills section note when editMode supplies section.note', async () => {
+        renderScreen({
+            editMode: true,
+            workoutId: 'w1',
+            workoutData: {
+                workoutName: 'Push Day',
+                data: [{ timed: false, circuit: true, note: 'Rest fully between sets.', data: [] }],
+            },
+        });
+        await waitFor(() => {
+            const input = screen.getByLabelText('Section 1 note');
+            expect(input.props.value).toBe('Rest fully between sets.');
+        });
+    });
+
+    it('renders a note input for each added section', async () => {
+        renderScreen();
+        await waitFor(() => screen.getByText('Add Section'));
+        fireEvent.press(screen.getByText('Add Section'));
+
+        await waitFor(() => {
+            expect(screen.getByLabelText('Section 1 note')).toBeTruthy();
+            expect(screen.getByLabelText('Section 2 note')).toBeTruthy();
+        });
+    });
+});
+
 // ─── Create vs Edit mode ──────────────────────────────────────────────────────
 
 const editWorkoutData = {
