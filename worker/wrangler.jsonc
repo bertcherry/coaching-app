@@ -26,6 +26,12 @@
 			"remote": true,
 		},
 	],
+	"r2_buckets": [
+		{
+			"binding": "VIDEOS_BUCKET",
+			"bucket_name": "coaching-client-videos",
+		},
+	],
 	"env": {
 		"staging": {
 			"d1_databases": [
@@ -40,6 +46,12 @@
 					"database_id": "e4f459c8-cfc2-4ba0-8f67-1d7bea98d088",
 					"remote": true,
 				}
+			],
+			"r2_buckets": [
+				{
+					"binding": "VIDEOS_BUCKET",
+					"bucket_name": "coaching-client-videos",
+				},
 			],
 		}
 	},

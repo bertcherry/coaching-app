@@ -9,10 +9,10 @@ import ClientListStack from './ClientListStack';
 import TemplateStack from './TemplateStack';
 import CreateWorkout from '../CreateWorkout';
 import ExerciseLibraryStack from './ExerciseLibraryStack';
+import VideoReviewQueueScreen from '../VideoReviewQueueScreen';
 import SettingsScreen from '../SettingsScreen';
 import AppDrawerContent from '../../components/AppDrawerContent';
 import { useTheme } from '../../context/ThemeContext';
-
 const Stack = createStackNavigator();
 const Drawer = createDrawerNavigator();
 
@@ -50,6 +50,10 @@ function CoachDrawer() {
                 name="Client List"
                 component={ClientListStack}
                 options={{ headerShown: false }}
+            />
+            <Drawer.Screen
+                name="Video Review"
+                component={VideoReviewQueueScreen}
             />
             <Drawer.Screen
                 name="Template Workouts"

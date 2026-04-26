@@ -705,6 +705,7 @@ export default function WorkoutPreview({ route, navigation }) {
             isCompleted={workoutStatus === 'completed'}
             completedHistory={completedHistory}
             initialShowVideo={previewDetailsDefault}
+            scheduledWorkoutId={scheduledWorkoutId ?? null}
         />
     );
 

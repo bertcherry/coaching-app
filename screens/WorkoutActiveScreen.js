@@ -22,8 +22,9 @@
 import * as React from 'react';
 import {
     View, Text, TextInput, Pressable, StyleSheet,
-    ScrollView, Modal, KeyboardAvoidingView, Platform, Alert,
+    ScrollView, Modal, KeyboardAvoidingView, Platform, Alert, ActivityIndicator,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import Feather from '@expo/vector-icons/Feather';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { useAuth } from '../context/AuthContext';
@@ -394,6 +395,52 @@ export default function WorkoutActiveScreen({ route, navigation }) {
     // true when the current visible video was opened by the user (not auto-expanded);
     // user-triggered opens always autoplay regardless of activeAutoplaysDefault
     const [videoUserTriggered, setVideoUserTriggered] = React.useState(false);
+
+    // ── Form video upload ────────────────────────────────────────────────────
+    // keyed by `${exerciseId}-${setNum}` → 'idle'|'uploading'|'processing'|'ready'|'error'
+    const [uploadStates, setUploadStates] = React.useState({});
+
+    async function handleUploadVideo() {
+        if (!scheduledWorkoutId || !currentExercise) return;
+        const uploadKey = `${currentExercise.id}-${setNum}`;
+
+        const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!permission.granted) return;
+
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ['videos'],
+            videoMaxDuration: 60,
+            allowsEditing: false,
+            quality: 1,
+        });
+        if (result.canceled || !result.assets?.length) return;
+
+        setUploadStates(prev => ({ ...prev, [uploadKey]: 'uploading' }));
+
+        try {
+            const asset = result.assets[0];
+            const setSnapshot = JSON.stringify({
+                exerciseName,
+                weight:     (weightUnit !== 'other' && weight) ? parseFloat(weight) : null,
+                weightUnit: weightUnit === 'other' ? (otherLoad || null) : weightUnit,
+                reps:       count ? parseInt(count) : null,
+                rpe:        rpe   ? parseFloat(rpe)  : null,
+                clientNote: note  || null,
+            });
+            const form = new FormData();
+            form.append('video', { uri: asset.uri, type: asset.mimeType ?? 'video/mp4', name: 'form.mp4' });
+            form.append('scheduledWorkoutId', scheduledWorkoutId);
+            form.append('exerciseId', currentExercise.id);
+            form.append('setNumber', String(setNum));
+            form.append('historyId', '');
+            form.append('setSnapshot', setSnapshot);
+            const res = await authFetch(`${WORKER_URL}/videos/upload`, { method: 'POST', body: form });
+            if (!res.ok) throw new Error('Upload failed');
+            setUploadStates(prev => ({ ...prev, [uploadKey]: 'processing' }));
+        } catch {
+            setUploadStates(prev => ({ ...prev, [uploadKey]: 'error' }));
+        }
+    }
 
     // ── Finish ──────────────────────────────────────────────────────────────
     const [showFinishOverlay, setShowFinishOverlay] = React.useState(false);
@@ -1191,6 +1238,39 @@ export default function WorkoutActiveScreen({ route, navigation }) {
                     </View>
                 )}
 
+                {/* ── Form video upload ── */}
+                {scheduledWorkoutId && currentExercise && (() => {
+                    const uploadKey = `${currentExercise.id}-${setNum}`;
+                    const status = uploadStates[uploadKey] ?? 'idle';
+                    return (
+                        <View style={styles.uploadRow}>
+                            {status === 'uploading' || status === 'processing' ? (
+                                <View style={styles.uploadingState}>
+                                    <ActivityIndicator size="small" color={status === 'uploading' ? theme.accentText : theme.textSecondary} />
+                                    <Text style={styles.uploadingText}>{status === 'uploading' ? 'Uploading…' : 'Processing…'}</Text>
+                                </View>
+                            ) : status === 'ready' ? (
+                                <View style={styles.uploadingState}>
+                                    <Feather name="check" size={13} color={theme.success} />
+                                    <Text style={[styles.uploadingText, { color: theme.success }]}>Video uploaded</Text>
+                                </View>
+                            ) : (
+                                <Pressable
+                                    style={[styles.uploadButton, status === 'error' && styles.uploadButtonError]}
+                                    onPress={handleUploadVideo}
+                                    accessibilityRole="button"
+                                    accessibilityLabel={`Upload form video for set ${setNum}`}
+                                >
+                                    <Feather name="video" size={13} color={status === 'error' ? theme.danger : theme.accentText} style={{ marginRight: 5 }} />
+                                    <Text style={[styles.uploadButtonText, status === 'error' && { color: theme.danger }]}>
+                                        {status === 'error' ? 'Upload failed — retry' : 'Upload form video'}
+                                    </Text>
+                                </Pressable>
+                            )}
+                        </View>
+                    );
+                })()}
+
                 {/* ── Up Next ── */}
                 {(() => {
                     const info = upNextInfo();
@@ -1312,6 +1392,13 @@ function makeStyles(theme) {
         inputLabel: { fontSize: 10, color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4, textAlign: 'center' },
         input: { width: '100%', height: 44, borderWidth: 1, borderColor: theme.surfaceBorder, borderRadius: 8, backgroundColor: theme.surfaceElevated, color: theme.textPrimary, textAlign: 'center', fontSize: 16 },
         noteInput: { borderWidth: 1, borderColor: theme.surfaceBorder, borderRadius: 8, backgroundColor: theme.surfaceElevated, color: theme.textPrimary, padding: 10, fontSize: 14, minHeight: 44 },
+
+        uploadRow:         { marginBottom: 12 },
+        uploadButton:      { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: theme.accentText, backgroundColor: theme.accentSubtle },
+        uploadButtonError: { borderColor: theme.danger, backgroundColor: 'transparent' },
+        uploadButtonText:  { fontSize: 13, color: theme.accentText, fontWeight: '500' },
+        uploadingState:    { flexDirection: 'row', alignItems: 'center', gap: 6 },
+        uploadingText:     { fontSize: 13, color: theme.textSecondary },
 
         // ── Up Next banner ──
         upNextBanner:      { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: theme.surfaceElevated, borderRadius: 8, marginBottom: 10, borderWidth: 0.5, borderColor: theme.surfaceBorder },

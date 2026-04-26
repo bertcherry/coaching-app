@@ -348,6 +348,7 @@ export default function SettingsScreen() {
         new_workout:       { push: true, badge: true },
         workout_completed: { push: true, badge: true },
         workout_skipped:   { push: true, badge: true },
+        video_uploaded:    { push: true, badge: true },
     };
     const [notifSettings, setNotifSettings] = React.useState(DEFAULT_NOTIF_SETTINGS);
 
@@ -642,6 +643,13 @@ export default function SettingsScreen() {
                             <NotifRow
                                 label="Client skips workout"
                                 type="workout_skipped"
+                                settings={notifSettings}
+                                onToggle={handleNotifToggle}
+                                theme={theme}
+                            />
+                            <NotifRow
+                                label="Client uploads form video"
+                                type="video_uploaded"
                                 settings={notifSettings}
                                 onToggle={handleNotifToggle}
                                 theme={theme}

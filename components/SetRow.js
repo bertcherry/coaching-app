@@ -1,11 +1,13 @@
 /**
  * SetRow.js — updated with optional set badge, coach rec as helper text,
  * client-side validation (no weight ranges, RPE must be number),
- * and per-exercise weight unit selector (lbs / kg / other free-text).
+ * per-exercise weight unit selector (lbs / kg / other free-text),
+ * and video upload for form review.
  */
 import * as React from 'react';
-import { View, Text, TextInput, StyleSheet, Pressable } from 'react-native';
+import { View, Text, TextInput, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
 import Feather from '@expo/vector-icons/Feather';
+import * as ImagePicker from 'expo-image-picker';
 import { enqueueRecord } from '../utils/WorkoutSync';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
@@ -37,6 +39,8 @@ export default function SetRow({
     loggedRecord,       // previously saved { weight, weightUnit, reps, rpe, note } — pre-fills edit mode
     onSave,
     noBorderTop,
+    scheduledWorkoutId, // required for video upload
+    exerciseName,       // display name used in setSnapshot
 }) {
     const { theme } = useTheme();
     const styles = makeStyles(theme);
@@ -95,6 +99,10 @@ export default function SetRow({
     const [rpe,        setRpe]        = React.useState(initFromLog?.rpe        ?? defaultRpe);
     const [note,       setNote]       = React.useState(initFromLog?.note       ?? '');
     const [saved,      setSaved]      = React.useState(false);
+    const [uploadStatus, setUploadStatus] = React.useState('idle'); // idle|uploading|processing|ready|error
+    const [uploadError,  setUploadError]  = React.useState(null);
+    // historyId is set after the record is enqueued so the video row can reference it
+    const historyIdRef = React.useRef(null);
     const [weightUnit, setWeightUnit] = React.useState(initFromLog?.weightUnit ?? profileUnit);
     const [otherLoad,  setOtherLoad]  = React.useState(initFromLog?.otherLoad  ?? '');
 
@@ -197,8 +205,67 @@ export default function SetRow({
         };
 
         enqueueRecord(record);
+        // Generate a stable ID so the video row can reference this history entry
+        historyIdRef.current = record.dateTime + '-' + exerciseId + '-' + setNumber;
         onSave?.(record);
         setSaved(true);
+    };
+
+    const handleUploadVideo = async () => {
+        if (!scheduledWorkoutId) return;
+        setUploadError(null);
+
+        const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!permission.granted) {
+            setUploadError('Camera roll access is required to upload a video.');
+            return;
+        }
+
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ['videos'],
+            videoMaxDuration: 60,
+            allowsEditing: false,
+            quality: 1,
+        });
+
+        if (result.canceled || !result.assets?.length) return;
+
+        const asset = result.assets[0];
+        setUploadStatus('uploading');
+
+        try {
+            const setSnapshot = JSON.stringify({
+                exerciseName: exerciseName ?? null,
+                weight:       (weightUnit !== 'other' && weight) ? parseFloat(weight) : null,
+                weightUnit:   weightUnit === 'other' ? (otherLoad || null) : weightUnit,
+                reps:         count ? parseInt(count) : null,
+                rpe:          rpe   ? parseFloat(rpe) : null,
+                clientNote:   note  || null,
+            });
+
+            const form = new FormData();
+            form.append('video', { uri: asset.uri, type: asset.mimeType ?? 'video/mp4', name: 'form.mp4' });
+            form.append('scheduledWorkoutId', scheduledWorkoutId);
+            form.append('exerciseId', exerciseId);
+            form.append('setNumber', String(setNumber));
+            form.append('historyId', historyIdRef.current ?? '');
+            form.append('setSnapshot', setSnapshot);
+
+            const res = await authFetch(`${WORKER_URL}/videos/upload`, {
+                method: 'POST',
+                body: form,
+            });
+
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.error ?? 'Upload failed');
+            }
+
+            setUploadStatus('processing');
+        } catch (e) {
+            setUploadStatus('error');
+            setUploadError(e.message ?? 'Upload failed. Tap to retry.');
+        }
     };
 
     const countLabel       = isTimed ? 'Sec done' : isAMRAP ? 'Reps (AMRAP)' : 'Reps done';
@@ -343,6 +410,42 @@ export default function SetRow({
                     <Text style={styles.savedBadgeText}>Saved locally</Text>
                 </View>
             )}
+
+            {scheduledWorkoutId && uploadStatus !== 'ready' && (
+                <View style={styles.uploadRow}>
+                    {uploadStatus === 'uploading' ? (
+                        <View style={styles.uploadingRow}>
+                            <ActivityIndicator size="small" color={theme.accentText} />
+                            <Text style={styles.uploadingText}>Uploading video…</Text>
+                        </View>
+                    ) : uploadStatus === 'processing' ? (
+                        <View style={styles.uploadingRow}>
+                            <ActivityIndicator size="small" color={theme.textSecondary} />
+                            <Text style={styles.uploadingText}>Processing…</Text>
+                        </View>
+                    ) : (
+                        <Pressable
+                            style={styles.uploadButton}
+                            onPress={handleUploadVideo}
+                            accessibilityRole="button"
+                            accessibilityLabel={`Upload form video for set ${setNumber}`}
+                        >
+                            <Feather
+                                name={uploadStatus === 'error' ? 'alert-circle' : 'video'}
+                                size={13}
+                                color={uploadStatus === 'error' ? theme.danger : theme.accentText}
+                                style={{ marginRight: 5 }}
+                            />
+                            <Text style={[styles.uploadButtonText, uploadStatus === 'error' && styles.uploadButtonTextError]}>
+                                {uploadStatus === 'error' ? 'Upload failed — retry' : 'Upload form video'}
+                            </Text>
+                        </Pressable>
+                    )}
+                    {uploadError && uploadStatus === 'error' && (
+                        <Text style={styles.uploadErrorText}>{uploadError}</Text>
+                    )}
+                </View>
+            )}
         </View>
     );
 }
@@ -381,5 +484,13 @@ function makeStyles(theme) {
         setNoteInput: { borderWidth: 1, borderColor: theme.surfaceBorder, borderRadius: 6, backgroundColor: theme.surfaceElevated, color: theme.textPrimary, padding: 8, fontSize: 13, minHeight: 34 },
         savedBadge:   { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 4 },
         savedBadgeText: { fontSize: 10, color: theme.success },
+
+        uploadRow:          { marginTop: 8 },
+        uploadButton:       { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6, borderWidth: 1, borderColor: theme.accentText, backgroundColor: theme.accentSubtle },
+        uploadButtonText:   { fontSize: 12, color: theme.accentText, fontWeight: '500' },
+        uploadButtonTextError: { color: theme.danger },
+        uploadingRow:       { flexDirection: 'row', alignItems: 'center', gap: 6 },
+        uploadingText:      { fontSize: 12, color: theme.textSecondary },
+        uploadErrorText:    { fontSize: 11, color: theme.danger, marginTop: 4 },
     });
 }

@@ -8,6 +8,7 @@
 import { env } from 'cloudflare:test';
 import { SignJWT } from 'jose';
 import bcrypt from 'bcryptjs';
+import { vi } from 'vitest';
 
 // ─── JWT helpers ──────────────────────────────────────────────────────────────
 
@@ -120,9 +121,36 @@ const SCHEMA_STMTS = [
         updatedAt   TEXT NOT NULL,
         UNIQUE(clientEmail, exerciseId)
     )`,
+    `CREATE TABLE IF NOT EXISTS videos (
+        id                  TEXT PRIMARY KEY,
+        clientEmail         TEXT NOT NULL,
+        scheduledWorkoutId  TEXT NOT NULL,
+        exerciseId          TEXT NOT NULL,
+        setNumber           INTEGER NOT NULL,
+        historyId           TEXT,
+        r2Key               TEXT NOT NULL,
+        streamId            TEXT,
+        uploadStatus        TEXT NOT NULL DEFAULT 'pending',
+        setSnapshot         TEXT NOT NULL,
+        reviewedAt          TEXT,
+        createdAt           TEXT NOT NULL
+    )`,
+    `CREATE TABLE IF NOT EXISTS video_annotations (
+        id               TEXT PRIMARY KEY,
+        videoId          TEXT NOT NULL,
+        coachEmail       TEXT NOT NULL,
+        timestampSeconds REAL NOT NULL,
+        observation      TEXT,
+        rootCause        TEXT,
+        cue              TEXT,
+        programming      TEXT,
+        createdAt        TEXT NOT NULL
+    )`,
 ];
 
 const CLEAR_STMTS = [
+    'DELETE FROM video_annotations',
+    'DELETE FROM videos',
     'DELETE FROM notification_events',
     'DELETE FROM push_tokens',
     'DELETE FROM history',
@@ -256,6 +284,69 @@ export function get(path, token) {
     return req(path, { method: 'GET', token });
 }
 
+/** Build a multipart/form-data POST request (for video upload). */
+export function formPost(path, fields, token) {
+    const form = new FormData();
+    for (const [key, value] of Object.entries(fields)) {
+        form.append(key, value);
+    }
+    const headers = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    return new Request(`${BASE}${path}`, { method: 'POST', headers, body: form });
+}
+
+/** Insert a video row. */
+export async function seedVideo(overrides = {}) {
+    const data = {
+        id: 'video-id-1',
+        clientEmail: 'client@example.com',
+        scheduledWorkoutId: 'workout-id-1',
+        exerciseId: 'ex-1',
+        setNumber: 1,
+        historyId: null,
+        r2Key: 'client@example.com/video-id-1',
+        streamId: 'stream-uid-1',
+        uploadStatus: 'ready',
+        setSnapshot: JSON.stringify({ exerciseName: 'Back Squat', weight: 135, weightUnit: 'lbs', reps: 5, rpe: 8 }),
+        reviewedAt: null,
+        createdAt: new Date().toISOString(),
+        ...overrides,
+    };
+    await env.DB.prepare(
+        `INSERT INTO videos (id, clientEmail, scheduledWorkoutId, exerciseId, setNumber, historyId, r2Key, streamId, uploadStatus, setSnapshot, reviewedAt, createdAt)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).bind(
+        data.id, data.clientEmail, data.scheduledWorkoutId, data.exerciseId,
+        data.setNumber, data.historyId, data.r2Key, data.streamId,
+        data.uploadStatus, data.setSnapshot, data.reviewedAt, data.createdAt
+    ).run();
+    return data;
+}
+
+/** Insert a video_annotation row. */
+export async function seedAnnotation(overrides = {}) {
+    const data = {
+        id: 'annotation-id-1',
+        videoId: 'video-id-1',
+        coachEmail: 'coach@example.com',
+        timestampSeconds: 3.5,
+        observation: 'knee valgus, right',
+        rootCause: 'hip, not ankle',
+        cue: 'screw feet into floor',
+        programming: 'add hip 90/90',
+        createdAt: new Date().toISOString(),
+        ...overrides,
+    };
+    await env.DB.prepare(
+        `INSERT INTO video_annotations (id, videoId, coachEmail, timestampSeconds, observation, rootCause, cue, programming, createdAt)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).bind(
+        data.id, data.videoId, data.coachEmail, data.timestampSeconds,
+        data.observation, data.rootCause, data.cue, data.programming, data.createdAt
+    ).run();
+    return data;
+}
+
 // ─── Fetch mock ───────────────────────────────────────────────────────────────
 
 /**
@@ -264,7 +355,7 @@ export function get(path, token) {
  * Call jest.restoreAllMocks() in afterEach.
  */
 export function mockExternalFetch() {
-    jest.spyOn(globalThis, 'fetch').mockResolvedValue(
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
         new Response(JSON.stringify({ id: 'mocked' }), { status: 200 })
     );
 }

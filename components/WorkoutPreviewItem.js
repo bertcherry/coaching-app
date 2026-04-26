@@ -3,7 +3,9 @@ import { View, Text, StyleSheet, Pressable } from 'react-native';
 import Feather from '@expo/vector-icons/Feather';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import SetRow from './SetRow';
+import VideoAnnotationCard from './VideoAnnotationCard';
 import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
 
 const WORKER_URL = 'https://coaching-app.bert-m-cherry.workers.dev';
 
@@ -39,6 +41,7 @@ function formatPrescription(item) {
 
 export default function WorkoutPreviewItem({
     workoutId, clientId, unitDefault, onSetSaved,
+    scheduledWorkoutId,
     id, name,
     sets,      // legacy
     setsMin, setsMax,
@@ -54,6 +57,7 @@ export default function WorkoutPreviewItem({
 }) {
     const { theme } = useTheme();
     const styles = makeStyles(theme);
+    const { user, authFetch } = useAuth();
     const [demo,         setDemo]         = React.useState(null);
     const [loading,      setLoading]      = React.useState(true);
     const [showLogs,     setShowLogs]     = React.useState(false);
@@ -61,11 +65,36 @@ export default function WorkoutPreviewItem({
     // false = no autoplay when default-open; becomes true on first user-initiated open
     const [videoAutoplay, setVideoAutoplay] = React.useState(false);
     const [savedSetNums, setSavedSetNums] = React.useState(() => new Set());
+    const [videosBySet,  setVideosBySet]  = React.useState({});
 
     // Close log panel when readOnly becomes true (e.g. leaving edit mode)
     React.useEffect(() => {
         if (readOnly) setShowLogs(false);
     }, [readOnly]);
+
+    // Fetch client form videos when a coach views a completed workout
+    React.useEffect(() => {
+        if (!isCompleted || !user?.isCoach || !scheduledWorkoutId || !id || !authFetch) return;
+        let cancelled = false;
+        (async () => {
+            try {
+                const res = await authFetch(
+                    `${WORKER_URL}/videos?scheduledWorkoutId=${encodeURIComponent(scheduledWorkoutId)}&exerciseId=${encodeURIComponent(id)}`
+                );
+                if (!res.ok || cancelled) return;
+                const data = await res.json();
+                if (cancelled) return;
+                const bySet = {};
+                for (const v of data.videos ?? []) {
+                    if (v.uploadStatus === 'ready' && !bySet[v.setNumber]) {
+                        bySet[v.setNumber] = v;
+                    }
+                }
+                setVideosBySet(bySet);
+            } catch {}
+        })();
+        return () => { cancelled = true; };
+    }, [isCompleted, user?.isCoach, scheduledWorkoutId, id]);
 
     // Intercept onSetSaved to track which sets have been saved
     const handleSetSaved = React.useCallback((record) => {
@@ -201,11 +230,19 @@ export default function WorkoutPreviewItem({
                             if (record.reps != null) parts.push(`${record.reps} ${countType === 'Timed' ? 'sec' : 'reps'}`);
                             if (record.rpe  != null) parts.push(`RPE ${record.rpe}`);
                             return (
-                                <View key={n} style={styles.summaryRow}>
-                                    <Text style={styles.summarySetLabel}>Set {n}</Text>
-                                    <Text style={styles.summaryValues}>{parts.join('  ·  ') || '—'}</Text>
-                                    {record.note ? <Text style={styles.summaryNote}>{record.note}</Text> : null}
-                                </View>
+                                <React.Fragment key={n}>
+                                    <View style={styles.summaryRow}>
+                                        <Text style={styles.summarySetLabel}>Set {n}</Text>
+                                        <Text style={styles.summaryValues}>{parts.join('  ·  ') || '—'}</Text>
+                                        {record.note ? <Text style={styles.summaryNote}>{record.note}</Text> : null}
+                                    </View>
+                                    {videosBySet[n] && user?.isCoach && (
+                                        <VideoAnnotationCard
+                                            video={videosBySet[n]}
+                                            authFetch={authFetch}
+                                        />
+                                    )}
+                                </React.Fragment>
                             );
                         })}
                     </View>
@@ -268,6 +305,8 @@ export default function WorkoutPreviewItem({
                             setConfig={Array.isArray(setConfigs) ? (setConfigs[setNumber - 1] ?? null) : null}
                             loggedRecord={completedHistory?.[`${id}-${setNumber}`] ?? null}
                             onSave={handleSetSaved}
+                            scheduledWorkoutId={scheduledWorkoutId ?? null}
+                            exerciseName={displayName}
                         />
                     ))}
                 </View>

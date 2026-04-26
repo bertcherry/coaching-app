@@ -37,6 +37,7 @@ const DEFAULT_SETTINGS = {
     new_workout:       { push: true, badge: true },
     workout_completed: { push: true, badge: true },
     workout_skipped:   { push: true, badge: true },
+    video_uploaded:    { push: true, badge: true },
 };
 
 function parseSettings(raw) {
@@ -66,6 +67,11 @@ function getPushContent(type, payload) {
             return {
                 title: `${payload.clientName} skipped a workout`,
                 body: payload.workoutName,
+            };
+        case 'video_uploaded':
+            return {
+                title: `${payload.clientName} uploaded a form video`,
+                body: payload.exerciseName,
             };
         default:
             return { title: 'Coaching App', body: 'New activity' };

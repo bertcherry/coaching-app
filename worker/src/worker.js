@@ -15,6 +15,17 @@ import { handleHistoryBatch, handleExerciseSummary, handleWorkoutHistory } from 
 import { handleUpdateName, handleUpdateEmail, handleUpdatePassword, handleUpdateUnit, handleUpdateNotificationSettings, handleGetNotificationSettings } from './profile';
 import { handleGetSchedule } from './schedule';
 import { emitNotification, handleRegisterPushToken, handleGetUnread, handleMarkRead } from './notifications';
+import {
+    handleVideoUpload,
+    handleStreamWebhook,
+    handleGetVideos,
+    handleGetReviewQueue,
+    handleGetReviewed,
+    handleGetExerciseHistory,
+    handleCreateAnnotation,
+    handleGetAnnotations,
+    handleMarkReviewed,
+} from './videos';
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
 
@@ -338,6 +349,42 @@ export default {
         const demoGetMatch = pathname.match(/^\/demos\/([^/]+)$/);
         if (method === 'GET' && demoGetMatch) {
             return handleGetDemo(demoGetMatch[1], env);
+        }
+
+        // ── Video routes ──────────────────────────────────────────────────────
+
+        if (method === 'POST' && pathname === '/videos/upload') {
+            return handleVideoUpload(request, env);
+        }
+        if (method === 'POST' && pathname === '/videos/stream-webhook') {
+            return handleStreamWebhook(request, env);
+        }
+        if (method === 'GET' && pathname === '/videos/review-queue') {
+            return handleGetReviewQueue(request, env);
+        }
+        if (method === 'GET' && pathname === '/videos/reviewed') {
+            return handleGetReviewed(request, env);
+        }
+        if (method === 'GET' && pathname === '/videos/exercise-history') {
+            return handleGetExerciseHistory(request, env);
+        }
+        if (method === 'GET' && pathname === '/videos') {
+            return handleGetVideos(request, env);
+        }
+        // POST /videos/:id/annotations
+        const videoAnnotationsPostMatch = pathname.match(/^\/videos\/([^/]+)\/annotations$/);
+        if (method === 'POST' && videoAnnotationsPostMatch) {
+            return handleCreateAnnotation(videoAnnotationsPostMatch[1], request, env);
+        }
+        // GET /videos/:id/annotations
+        const videoAnnotationsGetMatch = pathname.match(/^\/videos\/([^/]+)\/annotations$/);
+        if (method === 'GET' && videoAnnotationsGetMatch) {
+            return handleGetAnnotations(videoAnnotationsGetMatch[1], request, env);
+        }
+        // PATCH /videos/:id/reviewed
+        const videoReviewedMatch = pathname.match(/^\/videos\/([^/]+)\/reviewed$/);
+        if (method === 'PATCH' && videoReviewedMatch) {
+            return handleMarkReviewed(videoReviewedMatch[1], request, env);
         }
 
         // ── Auth routes ───────────────────────────────────────────────────────
