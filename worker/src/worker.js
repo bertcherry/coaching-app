@@ -15,6 +15,7 @@ import { handleHistoryBatch, handleExerciseSummary, handleWorkoutHistory } from 
 import { handleUpdateName, handleUpdateEmail, handleUpdatePassword, handleUpdateUnit, handleUpdateNotificationSettings, handleGetNotificationSettings } from './profile';
 import { handleGetSchedule } from './schedule';
 import { emitNotification, handleRegisterPushToken, handleGetUnread, handleMarkRead } from './notifications';
+import { handleCheckinUpsert, handleCheckinToday, handleCheckinList } from './checkins';
 import {
     handleVideoUpload,
     handleStreamWebhook,
@@ -415,6 +416,7 @@ export default {
             '/history/batch':             handleHistoryBatch,
             '/workouts/save':             handleSaveWorkout,
             '/notifications/push-token':  handleRegisterPushToken,
+            '/checkins':                  handleCheckinUpsert,
         };
 
         const getRoutes = {
@@ -425,6 +427,8 @@ export default {
             '/history/workout':                      handleWorkoutHistory,
             '/notifications/unread':                 handleGetUnread,
             '/profile/notification-settings':        handleGetNotificationSettings,
+            '/checkins/today':                       handleCheckinToday,
+            '/checkins':                             handleCheckinList,
         };
 
         if (method === 'PATCH' && patchRoutes[pathname]) {

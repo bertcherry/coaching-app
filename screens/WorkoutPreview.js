@@ -14,6 +14,7 @@ import { useWorkoutDisplay } from '../context/WorkoutDisplayContext';
 import { enqueueRecord, syncQueue } from '../utils/WorkoutSync';
 import SetRow from '../components/SetRow';
 import WorkoutPreviewItem from '../components/WorkoutPreviewItem';
+import CheckInModal from '../components/CheckInModal';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -476,6 +477,7 @@ export default function WorkoutPreview({ route, navigation }) {
     const [showSkipModal,       setShowSkipModal]       = React.useState(false);
     const [showRescheduleModal, setShowRescheduleModal] = React.useState(false);
     const [showDeleteModal,     setShowDeleteModal]     = React.useState(false);
+    const [showCheckInModal,    setShowCheckInModal]    = React.useState(false);
     const [workoutStatus, setWorkoutStatus] = React.useState(initialStatus ?? 'scheduled');
     // Edit mode: clients and coaches can review/edit logged data on completed workouts
     const [editMode, setEditMode] = React.useState(false);
@@ -835,6 +837,17 @@ export default function WorkoutPreview({ route, navigation }) {
                 </>
             ) : (
                 <>
+                    {viewerIsAthlete && scheduledWorkoutId && (
+                        <Pressable
+                            style={styles.checkInButton}
+                            onPress={() => setShowCheckInModal(true)}
+                            accessibilityRole="button"
+                            accessibilityLabel="Check in before workout"
+                        >
+                            <Feather name="activity" size={16} color={theme.accentText} accessible={false} />
+                            <Text style={styles.checkInButtonText}>Check In</Text>
+                        </Pressable>
+                    )}
                     <Pressable style={styles.startButton} onPress={handleStartWorkout}>
                         <Feather name="play" size={20} color="#000" />
                         <Text style={styles.startButtonText}>Start Workout</Text>
@@ -963,6 +976,22 @@ export default function WorkoutPreview({ route, navigation }) {
                     onConfirm={handleDeleteConfirm}
                 />
             )}
+
+            <CheckInModal
+                visible={showCheckInModal}
+                onClose={() => setShowCheckInModal(false)}
+                scheduledDate={scheduledDate}
+                scheduledWorkoutId={scheduledWorkoutId}
+                clientEmail={clientEmail}
+                clientTimezone={clientTimezoneParam}
+                onMoveToToday={async () => {
+                    await authFetch('https://coaching-app.bert-m-cherry.workers.dev/schedule/move', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id: scheduledWorkoutId, newDate: getTodayStr(), today: getTodayStr() }),
+                    });
+                }}
+            />
         </KeyboardAvoidingView>
     );
 }
@@ -1257,6 +1286,23 @@ function makeStyles(theme) {
             color: theme.textSecondary,
             fontWeight: '600',
         },
+        checkInButton: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            paddingVertical: 14,
+            minHeight: 44,
+            borderWidth: 1,
+            borderColor: theme.accentText,
+            borderRadius: 12,
+        },
+        checkInButtonText: {
+            fontSize: 15,
+            color: theme.accentText,
+            fontWeight: '600',
+        },
+
         skipButton: {
             flexDirection: 'row',
             alignItems: 'center',

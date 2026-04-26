@@ -146,11 +146,42 @@ const SCHEMA_STMTS = [
         programming      TEXT,
         createdAt        TEXT NOT NULL
     )`,
+    `CREATE TABLE IF NOT EXISTS checkins (
+        id                   TEXT PRIMARY KEY,
+        clientEmail          TEXT NOT NULL,
+        date                 TEXT NOT NULL,
+        type                 TEXT NOT NULL,
+        readiness            INTEGER,
+        sleep_quality        INTEGER,
+        energy               INTEGER,
+        recovery             INTEGER,
+        mental_focus         INTEGER,
+        notes                TEXT,
+        scheduled_workout_id TEXT,
+        created_at           TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at           TEXT NOT NULL DEFAULT (datetime('now')),
+        UNIQUE(clientEmail, date, type)
+    )`,
+    `CREATE TABLE IF NOT EXISTS wearable_snapshots (
+        id              TEXT PRIMARY KEY,
+        clientEmail     TEXT NOT NULL,
+        date            TEXT NOT NULL,
+        source          TEXT NOT NULL,
+        hrv_ms          REAL,
+        resting_hr      INTEGER,
+        sleep_score     REAL,
+        recovery_score  REAL,
+        raw_payload     TEXT,
+        synced_at       TEXT NOT NULL DEFAULT (datetime('now')),
+        UNIQUE(clientEmail, date, source)
+    )`,
 ];
 
 const CLEAR_STMTS = [
     'DELETE FROM video_annotations',
     'DELETE FROM videos',
+    'DELETE FROM checkins',
+    'DELETE FROM wearable_snapshots',
     'DELETE FROM notification_events',
     'DELETE FROM push_tokens',
     'DELETE FROM history',
@@ -343,6 +374,35 @@ export async function seedAnnotation(overrides = {}) {
     ).bind(
         data.id, data.videoId, data.coachEmail, data.timestampSeconds,
         data.observation, data.rootCause, data.cue, data.programming, data.createdAt
+    ).run();
+    return data;
+}
+
+/** Insert a checkin row. */
+export async function seedCheckin(overrides = {}) {
+    const data = {
+        id: 'checkin-id-1',
+        clientEmail: 'client@example.com',
+        date: '2099-12-31',
+        type: 'pre_workout',
+        readiness: 4,
+        sleep_quality: 3,
+        energy: 4,
+        recovery: 3,
+        mental_focus: 5,
+        notes: null,
+        scheduled_workout_id: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        ...overrides,
+    };
+    await env.DB.prepare(
+        `INSERT INTO checkins (id, clientEmail, date, type, readiness, sleep_quality, energy, recovery, mental_focus, notes, scheduled_workout_id, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).bind(
+        data.id, data.clientEmail, data.date, data.type,
+        data.readiness, data.sleep_quality, data.energy, data.recovery, data.mental_focus,
+        data.notes, data.scheduled_workout_id, data.created_at, data.updated_at
     ).run();
     return data;
 }
