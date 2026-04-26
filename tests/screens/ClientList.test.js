@@ -43,6 +43,16 @@ jest.mock('../../context/NotificationsContext', () => ({
     useNotifications: () => ({ unreadClientEmails: mockUnreadClientEmails }),
 }));
 
+jest.mock('@expo/vector-icons/Feather', () => {
+    const { View } = require('react-native');
+    return ({ name }) => <View testID={`icon-${name}`} />;
+});
+
+jest.mock('../../components/NotificationDot', () => {
+    const { View } = require('react-native');
+    return ({ visible }) => visible ? <View testID="notification-dot" /> : null;
+});
+
 jest.mock('../../components/Button', () => {
     const { TouchableOpacity, Text } = require('react-native');
     return ({ text, onPress }) => (
@@ -173,13 +183,54 @@ it('shows notification dot for clients with unread emails', async () => {
     clientsResponse([ALICE, BOB]);
     render(<ClientList />);
     await waitFor(() => screen.getByText('Alice Smith'));
+    expect(screen.getByTestId('notification-dot')).toBeTruthy();
+});
 
-    // NotificationDot renders a View when visible. We check it exists for Alice
-    // by verifying the component tree contains it — we can't query it by text,
-    // but we can assert no error is thrown and the dot renders for the right client.
-    // The dot is rendered inside Alice's row, not Bob's.
-    const aliceRow = screen.getByText('Alice Smith');
-    expect(aliceRow).toBeTruthy();
-    // If NotificationDot were not rendering for alice, the component would crash
-    // or not include it — we just assert render completes without error.
+it('renders calendar and user icon buttons for each client', async () => {
+    clientsResponse([ALICE, BOB]);
+    render(<ClientList />);
+    await waitFor(() => screen.getByText('Alice Smith'));
+    expect(screen.getByTestId('client-calendar-btn-alice@example.com')).toBeTruthy();
+    expect(screen.getByTestId('client-calendar-btn-bob@example.com')).toBeTruthy();
+    expect(screen.getByTestId('client-info-btn-alice@example.com')).toBeTruthy();
+    expect(screen.getByTestId('client-info-btn-bob@example.com')).toBeTruthy();
+});
+
+it('tapping calendar icon navigates to calendar', async () => {
+    clientsResponse([ALICE]);
+    render(<ClientList />);
+    await waitFor(() => screen.getByText('Alice Smith'));
+
+    fireEvent.press(screen.getByTestId('client-calendar-btn-alice@example.com'));
+
+    expect(mockNavigate).toHaveBeenCalledWith('My Calendar', expect.objectContaining({
+        screen: 'Calendar',
+        params: expect.objectContaining({ clientEmail: 'alice@example.com' }),
+    }));
+});
+
+it('tapping user icon navigates to Client Information', async () => {
+    clientsResponse([ALICE]);
+    render(<ClientList />);
+    await waitFor(() => screen.getByText('Alice Smith'));
+
+    fireEvent.press(screen.getByTestId('client-info-btn-alice@example.com'));
+
+    expect(mockNavigate).toHaveBeenCalledWith('Client Information', {
+        clientEmail: 'alice@example.com',
+        clientName: 'Alice Smith',
+    });
+});
+
+it('tapping client row still navigates to calendar', async () => {
+    clientsResponse([ALICE]);
+    render(<ClientList />);
+    await waitFor(() => screen.getByText('Alice Smith'));
+
+    fireEvent.press(screen.getByText('Alice Smith'));
+
+    expect(mockNavigate).toHaveBeenCalledWith('My Calendar', expect.objectContaining({
+        screen: 'Calendar',
+        params: expect.objectContaining({ clientEmail: 'alice@example.com' }),
+    }));
 });

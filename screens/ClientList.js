@@ -4,9 +4,11 @@ import {
     Text,
     FlatList,
     TouchableOpacity,
+    Pressable,
     ActivityIndicator,
     StyleSheet,
 } from 'react-native';
+import Feather from '@expo/vector-icons/Feather';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import CustomButton from '../components/Button';
 import { useAuth } from '../context/AuthContext';
@@ -65,10 +67,19 @@ export default function ClientList() {
         });
     };
 
+    const goToClientInfo = (client) => {
+        navigation.navigate('Client Information', {
+            clientEmail: client.email,
+            clientName: `${client.fname} ${client.lname}`,
+        });
+    };
+
     const renderClient = ({ item }) => (
         <TouchableOpacity
             style={[styles.clientRow, { borderBottomColor: theme.divider }]}
             onPress={() => goToClientCalendar(item)}
+            accessibilityRole="button"
+            accessibilityLabel={`${item.fname} ${item.lname}, go to calendar`}
         >
             <View style={styles.clientInfo}>
                 <View style={styles.clientNameRow}>
@@ -80,7 +91,28 @@ export default function ClientList() {
             {!item.emailConfirmed && (
                 <Text style={[styles.pendingBadge, { color: theme.accentText, borderColor: theme.accentText }]}>Pending</Text>
             )}
-            <Text style={[styles.chevron, { color: theme.textTertiary }]}>›</Text>
+            <View style={styles.iconGroup}>
+                <Pressable
+                    onPress={() => goToClientCalendar(item)}
+                    style={styles.iconBtn}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Open ${item.fname} ${item.lname}'s calendar`}
+                    testID={`client-calendar-btn-${item.email}`}
+                    hitSlop={8}
+                >
+                    <Feather name="calendar" size={20} color={theme.textTertiary} />
+                </Pressable>
+                <Pressable
+                    onPress={() => goToClientInfo(item)}
+                    style={styles.iconBtn}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Open ${item.fname} ${item.lname}'s profile`}
+                    testID={`client-info-btn-${item.email}`}
+                    hitSlop={8}
+                >
+                    <Feather name="user" size={20} color={theme.textTertiary} />
+                </Pressable>
+            </View>
         </TouchableOpacity>
     );
 
@@ -168,8 +200,15 @@ const styles = StyleSheet.create({
         paddingVertical: 2,
         marginRight: 8,
     },
-    chevron: {
-        fontSize: 24,
-        opacity: 0.4,
+    iconGroup: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
+    iconBtn: {
+        minWidth: 44,
+        minHeight: 44,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
 });

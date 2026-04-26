@@ -7,6 +7,7 @@ import { useTheme } from '../../context/ThemeContext';
 import ClientList from '../ClientList';
 import AddClientScreen from '../AddClientScreen';
 import CreateWorkout from '../CreateWorkout';
+import ClientInformationScreen from '../ClientInformationScreen';
 
 const Stack = createStackNavigator();
 
@@ -35,6 +36,11 @@ export default function ClientListStack() {
             />
             <Stack.Screen name="Add Client" component={AddClientScreen} />
             <Stack.Screen name="Create Workout" component={CreateWorkout} />
+            <Stack.Screen
+                name="Client Information"
+                component={ClientInformationScreen}
+                options={({ route }) => ({ title: route.params?.clientName ?? 'Client Information' })}
+            />
         </Stack.Navigator>
     );
 }

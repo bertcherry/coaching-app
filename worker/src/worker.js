@@ -16,6 +16,7 @@ import { handleUpdateName, handleUpdateEmail, handleUpdatePassword, handleUpdate
 import { handleGetSchedule } from './schedule';
 import { emitNotification, handleRegisterPushToken, handleGetUnread, handleMarkRead } from './notifications';
 import { handleCheckinUpsert, handleCheckinToday, handleCheckinList } from './checkins';
+import { handleGetClientProfile, handlePatchClientProfile, handleGetMovementPatterns } from './clientProfile';
 import {
     handleVideoUpload,
     handleStreamWebhook,
@@ -316,6 +317,19 @@ export default {
         const url      = new URL(request.url);
         const method   = request.method;
         const pathname = url.pathname;
+
+        // ── Client profile routes ─────────────────────────────────────────────
+
+        const clientProfileMatch = pathname.match(/^\/clients\/([^/]+)\/profile$/);
+        if (method === 'GET' && clientProfileMatch) {
+            return handleGetClientProfile(decodeURIComponent(clientProfileMatch[1]), request, env);
+        }
+        if (method === 'PATCH' && clientProfileMatch) {
+            return handlePatchClientProfile(decodeURIComponent(clientProfileMatch[1]), request, env);
+        }
+        if (method === 'GET' && pathname === '/movement-patterns') {
+            return handleGetMovementPatterns(request, env);
+        }
 
         // ── Demos routes ──────────────────────────────────────────────────────
 

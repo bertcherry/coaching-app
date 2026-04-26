@@ -46,7 +46,8 @@ const SCHEMA_STMTS = [
         emailConfirmed       INTEGER NOT NULL DEFAULT 0,
         coachedBy            TEXT,
         timezone             TEXT DEFAULT 'UTC',
-        notificationSettings TEXT DEFAULT NULL
+        notificationSettings TEXT DEFAULT NULL,
+        rpe_display          TEXT NOT NULL DEFAULT 'numeric'
     )`,
     `CREATE TABLE IF NOT EXISTS workouts (
         id          TEXT PRIMARY KEY,
@@ -175,6 +176,26 @@ const SCHEMA_STMTS = [
         synced_at       TEXT NOT NULL DEFAULT (datetime('now')),
         UNIQUE(clientEmail, date, source)
     )`,
+    `CREATE TABLE IF NOT EXISTS athlete_profiles (
+        clientEmail      TEXT PRIMARY KEY,
+        experience_level TEXT,
+        training_focus   TEXT,
+        sport            TEXT,
+        competition_date TEXT,
+        limitations      TEXT NOT NULL DEFAULT '[]',
+        private_notes    TEXT,
+        updated_at       TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_by       TEXT
+    )`,
+    `CREATE TABLE IF NOT EXISTS movement_patterns (
+        id                    TEXT PRIMARY KEY,
+        name                  TEXT NOT NULL UNIQUE,
+        label                 TEXT NOT NULL,
+        description           TEXT,
+        coach_cues            TEXT,
+        common_substitutions  TEXT,
+        display_order         INTEGER NOT NULL DEFAULT 0
+    )`,
 ];
 
 const CLEAR_STMTS = [
@@ -182,6 +203,8 @@ const CLEAR_STMTS = [
     'DELETE FROM videos',
     'DELETE FROM checkins',
     'DELETE FROM wearable_snapshots',
+    'DELETE FROM athlete_profiles',
+    'DELETE FROM movement_patterns',
     'DELETE FROM notification_events',
     'DELETE FROM push_tokens',
     'DELETE FROM history',
@@ -375,6 +398,49 @@ export async function seedAnnotation(overrides = {}) {
         data.id, data.videoId, data.coachEmail, data.timestampSeconds,
         data.observation, data.rootCause, data.cue, data.programming, data.createdAt
     ).run();
+    return data;
+}
+
+/** Insert an athlete_profile row. */
+export async function seedAthleteProfile(overrides = {}) {
+    const data = {
+        clientEmail: 'client@example.com',
+        experience_level: 'intermediate',
+        training_focus: 'strength',
+        sport: null,
+        competition_date: null,
+        limitations: '[]',
+        private_notes: null,
+        updated_at: new Date().toISOString(),
+        updated_by: 'coach@example.com',
+        ...overrides,
+    };
+    await env.DB.prepare(
+        `INSERT INTO athlete_profiles (clientEmail, experience_level, training_focus, sport, competition_date, limitations, private_notes, updated_at, updated_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).bind(
+        data.clientEmail, data.experience_level, data.training_focus, data.sport,
+        data.competition_date, data.limitations, data.private_notes, data.updated_at, data.updated_by
+    ).run();
+    return data;
+}
+
+/** Insert a movement_pattern row. */
+export async function seedMovementPattern(overrides = {}) {
+    const data = {
+        id: 'mp-test-1',
+        name: 'overhead_press',
+        label: 'Overhead Press',
+        description: 'Vertical pushing',
+        coach_cues: '{}',
+        common_substitutions: 'Landmine press',
+        display_order: 1,
+        ...overrides,
+    };
+    await env.DB.prepare(
+        `INSERT INTO movement_patterns (id, name, label, description, coach_cues, common_substitutions, display_order)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`
+    ).bind(data.id, data.name, data.label, data.description, data.coach_cues, data.common_substitutions, data.display_order).run();
     return data;
 }
 
